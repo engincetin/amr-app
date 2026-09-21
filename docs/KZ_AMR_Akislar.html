@@ -707,7 +707,7 @@ footer{margin-top:56px;border-top:1px solid var(--line);padding-top:14px;font-si
 <tr class="odd">
 <td><code>POST /v1/vault/in</code></td>
 <td>kasa girişi talebi: <code>qty_mg</code> · <code>ref</code> (05)</td>
-<td><code>REQUESTED</code>; kabulde <code>vault.in_accepted</code> + Kasa Giriş Fişi + bakiye; sonra <code>vault.in_placing</code>, <code>vault.in_placed</code></td>
+<td><code>REQUESTED</code>; kabulde <code>vault.in_accepted</code> + Kasa Giriş Fişi + bakiye; sonra <code>vault.in_placing</code>, <code>vault.in_placed</code>; vade geçerse <code>vault.in_overdue</code></td>
 </tr>
 <tr class="even">
 <td><code>POST /v1/vault/out</code></td>
@@ -756,7 +756,7 @@ footer{margin-top:56px;border-top:1px solid var(--line);padding-top:14px;font-si
 </tr>
 <tr class="odd">
 <td>Olaylar (webhook)</td>
-<td><code>order.*</code> · <code>vault.in_accepted / in_placing / in_placed / in_rejected</code> · <code>vault.out_accepted / out_rejected</code> · <code>delivery.*</code> · <code>refining.*</code> · <code>catalog.updated</code> · <code>settlement.requested / statement / reconciled / mismatch / payment_notice / settled</code> · <code>price.halt / resume</code> · <code>account.reconcile</code>; zarf: bakiye bilgisi + HMAC imza + idempotency key + <code>seq</code></td>
+<td><code>order.*</code> · <code>vault.in_accepted / in_placing / in_placed / in_overdue / in_rejected</code> · <code>vault.out_accepted / out_rejected</code> · <code>delivery.*</code> · <code>refining.*</code> · <code>catalog.updated</code> · <code>settlement.requested / statement / reconciled / mismatch / payment_notice / settled</code> · <code>price.halt / resume</code> · <code>account.reconcile</code>; zarf: bakiye bilgisi + HMAC imza + idempotency key + <code>seq</code></td>
 <td>iki tarafta bildirim üretir</td>
 </tr>
 </tbody>

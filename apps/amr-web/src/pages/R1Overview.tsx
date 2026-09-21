@@ -39,11 +39,14 @@ export function R1Overview({ live }: { live: Live }) {
           <div className="small">alış {o?.orders_today?.buy.filled ?? 0} emir · {fmtG(o?.orders_today?.buy.mg ?? 0)} g · satış {o?.orders_today?.sell.filled ?? 0} emir · {fmtG(o?.orders_today?.sell.mg ?? 0)} g</div>
           <div className="small" style={{ marginTop: 6 }}>red {(o?.orders_today?.buy.rejected ?? 0) + (o?.orders_today?.sell.rejected ?? 0)}</div>
         </Link>
-        <div className="card">
+        <Link className="card" to="/kasa">
           <h2>Bekleyen işler</h2>
-          <div className="small">kasa talepleri 0 · teslimat adımları 0 · rafinasyon 0 · mahsuplaşma 0</div>
-          <div className="small" style={{ marginTop: 6 }}>Sprint 3'ten itibaren dolar.</div>
-        </div>
+          <div className="mono" style={{ fontSize: 18, fontWeight: 600 }}>{o?.vault_pending ?? 0}</div>
+          <div className="small">kasa talepleri {o?.vault_pending ?? 0} · teslimat adımları 0 · rafinasyon 0 · mahsuplaşma 0</div>
+          <div className="small" style={{ marginTop: 6, color: (o?.vault_overdue ?? 0) > 0 ? "var(--bad)" : undefined }}>
+            {(o?.vault_overdue ?? 0) > 0 ? `${o?.vault_overdue} kasa girişinde T+3 vadesi geçti` : "T+3 vadesi geçen kasa girişi yok"}
+          </div>
+        </Link>
         <div className="card">
           <h2>Kanzasset bağlantısı</h2>
           <div className="status"><span className={`dot ${(pub?.subscribers ?? 0) > 0 ? "ok" : "bad"}`} />{(pub?.subscribers ?? 0) > 0 ? "Fiyat soketine bağlı" : "Bağlı değil"}</div>

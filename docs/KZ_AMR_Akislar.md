@@ -572,8 +572,9 @@ Tüm fişler ve ekstreler iki tarafta da görüntülenir ve indirilir; gönderim
 | `GET /v1/session/status` | oturum durumu: açık / durdu / bakım · merkez bağlantısı | `tradable` bayrağının yanında |
 | `POST /v1/orders` | alış / satış emri · `client_order_id` · 0,001 g · `quote_seq` · `limit_px` (slippage) · `FOK` · `time_limit_ms` | fill + Tahsis Belgesi (alışta) + bakiye bilgisi (02) |
 | `GET /v1/orders/{id}` · `POST /v1/orders/{id}/cancel` | durum sorgusu · iptal talebi, kesin cevap (Cevapsız emir) | `FILLED` / `CANCELLED` / `REJECTED` |
-| `POST /v1/vault/in` | kasa girişi talebi: `qty_mg` · `ref` (05) | `REQUESTED`; kabulde `vault.in_accepted` + Kasa Giriş Fişi + bakiye; sonra `vault.in_placing`, `vault.in_placed` |
+| `POST /v1/vault/in` | kasa girişi talebi: `qty_mg` · `ref` (05) | `REQUESTED`; kabulde `vault.in_accepted` + Kasa Giriş Fişi + bakiye; sonra `vault.in_placing`, `vault.in_placed`; vade geçerse `vault.in_overdue` |
 | `POST /v1/vault/out` | kasa çıkışı talebi: `qty_mg` · `ref` (06) | `REQUESTED`; kabulde `vault.out_accepted` + Kasa Çıkış Fişi + bakiye |
+| `GET /v1/vault/requests/{id}` · `GET /v1/vault/statement?date=` | kasa talimatı durumu · günlük kasa ekstresi (05, 06, Kontroller) | durum ve geçmiş · rezerv kanıtı (`V ≥ A`), fiş referansları ve imza |
 | `POST /v1/deliveries` · `POST /v1/deliveries/{id}/approve` · `POST /v1/deliveries/{id}/cancel` · `GET /v1/deliveries/{id}` | fiziksel teslimat: talep (gram · adres ref) · teklif onayı · iptal · durum (10) | `delivery.quoted` · `delivery.*` durum olayları |
 | `GET /v1/catalog` | rafinasyon ürün kataloğu (ürün · gramaj · ayar · tarife · süre) (11) | `catalog.updated` olayı |
 | `POST /v1/refining` · `POST /v1/refining/{id}/approve` · `POST /v1/refining/{id}/cancel` · `GET /v1/refining/{id}` | rafinasyon: talep (kalemler × adet · adres ref) · teklif onayı · iptal · durum (11) | `refining.quoted` · `refining.*` durum olayları |
@@ -582,7 +583,7 @@ Tüm fişler ve ekstreler iki tarafta da görüntülenir ve indirilir; gönderim
 | `GET /v1/current-account/statement?window=` | cari hesap ekstresi: işlemler · `T` hareketleri · kur bazında para | (12, adım 1) |
 | `POST /v1/settlements` · `GET /v1/settlements/{id}` · `POST /v1/settlements/{id}/confirm` · `POST /v1/settlements/{id}/payment-notice` · `POST /v1/settlements/{id}/payment-received` | mahsuplaşma: pencere (iki taraf da çağırabilir; karşı tarafa `settlement.requested`) · ekstre · mutabakat onayı · ödeme bildirimi · ödeme alındı (12) | `settlement.*` olayları |
 | `GET /v1/documents/{id}` | Tahsis Belgesi · Kasa Giriş / Çıkış Fişi · Lojistik ve Rafinasyon Teklifi · Sevkiyat Fişi · Teslimat Kaydı · fatura · ekstreler | PDF + imza |
-| Olaylar (webhook) | `order.*` · `vault.in_accepted / in_placing / in_placed / in_rejected` · `vault.out_accepted / out_rejected` · `delivery.*` · `refining.*` · `catalog.updated` · `settlement.requested / statement / reconciled / mismatch / payment_notice / settled` · `price.halt / resume` · `account.reconcile`; zarf: bakiye bilgisi + HMAC imza + idempotency key + `seq` | iki tarafta bildirim üretir |
+| Olaylar (webhook) | `order.*` · `vault.in_accepted / in_placing / in_placed / in_overdue / in_rejected` · `vault.out_accepted / out_rejected` · `delivery.*` · `refining.*` · `catalog.updated` · `settlement.requested / statement / reconciled / mismatch / payment_notice / settled` · `price.halt / resume` · `account.reconcile`; zarf: bakiye bilgisi + HMAC imza + idempotency key + `seq` | iki tarafta bildirim üretir |
 
 Güvenlik ve işletim: mTLS ya da HMAC imza · API anahtarı / istemci · idempotency key · `seq` · iki tarafta istek günlüğü ve saklama (VARA kanıt) · saat senkronu · uyum test paketi her canlıya çıkışta.
 

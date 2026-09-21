@@ -1743,9 +1743,815 @@
         }
       }
     },
+    "/v1/vault/in": {
+      "post": {
+        "summary": "Kasa girişi talebi (05): cari hesaptaki gramı kasa hesabına taşır. Kabulde Kasa Giriş Fişi üretilir (mint dayanağı, K4).",
+        "parameters": [
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Timestamp",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "X-Signature",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "HMAC-SHA256(secret, ts + METHOD + path + body) hex"
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "qty_mg",
+                  "ref"
+                ],
+                "properties": {
+                  "qty_mg": {
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "ref": {
+                    "description": "Kanzasset referans numarası",
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "REQUESTED (otomatik kabul açıksa ACCEPTED); aynı ref ile tekrar aynı talebi döner",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "request_id",
+                    "type",
+                    "qty_mg",
+                    "ref",
+                    "status",
+                    "requested_ts"
+                  ],
+                  "properties": {
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "anyOf": [
+                        {
+                          "const": "IN",
+                          "type": "string"
+                        },
+                        {
+                          "const": "OUT",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "qty_mg": {
+                      "type": "integer"
+                    },
+                    "ref": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "anyOf": [
+                        {
+                          "const": "REQUESTED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "ACCEPTED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "PLACING",
+                          "type": "string"
+                        },
+                        {
+                          "const": "PLACED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "OVERDUE",
+                          "type": "string"
+                        },
+                        {
+                          "const": "REJECTED",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "doc_id": {
+                      "description": "Kasa Giriş / Çıkış Fişi",
+                      "type": "string"
+                    },
+                    "reject_reason": {
+                      "type": "string"
+                    },
+                    "requested_ts": {
+                      "description": "ISO 8601 UTC",
+                      "type": "string"
+                    },
+                    "accepted_ts": {
+                      "description": "ISO 8601 UTC",
+                      "type": "string"
+                    },
+                    "placing_ts": {
+                      "description": "ISO 8601 UTC",
+                      "type": "string"
+                    },
+                    "placed_ts": {
+                      "description": "ISO 8601 UTC",
+                      "type": "string"
+                    },
+                    "due_ts": {
+                      "description": "kasaya koyma vadesi: kabul + T+3 (ISO 8601 UTC)",
+                      "type": "string"
+                    },
+                    "history": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "status",
+                          "ts"
+                        ],
+                        "properties": {
+                          "status": {
+                            "anyOf": [
+                              {
+                                "const": "REQUESTED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "ACCEPTED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "PLACING",
+                                "type": "string"
+                              },
+                              {
+                                "const": "PLACED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "OVERDUE",
+                                "type": "string"
+                              },
+                              {
+                                "const": "REJECTED",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "ts": {
+                            "description": "ISO 8601 UTC",
+                            "type": "string"
+                          },
+                          "note": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "geçersiz miktar"
+          },
+          "409": {
+            "description": "cari hesap altını yetersiz (INSUFFICIENT_CURRENT_ACCOUNT) ya da ref başka talepte kullanıldı"
+          }
+        }
+      }
+    },
+    "/v1/vault/out": {
+      "post": {
+        "summary": "Kasa çıkışı talebi (06): kasa hesabındaki gramı cari hesaba taşır. Kabulde Kasa Çıkış Fişi üretilir ve talep biter.",
+        "parameters": [
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Timestamp",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "X-Signature",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "HMAC-SHA256(secret, ts + METHOD + path + body) hex"
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "qty_mg",
+                  "ref"
+                ],
+                "properties": {
+                  "qty_mg": {
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "ref": {
+                    "description": "Kanzasset referans numarası",
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "REQUESTED (otomatik kabul açıksa ACCEPTED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "request_id",
+                    "type",
+                    "qty_mg",
+                    "ref",
+                    "status",
+                    "requested_ts"
+                  ],
+                  "properties": {
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "anyOf": [
+                        {
+                          "const": "IN",
+                          "type": "string"
+                        },
+                        {
+                          "const": "OUT",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "qty_mg": {
+                      "type": "integer"
+                    },
+                    "ref": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "anyOf": [
+                        {
+                          "const": "REQUESTED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "ACCEPTED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "PLACING",
+                          "type": "string"
+                        },
+                        {
+                          "const": "PLACED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "OVERDUE",
+                          "type": "string"
+                        },
+                        {
+                          "const": "REJECTED",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "doc_id": {
+                      "description": "Kasa Giriş / Çıkış Fişi",
+                      "type": "string"
+                    },
+                    "reject_reason": {
+                      "type": "string"
+                    },
+                    "requested_ts": {
+                      "description": "ISO 8601 UTC",
+                      "type": "string"
+                    },
+                    "accepted_ts": {
+                      "description": "ISO 8601 UTC",
+                      "type": "string"
+                    },
+                    "placing_ts": {
+                      "description": "ISO 8601 UTC",
+                      "type": "string"
+                    },
+                    "placed_ts": {
+                      "description": "ISO 8601 UTC",
+                      "type": "string"
+                    },
+                    "due_ts": {
+                      "description": "kasaya koyma vadesi: kabul + T+3 (ISO 8601 UTC)",
+                      "type": "string"
+                    },
+                    "history": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "status",
+                          "ts"
+                        ],
+                        "properties": {
+                          "status": {
+                            "anyOf": [
+                              {
+                                "const": "REQUESTED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "ACCEPTED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "PLACING",
+                                "type": "string"
+                              },
+                              {
+                                "const": "PLACED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "OVERDUE",
+                                "type": "string"
+                              },
+                              {
+                                "const": "REJECTED",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "ts": {
+                            "description": "ISO 8601 UTC",
+                            "type": "string"
+                          },
+                          "note": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "geçersiz miktar"
+          },
+          "409": {
+            "description": "kasada yetersiz (INSUFFICIENT_VAULT); kasaya konuluyor sayılmaz"
+          }
+        }
+      }
+    },
+    "/v1/vault/requests/{id}": {
+      "get": {
+        "summary": "Kasa talimatı durumu ve geçmişi (request_id ya da KZ referansı ile)",
+        "parameters": [
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Timestamp",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "X-Signature",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "HMAC-SHA256(secret, ts + METHOD + path + body) hex"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "request_id",
+                    "type",
+                    "qty_mg",
+                    "ref",
+                    "status",
+                    "requested_ts"
+                  ],
+                  "properties": {
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "anyOf": [
+                        {
+                          "const": "IN",
+                          "type": "string"
+                        },
+                        {
+                          "const": "OUT",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "qty_mg": {
+                      "type": "integer"
+                    },
+                    "ref": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "anyOf": [
+                        {
+                          "const": "REQUESTED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "ACCEPTED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "PLACING",
+                          "type": "string"
+                        },
+                        {
+                          "const": "PLACED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "OVERDUE",
+                          "type": "string"
+                        },
+                        {
+                          "const": "REJECTED",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "doc_id": {
+                      "description": "Kasa Giriş / Çıkış Fişi",
+                      "type": "string"
+                    },
+                    "reject_reason": {
+                      "type": "string"
+                    },
+                    "requested_ts": {
+                      "description": "ISO 8601 UTC",
+                      "type": "string"
+                    },
+                    "accepted_ts": {
+                      "description": "ISO 8601 UTC",
+                      "type": "string"
+                    },
+                    "placing_ts": {
+                      "description": "ISO 8601 UTC",
+                      "type": "string"
+                    },
+                    "placed_ts": {
+                      "description": "ISO 8601 UTC",
+                      "type": "string"
+                    },
+                    "due_ts": {
+                      "description": "kasaya koyma vadesi: kabul + T+3 (ISO 8601 UTC)",
+                      "type": "string"
+                    },
+                    "history": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "status",
+                          "ts"
+                        ],
+                        "properties": {
+                          "status": {
+                            "anyOf": [
+                              {
+                                "const": "REQUESTED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "ACCEPTED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "PLACING",
+                                "type": "string"
+                              },
+                              {
+                                "const": "PLACED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "OVERDUE",
+                                "type": "string"
+                              },
+                              {
+                                "const": "REJECTED",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "ts": {
+                            "description": "ISO 8601 UTC",
+                            "type": "string"
+                          },
+                          "note": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "talep yok"
+          }
+        }
+      }
+    },
+    "/v1/vault/statement": {
+      "get": {
+        "summary": "Günlük kasa ekstresi (rezerv kanıtı, V ≥ A): alt kalemler, hareketler, fiş referansları, imza",
+        "parameters": [
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Timestamp",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "X-Signature",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "HMAC-SHA256(secret, ts + METHOD + path + body) hex"
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "YYYY-MM-DD; verilmezse bugün"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "date",
+                    "opening",
+                    "closing",
+                    "total_mg",
+                    "movements",
+                    "slips",
+                    "hash",
+                    "signature"
+                  ],
+                  "properties": {
+                    "date": {
+                      "description": "YYYY-MM-DD",
+                      "type": "string"
+                    },
+                    "opening": {
+                      "type": "object",
+                      "required": [
+                        "in_vault_mg",
+                        "placing_mg",
+                        "shipping_mg"
+                      ],
+                      "properties": {
+                        "in_vault_mg": {
+                          "type": "integer"
+                        },
+                        "placing_mg": {
+                          "type": "integer"
+                        },
+                        "shipping_mg": {
+                          "type": "integer"
+                        }
+                      }
+                    },
+                    "closing": {
+                      "type": "object",
+                      "required": [
+                        "in_vault_mg",
+                        "placing_mg",
+                        "shipping_mg"
+                      ],
+                      "properties": {
+                        "in_vault_mg": {
+                          "type": "integer"
+                        },
+                        "placing_mg": {
+                          "type": "integer"
+                        },
+                        "shipping_mg": {
+                          "type": "integer"
+                        }
+                      }
+                    },
+                    "total_mg": {
+                      "description": "V = kasada + kasaya konuluyor + sevkiyatta (gün sonu)",
+                      "type": "integer"
+                    },
+                    "movements": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "seq",
+                          "type",
+                          "in_vault_mg",
+                          "placing_mg",
+                          "shipping_mg",
+                          "ts"
+                        ],
+                        "properties": {
+                          "seq": {
+                            "type": "integer"
+                          },
+                          "type": {
+                            "type": "string"
+                          },
+                          "in_vault_mg": {
+                            "type": "integer"
+                          },
+                          "placing_mg": {
+                            "type": "integer"
+                          },
+                          "shipping_mg": {
+                            "type": "integer"
+                          },
+                          "related_id": {
+                            "type": "string"
+                          },
+                          "doc_id": {
+                            "type": "string"
+                          },
+                          "ts": {
+                            "description": "ISO 8601 UTC",
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "slips": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "doc_id",
+                          "type",
+                          "related_id",
+                          "created_ts"
+                        ],
+                        "properties": {
+                          "doc_id": {
+                            "type": "string"
+                          },
+                          "type": {
+                            "type": "string"
+                          },
+                          "related_id": {
+                            "type": "string"
+                          },
+                          "created_ts": {
+                            "description": "ISO 8601 UTC",
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "hash": {
+                      "type": "string"
+                    },
+                    "signature": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/documents/{id}": {
       "get": {
-        "summary": "Belge: Tahsis Belgesi, fişler, ekstreler (JSON içerik + sha256 + HMAC imza; PDF Sprint 3)",
+        "summary": "Belge: Tahsis Belgesi, Kasa Giriş / Çıkış Fişi, ekstreler (JSON içerik + sha256 + HMAC imza)",
         "parameters": [
           {
             "name": "X-API-Key",
@@ -2032,7 +2838,7 @@
             "description": "alındı"
           }
         },
-        "description": "Olay türleri: order.filled, order.rejected, order.cancelled, vault.in_accepted, vault.in_placing, vault.in_placed, vault.in_rejected, vault.out_accepted, vault.out_rejected, delivery.quoted, delivery.approved, delivery.preparing, delivery.ready, delivery.shipped, delivery.delivered, delivery.cancelled, delivery.failed, catalog.updated, refining.quoted, refining.approved, refining.in_production, refining.ready, refining.shipped, refining.delivered, refining.cancelled, refining.failed, settlement.requested, settlement.opened, settlement.statement, settlement.reconciled, settlement.mismatch, settlement.payment_notice, settlement.settled, price.halt, price.resume, account.reconcile"
+        "description": "Olay türleri: order.filled, order.rejected, order.cancelled, vault.in_accepted, vault.in_placing, vault.in_placed, vault.in_overdue, vault.in_rejected, vault.out_accepted, vault.out_rejected, delivery.quoted, delivery.approved, delivery.preparing, delivery.ready, delivery.shipped, delivery.delivered, delivery.cancelled, delivery.failed, catalog.updated, refining.quoted, refining.approved, refining.in_production, refining.ready, refining.shipped, refining.delivered, refining.cancelled, refining.failed, settlement.requested, settlement.opened, settlement.statement, settlement.reconciled, settlement.mismatch, settlement.payment_notice, settlement.settled, price.halt, price.resume, account.reconcile"
       }
     }
   },
@@ -3427,6 +4233,10 @@
                 "type": "string"
               },
               {
+                "const": "OVERDUE",
+                "type": "string"
+              },
+              {
                 "const": "REJECTED",
                 "type": "string"
               }
@@ -3447,12 +4257,226 @@
             "description": "ISO 8601 UTC",
             "type": "string"
           },
+          "placing_ts": {
+            "description": "ISO 8601 UTC",
+            "type": "string"
+          },
           "placed_ts": {
             "description": "ISO 8601 UTC",
             "type": "string"
           },
           "due_ts": {
-            "description": "ISO 8601 UTC",
+            "description": "kasaya koyma vadesi: kabul + T+3 (ISO 8601 UTC)",
+            "type": "string"
+          },
+          "history": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "status",
+                "ts"
+              ],
+              "properties": {
+                "status": {
+                  "anyOf": [
+                    {
+                      "const": "REQUESTED",
+                      "type": "string"
+                    },
+                    {
+                      "const": "ACCEPTED",
+                      "type": "string"
+                    },
+                    {
+                      "const": "PLACING",
+                      "type": "string"
+                    },
+                    {
+                      "const": "PLACED",
+                      "type": "string"
+                    },
+                    {
+                      "const": "OVERDUE",
+                      "type": "string"
+                    },
+                    {
+                      "const": "REJECTED",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "ts": {
+                  "description": "ISO 8601 UTC",
+                  "type": "string"
+                },
+                "note": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "VaultRequestStatus": {
+        "anyOf": [
+          {
+            "const": "REQUESTED",
+            "type": "string"
+          },
+          {
+            "const": "ACCEPTED",
+            "type": "string"
+          },
+          {
+            "const": "PLACING",
+            "type": "string"
+          },
+          {
+            "const": "PLACED",
+            "type": "string"
+          },
+          {
+            "const": "OVERDUE",
+            "type": "string"
+          },
+          {
+            "const": "REJECTED",
+            "type": "string"
+          }
+        ]
+      },
+      "VaultStatement": {
+        "type": "object",
+        "required": [
+          "date",
+          "opening",
+          "closing",
+          "total_mg",
+          "movements",
+          "slips",
+          "hash",
+          "signature"
+        ],
+        "properties": {
+          "date": {
+            "description": "YYYY-MM-DD",
+            "type": "string"
+          },
+          "opening": {
+            "type": "object",
+            "required": [
+              "in_vault_mg",
+              "placing_mg",
+              "shipping_mg"
+            ],
+            "properties": {
+              "in_vault_mg": {
+                "type": "integer"
+              },
+              "placing_mg": {
+                "type": "integer"
+              },
+              "shipping_mg": {
+                "type": "integer"
+              }
+            }
+          },
+          "closing": {
+            "type": "object",
+            "required": [
+              "in_vault_mg",
+              "placing_mg",
+              "shipping_mg"
+            ],
+            "properties": {
+              "in_vault_mg": {
+                "type": "integer"
+              },
+              "placing_mg": {
+                "type": "integer"
+              },
+              "shipping_mg": {
+                "type": "integer"
+              }
+            }
+          },
+          "total_mg": {
+            "description": "V = kasada + kasaya konuluyor + sevkiyatta (gün sonu)",
+            "type": "integer"
+          },
+          "movements": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "seq",
+                "type",
+                "in_vault_mg",
+                "placing_mg",
+                "shipping_mg",
+                "ts"
+              ],
+              "properties": {
+                "seq": {
+                  "type": "integer"
+                },
+                "type": {
+                  "type": "string"
+                },
+                "in_vault_mg": {
+                  "type": "integer"
+                },
+                "placing_mg": {
+                  "type": "integer"
+                },
+                "shipping_mg": {
+                  "type": "integer"
+                },
+                "related_id": {
+                  "type": "string"
+                },
+                "doc_id": {
+                  "type": "string"
+                },
+                "ts": {
+                  "description": "ISO 8601 UTC",
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "slips": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "doc_id",
+                "type",
+                "related_id",
+                "created_ts"
+              ],
+              "properties": {
+                "doc_id": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                },
+                "related_id": {
+                  "type": "string"
+                },
+                "created_ts": {
+                  "description": "ISO 8601 UTC",
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "hash": {
+            "type": "string"
+          },
+          "signature": {
             "type": "string"
           }
         }

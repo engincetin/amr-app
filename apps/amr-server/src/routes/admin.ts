@@ -7,6 +7,7 @@ import type { AppContext } from "../context.ts";
 import { allSettings, getSetting, listAudit, listNotifications, markNotificationRead, recentTicks, setSetting, unreadCount } from "../db.ts";
 import { getDocument, limitUsage, listCurrentAccountMovements, listDocuments, listVaultMovements } from "../ledger.ts";
 import { enqueueEvent, listDeliveries } from "../events.ts";
+import type { VaultError } from "../vault.ts";
 import { bus, type BusEvent } from "../bus.ts";
 
 const ACTOR = "admin"; // Sprint 1: tek kullanıcı
@@ -28,6 +29,8 @@ export async function adminRoutes(app: FastifyInstance, ctx: AppContext) {
     account: ctx.orders.account(),
     limit: limitUsage(ctx.db),
     orders_today: ctx.orders.todaySummary(),
+    vault_pending: ctx.vault.pending().length,
+    vault_overdue: ctx.vault.placingQueue().filter((r) => r.status === "OVERDUE").length,
   });
 
   app.get("/admin/overview", async () => overview());
@@ -44,6 +47,34 @@ export async function adminRoutes(app: FastifyInstance, ctx: AppContext) {
     movements: listCurrentAccountMovements(ctx.db, { limit: Math.min(1000, Number(req.query.limit ?? 200)) }),
   }));
   app.get("/admin/vault/movements", async () => listVaultMovements(ctx.db));
+
+  // ----- R4: kasa hesabı (05, 06) -----
+  app.get<{ Querystring: { type?: string; status?: string; limit?: string } }>("/admin/vault", async (req) => ({
+    account: ctx.orders.account(),
+    pending: ctx.vault.pending(),
+    placing_queue: ctx.vault.placingQueue(),
+    requests: ctx.vault.list({ type: req.query.type, status: req.query.status, limit: Math.min(1000, Number(req.query.limit ?? 200)) }),
+    movements: listVaultMovements(ctx.db, 100),
+    accept_mode: getSetting(ctx.db, "vault.accept_mode", "MANUAL"),
+    accept_target_minutes: Number(getSetting(ctx.db, "vault.accept_target_minutes", "15")),
+    placement_due_days: Number(getSetting(ctx.db, "vault.placement_due_days", "3")),
+  }));
+  app.get<{ Querystring: { date?: string } }>("/admin/vault/statement", async (req) => ctx.vault.statement(req.query.date));
+
+  /** R4 aksiyonları: Kabul et / Reddet · Kasaya konuluyor · Kasaya konuldu. Hepsi denetim günlüğüne yazılır. */
+  const vaultAction = (fn: (id: string, body: any) => unknown) => async (req: any, reply: any) => {
+    try { return fn(req.params.id, req.body ?? {}); }
+    catch (e) { return reply.code((e as VaultError).code ?? 409).send({ error: (e as Error).message }); }
+  };
+  app.post<{ Params: { id: string } }>("/admin/vault/:id/accept", vaultAction((id) => ctx.vault.accept(id, ACTOR)));
+  app.post<{ Params: { id: string }; Body: { reason?: string } }>("/admin/vault/:id/reject", async (req, reply) => {
+    const reason = req.body?.reason?.trim();
+    if (!reason) return reply.code(400).send({ error: "gerekçe zorunlu" });
+    try { return ctx.vault.reject(req.params.id, reason, ACTOR); }
+    catch (e) { return reply.code((e as VaultError).code ?? 409).send({ error: (e as Error).message }); }
+  });
+  app.post<{ Params: { id: string } }>("/admin/vault/:id/placing", vaultAction((id) => ctx.vault.placing(id, ACTOR)));
+  app.post<{ Params: { id: string } }>("/admin/vault/:id/placed", vaultAction((id) => ctx.vault.placed(id, ACTOR)));
   // R5: mahsuplaşma çağır (pencere mantığı Sprint 5; şimdilik karşı tarafa talep olayı + bildirim)
   app.post<{ Body: { reason?: string } }>("/admin/settlement/request", async (req, reply) => {
     const reason = req.body?.reason?.trim();

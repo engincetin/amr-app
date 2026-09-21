@@ -34,6 +34,13 @@ Bu repo Ahlatcı Metal Refinery (AMR) tarafındaki uygulamadır. Kanzasset taraf
 - `debug.order_delay_ms` yalnız demo içindir (cevapsız emir / geç fill). Gecikme sırasında iptal gelirse CANCELLED, kesin cevap. Sunucu yeniden başlarsa açık emirler CANCELLED olur.
 - Olaylar `webhook_deliveries` tablosundan `EventDispatcher` ile gider; KZ tarafı `event_id` ile tekrarı ayıklar.
 
+## Kasa talimatları (vault.ts)
+
+- `ref` (Kanzasset referansı) tekildir: aynı ref ile gelen istek aynı talebi döner, ikinci kez işlenmez. Çift mint buna bağlıdır.
+- Kural kontrolleri hem istekte hem kabulde çalışır (araya emir girmiş olabilir): girişte cari hesap altını, çıkışta yalnız `kasada` bakılır, `kasaya konuluyor` sayılmaz.
+- Kabulde fiş üretilir ve defter aynı demette işlenir; fiş olmadan gram hareket etmez. Çıkış kabulle biter, girişte `PLACING → PLACED` adımları vardır.
+- `VaultOverdueWatcher` dakikada bir tarar: vadesi geçen giriş `OVERDUE` olur, `vault.in_overdue` gider. Durum `PLACED` ile kapanır.
+
 ## Sprint durumu
 
-Sprint 1 ve 2 tamam: sözleşme, mock merkez, kaynak bağlantısı, yayın, HMAC, bildirimler, ayarlar, defter, emirler, cari hesap ve limit, Tahsis Belgesi, olaylar; ekranlar R1, R2, R3, R5, R10. Sonraki: Sprint 3 (kasa talimatları + fişler, R4; büyük alış / satış). Plan `README.md` sonunda.
+Sprint 1, 2 ve 3 tamam: sözleşme, mock merkez, kaynak bağlantısı, yayın, HMAC, bildirimler, ayarlar, defter, emirler, cari hesap ve limit, Tahsis Belgesi, olaylar, kasa talimatları ve fişler, günlük kasa ekstresi; ekranlar R1, R2, R3, R4, R5, R10. Belgeler imzalı JSON'dur, PDF çıktısı Sprint 6'dadır. Sonraki: Sprint 4 (fiziksel teslimat R6, rafinasyon R7). Plan `README.md` sonunda.

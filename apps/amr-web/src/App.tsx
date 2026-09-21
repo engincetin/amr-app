@@ -7,12 +7,13 @@ import { Placeholder } from "./pages/Placeholder.tsx";
 import { R10Settings } from "./pages/R10Settings.tsx";
 import { R3Orders } from "./pages/R3Orders.tsx";
 import { R5CurrentAccount } from "./pages/R5CurrentAccount.tsx";
+import { R4Vault } from "./pages/R4Vault.tsx";
 
 export const SCREENS = [
   { code: "R1", path: "/", title: "Genel bakış", sprint: 1 },
   { code: "R2", path: "/fiyat", title: "Fiyat yayını", sprint: 1 },
   { code: "R3", path: "/emirler", title: "Emirler", sprint: 2, done: true },
-  { code: "R4", path: "/kasa", title: "Kasa hesabı", sprint: 3 },
+  { code: "R4", path: "/kasa", title: "Kasa hesabı", sprint: 3, done: true },
   { code: "R5", path: "/cari", title: "Cari hesap", sprint: 2, done: true },
   { code: "R6", path: "/teslimat", title: "Fiziksel teslimat", sprint: 4 },
   { code: "R7", path: "/rafinasyon", title: "Rafinasyon", sprint: 4 },
@@ -41,7 +42,7 @@ export function App() {
           <Route path="/" element={<R1Overview live={live} />} />
           <Route path="/fiyat" element={<R2Prices live={live} />} />
           <Route path="/emirler" element={<R3Orders live={live} />} />
-          <Route path="/kasa" element={<Placeholder code="R4" title="Kasa hesabı" sprint={3} text="Kasa giriş / çıkış talepleri kuyruğu: Kabul et / Reddet, giriş için Kasaya konuluyor → Kasaya konuldu (en geç T+3). Kabulde Kasa Giriş / Çıkış Fişi oluşur ve Kanzasset'e gider. Alt kalemler: kasada · kasaya konuluyor · sevkiyatta. Günlük kasa ekstresi." />} />
+          <Route path="/kasa" element={<R4Vault live={live} />} />
           <Route path="/cari" element={<R5CurrentAccount live={live} />} />
           <Route path="/teslimat" element={<Placeholder code="R6" title="Fiziksel teslimat" sprint={4} text="Ücretsiz külçe teslimatı: talep → Lojistik fiyatı gir → KZ onayı → Hazırlığa al → Hazır (Sevkiyat Fişi) → Taşıyıcıya verildi (takip no) → Teslim edildi. Masraf cari hesaba yazılır." />} />
           <Route path="/rafinasyon" element={<Placeholder code="R7" title="Rafinasyon" sprint={4} text="Ürün kataloğu (ürün, gramaj, ayar, tarife, üretim süresi) ve rafinasyon talepleri: Teklif ver (ürün bedeli + lojistik) → KZ onayı → Üretime al → Hazır → Taşıyıcıya verildi → Teslim edildi." />} />

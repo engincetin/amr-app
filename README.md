@@ -11,6 +11,8 @@ Ahlatcı Metal Refinery (AMR) tarafında çalışan uygulama. Kanzasset'e fiyat 
 - Kanzasset'ten gelen talepleri karşılar: emir (alış / satış), kasa talimatı (giriş / çıkış), fiziksel teslimat, rafinasyon, mahsuplaşma.
 - Her durum değişikliğinde iki tarafa bildirim üretir. Fişler ve ekstreler indirilebilir.
 
+Belgeler (Tahsis Belgesi, Kasa Giriş / Çıkış Fişi, ekstreler) şu an **imzalı JSON** olarak üretilir: içerik + `sha256` + HMAC imza, `GET /v1/documents/{id}` ile alınır ve ekranlarda görüntülenir. PDF çıktısı ve Ed25519 imzası teslim paketinde (Sprint 6) eklenecektir.
+
 Rafineri tarafında token, mint, burn, cüzdan, müşteri adı yoktur. Talepler yalnız gram ve Kanzasset referansı taşır.
 
 ## Yapı
@@ -50,6 +52,7 @@ Test: `npm test`. OpenAPI: `npm run openapi:export` → `openapi.json` (repo kö
 | `KZ_API_KEY` / `KZ_API_SECRET` | `kz-dev-key` / `kz-dev-secret` | Kanzasset istemcisi (ilk açılışta yazılır) |
 | `KZ_EVENT_URL` | `http://localhost:5000/api/events` | Kanzasset olay adresi (webhook) |
 | `VAULT_OPENING_MG` | `0` | açılış devri: kasada Kanzasset adına duran gram, yalnız defter boşken (demo: `20000000`) |
+| `vault.accept_mode` (ayar) | `MANUAL` | kasa talimatı kabulü: elle ("Kabul et") ya da `AUTO` · `vault.accept_target_minutes` hedef cevap süresi · `vault.placement_due_days` kasaya koyma vadesi (T+3) |
 | `ADMIN_TOKEN` | boş | verilirse panel API'si `X-Admin-Token` ister |
 | `LOG_LEVEL` | `info` | |
 | `MERKEZ_WS_PORT` / `MERKEZ_HTTP_PORT` | `4100` / `4110` | mock merkez |
@@ -60,7 +63,8 @@ Test: `npm test`. OpenAPI: `npm run openapi:export` → `openapi.json` (repo kö
 - REST `/v1/*`: başlıklar `X-API-Key`, `X-Timestamp`, `X-Signature = HMAC-SHA256(secret, ts + METHOD + path + ham gövde)`, POST'ta `Idempotency-Key`. Zaman sapması en çok 5 dk.
 - Soket `/v1/prices`: ilk mesaj `auth {api_key, ts, sig}` (imza `ts + "GET" + "/v1/prices"`), sonra `subscribed`, `snapshot`, `tick` (yalnız değişince, saniyede en çok 1), `heartbeat` (5 sn), `halt {reason}`, `resume` (+snapshot).
 - Emirler: `POST /v1/orders` (FOK, `quote_seq`, `limit_px`, `time_limit_ms`) · `GET /v1/orders/{id}` · `POST /v1/orders/{id}/cancel` (kesin cevap). Fill cevabında bakiye bilgisi (`account`) ve alışta Tahsis Belgesi.
-- Hesap: `GET /v1/account` (anlık fotoğraf) · `GET /v1/current-account/statement` · `GET /v1/documents/{id}`.
+- Kasa talimatları: `POST /v1/vault/in` · `POST /v1/vault/out` (gövde `qty_mg` + `ref`; `ref` tekildir, aynı ref aynı talebi döner) · `GET /v1/vault/requests/{id}`. Kabulde Kasa Giriş / Çıkış Fişi ve bakiye bilgisi olayla gider.
+- Hesap: `GET /v1/account` (anlık fotoğraf) · `GET /v1/current-account/statement` · `GET /v1/vault/statement?date=` (günlük kasa ekstresi, rezerv kanıtı) · `GET /v1/documents/{id}`.
 - Olaylar (webhook): her durum değişikliği KZ olay adresine POST edilir (`order.*`, `price.halt / resume`, `settlement.requested` ...), aynı imza başlıkları, 2xx değilse üstel bekleme ile tekrar.
 - Tüm miktarlar tam sayı: gram için mg, para için cent. Fiyatlar ondalık string.
 
@@ -85,7 +89,7 @@ curl -X POST localhost:4110/control/jump -H 'content-type: application/json' -d 
 |---|---|---|
 | 1 ✓ | iskelet, sözleşme, mock merkez, fiyat soketi, merkez bağlantısı, yayın durdur / başlat, bildirimler, ayarlar | R1, R2, R10 |
 | 2 ✓ | emirler (fill / red / iptal, Tahsis Belgesi), bakiye bilgisi, cari hesap ve limit (K3), olaylar (webhook), cevapsız emir | R3, R5 |
-| 3 | kasa talimatları, Kasa Giriş / Çıkış Fişi (PDF), büyük alış / satış | R4 |
+| 3 ✓ | kasa talimatları (kabul / red, kasaya konuluyor / konuldu, T+3), Kasa Giriş / Çıkış Fişi, günlük kasa ekstresi, büyük alış / satış karşılığı | R4 |
 | 4 | fiziksel teslimat (lojistik teklifi, Sevkiyat Fişi, takip no), rafinasyon + katalog | R6, R7 |
 | 5 | mahsuplaşma (kesim saati otomatik, talep iki yönlü), belgeler, kullanıcılar | R8, R9 |
 | 6 | demo senaryoları S0..S9, kullanım kılavuzu, teslim paketi | |

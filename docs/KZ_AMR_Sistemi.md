@@ -175,9 +175,10 @@ Taban adres `https://<amr>/v1`. Tüm istekler JSON. Kimlik ve bütünlük: `X-AP
 | `GET /session/status` | | `status: OPEN / HALTED / MAINTENANCE` · `tradable` · `source_connected` · `ts` | merkez bağlantısı ve yayın durumu |
 | `POST /orders` (03, 04, 07, 08, 09) | `client_order_id` · `side: BUY / SELL` · `qty_mg` · `ccy` · `quote_seq` · `limit_px` · `tif: FOK` · `time_limit_ms` | `order_id` · `status: FILLED / REJECTED` · `fill{px, qty_mg, amount_cents, ccy, trade_ts}` · `reject_reason` · `allocation_certificate{doc_id, url}` (alışta) · `account` | tümü ya hiç (FOK) · fiyat `quote_seq` tick'i ve `limit_px` ile kontrol edilir · cari hesap limiti aşılacaksa red · `client_order_id` tekilse tekrar aynı cevap |
 | `GET /orders/{id}` · `POST /orders/{id}/cancel` | | emir + durum geçmişi · `status: CANCELLED` ya da `FILLED` (geç fill) | kesin cevap; açık kalmaz |
-| `POST /vault/in` (05) | `qty_mg` · `ref` | `request_id` · `status: REQUESTED` | kural: cari hesap altını ≥ `qty_mg`, değilse `INSUFFICIENT_CURRENT_ACCOUNT` · kabulde `vault.in_accepted` (Kasa Giriş Fişi + `account`), sonra `vault.in_placing`, `vault.in_placed`; red: `vault.in_rejected{reason}` |
+| `POST /vault/in` (05) | `qty_mg` · `ref` | `request_id` · `status: REQUESTED` | kural: cari hesap altını ≥ `qty_mg`, değilse `INSUFFICIENT_CURRENT_ACCOUNT` · kabulde `vault.in_accepted` (Kasa Giriş Fişi + `account`), sonra `vault.in_placing`, `vault.in_placed`; vade geçerse `vault.in_overdue`; red: `vault.in_rejected{reason}` · `ref` tekildir: aynı ref ile gelen istek aynı talebi döner (çift mint koruması) |
 | `POST /vault/out` (06) | `qty_mg` · `ref` | `request_id` · `status: REQUESTED` | kural: kasada ≥ `qty_mg` (kasaya konuluyor sayılmaz), değilse `INSUFFICIENT_VAULT` · kabulde `vault.out_accepted` (Kasa Çıkış Fişi + `account`); red: `vault.out_rejected{reason}` |
-| `GET /vault/requests/{id}` | | talep durumu ve geçmişi, fiş referansı | |
+| `GET /vault/requests/{id}` | | talep durumu ve geçmişi, fiş referansı | `request_id` ya da KZ referansı ile |
+| `GET /vault/statement?date=` | | günlük kasa ekstresi: açılış / kapanış alt kalemleri · hareketler · fiş referansları · imza | rezerv kanıtı (`V ≥ A`), Kontroller |
 | `POST /deliveries` (10) | `qty_mg` · `address_ref` · `insured_party_ref` · `ref` | `delivery_id` · `status: REQUESTED` | kasada ≥ `qty_mg` · adres referansı KZ'de çözülür |
 | `POST /deliveries/{id}/approve` · `POST /deliveries/{id}/cancel` · `GET /deliveries/{id}` | `quote_id` (onayda) | durum ve geçmiş | onay yalnız `QUOTED` iken ve teklif geçerliyken · iptal `SHIPPED` öncesi · onayla lojistik bedeli cari hesaba |
 | `GET /catalog` (11) | | `items[]{item_id, name, weight_mg, fineness, unit_price_cents, ccy, lead_time_days, active}` · `version` | rafineri R7'de yönetir · değişince `catalog.updated` |
@@ -203,7 +204,7 @@ Her durum değişikliği KZ'nin olay adresine `POST` edilir. Zarf: `event_id` (t
 | Olay | Ne zaman | `data` |
 |---|---|---|
 | `order.filled` · `order.rejected` · `order.cancelled` | emir sonuçlanınca (cevapla aynı içerik; kopma durumunda güvence) | emir + fill / red sebebi |
-| `vault.in_accepted` · `vault.in_placing` · `vault.in_placed` · `vault.in_rejected` | kasa girişi talebi kabul / kasaya konuluyor / kasaya konuldu / red (R4) | `request_id` · `qty_mg` · `ref` · fiş `doc_id` · zaman |
+| `vault.in_accepted` · `vault.in_placing` · `vault.in_placed` · `vault.in_overdue` · `vault.in_rejected` | kasa girişi talebi kabul / kasaya konuluyor / kasaya konuldu / kasaya koyma vadesi geçti (T+3) / red (R4) | `request_id` · `qty_mg` · `ref` · fiş `doc_id` · `due_ts` · zaman. `in_overdue` KZ tarafında yeni mint'i bloke eder (Kontroller) |
 | `vault.out_accepted` · `vault.out_rejected` | kasa çıkışı talebi kabul / red (R4) | `request_id` · `qty_mg` · `ref` · fiş `doc_id` |
 | `delivery.quoted` · `delivery.approved` · `delivery.preparing` · `delivery.ready` · `delivery.shipped` · `delivery.delivered` · `delivery.cancelled` · `delivery.failed` | R6 adımları | `delivery_id` · durum · teklif (tutar, kur, geçerlilik) · Sevkiyat Fişi · taşıyıcı · takip no · teslimat kaydı |
 | `catalog.updated` | katalog değişince (R7) | `version` · değişen kalemler |
