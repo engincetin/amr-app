@@ -1,0 +1,74 @@
+# Tek komutla bütün sistem: mock merkez + rafineri (AMR) + Kanzasset hazine çekirdeği.
+#
+#   docker compose up --build
+#
+# Rafineri ekranları  http://localhost:4000
+# Kanzasset ekranları http://localhost:5000
+#
+# İki repo yan yana durmalı (amr-app ve kz-treasury aynı klasörün altında);
+# Kanzasset servisi ../kz-treasury dizininden derlenir.
+# Açılış devirleri iki tarafta aynıdır (20 kg): eşit olmazsa S + T = K kontrolü tutmaz.
+
+services:
+  merkez:
+    build:
+      context: .
+      dockerfile: Dockerfile.merkez
+    container_name: kz-merkez
+    environment:
+      MERKEZ_WS_PORT: "4100"
+      MERKEZ_HTTP_PORT: "4110"
+      MERKEZ_INTERVAL_MS: "1000"
+      MERKEZ_START_USD: "141.9"
+    ports:
+      - "4100:4100"
+      - "4110:4110"
+
+  amr:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: amr-app
+    depends_on:
+      - merkez
+    environment:
+      PORT: "4000"
+      SOURCE_URL: "ws://merkez:4100/prices"
+      SOURCE_AUTOCONNECT: "1"
+      # açılış devri: kasada Kanzasset adına duran gram (20 kg)
+      VAULT_OPENING_MG: "20000000"
+      KZ_API_KEY: "kz-dev-key"
+      KZ_API_SECRET: "kz-dev-secret"
+      KZ_EVENT_URL: "http://kz:5000/api/events"
+      DB_PATH: "/data/amr.db"
+      LOG_LEVEL: "info"
+    ports:
+      - "4000:4000"
+    volumes:
+      - amr-data:/data
+
+  kz:
+    build:
+      context: ../kz-treasury
+      dockerfile: Dockerfile
+    container_name: kz-treasury
+    depends_on:
+      - amr
+    environment:
+      PORT: "5000"
+      AMR_WS_URL: "ws://amr:4000/v1/prices"
+      AMR_HTTP_URL: "http://amr:4000"
+      KZ_API_KEY: "kz-dev-key"
+      KZ_API_SECRET: "kz-dev-secret"
+      # açılış devri AMR ile aynı olmalı
+      KZ_OPENING_MG: "20000000"
+      KZ_DATA_DIR: "/data"
+      LOG_LEVEL: "info"
+    ports:
+      - "5000:5000"
+    volumes:
+      - kz-data:/data
+
+volumes:
+  amr-data:
+  kz-data:

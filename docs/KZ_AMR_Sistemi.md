@@ -191,7 +191,7 @@ Taban adres `https://<amr>/v1`. Tüm istekler JSON. Kimlik ve bütünlük: `X-AP
 | `GET /settlements/{id}` | | ekstre · durum · `gold_leg{t_net_mg, requests[]}` · `money_leg[]{ccy, net_cents, direction}` | |
 | `POST /settlements/{id}/confirm` | `statement_hash` (KZ ekstresinin özeti) | `status: RECONCILED` ya da `MISMATCH` + `diffs[]` | mutabakat adımı |
 | `POST /settlements/{id}/payment-notice` · `POST /settlements/{id}/payment-received` | `ccy` · `amount_cents` · `direction` · `bank_ref` · `ts` | `status: PAYMENT_PENDING / SETTLED` | ödeyen bildirir, alan onaylar → `SETTLED` |
-| `GET /documents/{id}` | | PDF + `meta{type, related_id, hash, signature, ts, sent_ts}` | tüm fiş ve belgeler tek uçtan |
+| `GET /documents/{id}` · `GET /documents/{id}/pdf` | | JSON içerik + `meta{type, related_id, hash, signature, created_ts, sent_ts}` · aynı belgenin A4 PDF hâli | tüm fiş ve belgeler tek uçtan; imza HMAC-SHA256 (bkz. `KARARLAR.md`) |
 
 **Red sebepleri (`reject_reason`):** `PRICE_OUTSIDE_LIMIT` (slippage) · `STALE_QUOTE` (`quote_seq` eski) · `TRADING_HALTED` · `CURRENT_ACCOUNT_LIMIT` · `DUPLICATE_ORDER` · `INVALID_QTY` · `INSUFFICIENT_CURRENT_ACCOUNT` · `INSUFFICIENT_VAULT` · `QUOTE_EXPIRED` · `INTERNAL_ERROR` (KZ: işlemi durdur, elle bak).
 
@@ -331,7 +331,7 @@ Kritik aksiyonlarda iki kişi: parametre değişikliği, elle kasa talimatı, ö
 | Rafineri ekranları | **React + TypeScript** (Vite) · tablo ve form bileşenleri · bildirim zili · Türkçe arayüz · sayılar 3 ondalık gram, 2 ondalık para | üst şerit ortak bileşen; ekranlar R1'den R10'a rotalar |
 | AMR API ve soket | Node.js + TypeScript (Fastify, ws) · sözleşme TypeBox → OpenAPI · HMAC imza · idempotency | tek sözleşme dosyası iki tarafa tip üretir |
 | AMR defteri | Postgres (geliştirmede SQLite) · hareket tabloları + türetilmiş bakiyeler · günlük yeniden hesaplama kontrolü | |
-| Fiş ve belgeler | PDF üretimi + rafineri imzası (Ed25519) · `GET /documents/{id}` · gönderim izi | imza doğrulama R9 ve K4'te |
+| Fiş ve belgeler | JSON içerik + sha256 + rafineri imzası, aynı içerikten A4 PDF · `GET /documents/{id}` ve `/pdf` · gönderim izi | imza doğrulama R9 ve K4'te; imza HMAC-SHA256, Ed25519 kuruluma bırakıldı |
 | Merkez adaptörü | R2'den kurulan soket bağlantısı; ilk sürüm **mock merkez** (rastgele yürüyüş, kesinti komutu); rafinerinin gerçek arayüzü gelince adaptör değişir, gerisi değişmez | |
 | KZ simülatörü | S0'dan S9'a senaryoları otomatik koşan istemci (açılış, stoktan alış / satış, büyük alış / satış, kasa talepleri, teslimat, rafinasyon, cevapsız emir, mahsuplaşma) | rafineri ekranlarını demo için doldurur |
 | Kanzasset tarafı | mevcut yığın (Next.js / Supabase); AMR bağlantı katmanı ayrı modül; K1'den K9'a backoffice sayfaları | |

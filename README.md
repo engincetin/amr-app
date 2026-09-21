@@ -23,7 +23,7 @@ apps/mock-merkez      @amr/mock-merkez merkez taklidi: ws://localhost:4100/price
 apps/amr-server       @amr/server     Fastify API + soket + SQLite (node:sqlite), rafineri paneli API'si, SSE
 apps/amr-web          @amr/web        React 19 + Vite, rafineri ekranları R1..R10
 scripts/kz-client.mjs                 soket test istemcisi (Kanzasset gibi bağlanır)
-docs/                                 KZ_AMR_Akislar, KZ_AMR_Sistemi (md + html)
+docs/                                 KZ_AMR_Akislar, KZ_AMR_Sistemi (md + html), DEMO, KULLANIM_KILAVUZU, TEST_RAPORU, KARARLAR, ekranlar/
 ```
 
 ## Çalıştırma
@@ -40,6 +40,20 @@ Tarayıcı: `http://localhost:4001` (geliştirme) ya da `npm run build && npm st
 Tek tek: `npm run dev:merkez`, `npm run dev:server`, `npm run dev:web`.
 
 Test: `npm test`. OpenAPI: `npm run openapi:export` → `openapi.json` (repo kökü).
+
+## Tek komutla çalıştırma (Docker)
+
+İki repo yan yana dururken (`amr-app` ve `kz-treasury` aynı klasörde):
+
+```bash
+cd amr-app && docker compose up --build
+```
+
+Üç servis kalkar: mock merkez (fiyat kaynağı), AMR uygulaması ve Kanzasset hazine çekirdeği. Rafineri ekranları `http://localhost:4000`, Kanzasset ekranları `http://localhost:5000`. Açılış devirleri iki tarafta da 20 kg'dır ve eşit olmak zorundadır: eşit değilse `S + T = K` kontrolü tutmaz. Veriler adlandırılmış birimlerde kalır; sıfırdan başlamak için `docker compose down -v`.
+
+Senaryoları koşturmak için (servisler ayaktayken): `cd kz-treasury && npm run demo`.
+
+Docker olmadan, sunum için üç komut: `docs/DEMO.md` → "Sabah başlatma".
 
 ## Ortam değişkenleri
 
@@ -94,4 +108,4 @@ curl -X POST localhost:4110/control/jump -H 'content-type: application/json' -d 
 | 3 ✓ | kasa talimatları (kabul / red, kasaya konuluyor / konuldu, T+3), Kasa Giriş / Çıkış Fişi, günlük kasa ekstresi, büyük alış / satış karşılığı | R4 |
 | 4 ✓ | fiziksel teslimat (lojistik teklifi, Sevkiyat Fişi, takip no, teslimat kaydı), rafinasyon + katalog | R6, R7 |
 | 5 ✓ | mahsuplaşma (kesim saati otomatik, talep iki yönlü, mutabakat, altın ve para bacağı), belgeler ve PDF, kullanıcılar ve roller, ikinci onay | R8, R9, R10 |
-| 6 | demo senaryoları S0..S9, kullanım kılavuzu, teslim paketi | |
+| 6 ✓ | demo senaryoları S0..S9, sunum senaryosu, kullanım kılavuzu, Docker, test raporu | |

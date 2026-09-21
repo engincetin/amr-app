@@ -560,7 +560,7 @@ flowchart TB
 | **Mahsuplaşma Ekstresi** | Tetikleyen taraf; iki taraf onaylar | Kesim / talep / limit | altın bacağı talimat ref'leri · kur bazında net ve yön · hizmet bedelleri · ödeme ref | Ödeme (banka → banka) |
 | **İşlem dekontu** | KZ | Her müşteri emrinde | tek fiyat (marj gömülü) · komisyon %0,15 ayrı · varsa dönüşüm satırı | Müşteri kaydı |
 
-Tüm fişler ve ekstreler iki tarafta da görüntülenir ve indirilir; gönderim zamanı ve imza doğrulaması ile.
+Tüm fişler ve ekstreler iki tarafta da görüntülenir ve PDF olarak indirilir; gönderim zamanı ve imza doğrulaması ile. Belge içeriği JSON olarak saklanır, sha256 özeti ve imza belgenin üstündedir.
 
 ---
 
@@ -582,7 +582,7 @@ Tüm fişler ve ekstreler iki tarafta da görüntülenir ve indirilir; gönderim
 | `GET /v1/vault/statement?date=` | günlük kasa ekstresi (rezerv kanıtı), fiş referanslarıyla | Kontroller |
 | `GET /v1/current-account/statement?window=` | cari hesap ekstresi: işlemler · `T` hareketleri · kur bazında para | (12, adım 1) |
 | `POST /v1/settlements` · `GET /v1/settlements/{id}` · `POST /v1/settlements/{id}/confirm` · `POST /v1/settlements/{id}/payment-notice` · `POST /v1/settlements/{id}/payment-received` | mahsuplaşma: pencere (iki taraf da çağırabilir; karşı tarafa `settlement.requested`) · ekstre · mutabakat onayı · ödeme bildirimi · ödeme alındı (12) | `settlement.*` olayları |
-| `GET /v1/documents/{id}` | Tahsis Belgesi · Kasa Giriş / Çıkış Fişi · Lojistik ve Rafinasyon Teklifi · Sevkiyat Fişi · Teslimat Kaydı · fatura · ekstreler | PDF + imza |
+| `GET /v1/documents/{id}` · `/pdf` | Tahsis Belgesi · Kasa Giriş / Çıkış Fişi · Lojistik ve Rafinasyon Teklifi · Sevkiyat Fişi · Teslimat Kaydı · Mahsuplaşma Ekstresi · ekstreler | imzalı JSON, aynı içerikten A4 PDF |
 | Olaylar (webhook) | `order.*` · `vault.in_accepted / in_placing / in_placed / in_overdue / in_rejected` · `vault.out_accepted / out_rejected` · `delivery.*` · `refining.*` · `catalog.updated` · `settlement.requested / statement / reconciled / mismatch / payment_notice / settled` · `price.halt / resume` · `account.reconcile`; zarf: bakiye bilgisi + HMAC imza + idempotency key + `seq` | iki tarafta bildirim üretir |
 
 Güvenlik ve işletim: mTLS ya da HMAC imza · API anahtarı / istemci · idempotency key · `seq` · iki tarafta istek günlüğü ve saklama (VARA kanıt) · saat senkronu · uyum test paketi her canlıya çıkışta.
