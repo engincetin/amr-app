@@ -18,6 +18,7 @@ import { ensureLedgerTables, openingBalance } from "./ledger.ts";
 import { Publisher } from "./publisher.ts";
 import { SourceConnection } from "./source.ts";
 import { OrderEngine } from "./orders.ts";
+import { VaultDesk, VaultOverdueWatcher, ensureVaultTables } from "./vault.ts";
 import { EventDispatcher, enqueueEvent } from "./events.ts";
 import { kzRoutes } from "./routes/kz.ts";
 import { adminRoutes } from "./routes/admin.ts";
@@ -28,9 +29,10 @@ const PORT = Number(process.env.PORT ?? 4000);
 const DB_PATH = process.env.DB_PATH ?? resolve(import.meta.dirname, "../data/amr.db");
 const SOURCE_URL = process.env.SOURCE_URL ?? "ws://localhost:4100/prices";
 
-export async function buildApp(opts: { dbPath?: string; autoconnect?: boolean; dispatchEvents?: boolean } = {}) {
+export async function buildApp(opts: { dbPath?: string; autoconnect?: boolean; dispatchEvents?: boolean; sweepOverdue?: boolean } = {}) {
   const db = openDb(opts.dbPath ?? DB_PATH);
   ensureLedgerTables(db);
+  ensureVaultTables(db);
   ensureApiClient(db, process.env.KZ_API_KEY ?? "kz-dev-key", "Kanzasset FZCO", process.env.KZ_API_SECRET ?? "kz-dev-secret", process.env.KZ_EVENT_URL ?? "http://localhost:5000/api/events");
   // varsayılan parametreler (R10)
   const defaults: Record<string, string> = {
@@ -71,8 +73,12 @@ export async function buildApp(opts: { dbPath?: string; autoconnect?: boolean; d
     audit: (actor: string, action: string, before?: unknown, after?: unknown) => auditRow(db, actor, action, before, after),
   } as AppContext;
   ctx.orders = new OrderEngine(ctx);
+  ctx.vault = new VaultDesk(ctx);
   const dispatcher = new EventDispatcher(ctx);
   if (opts.dispatchEvents ?? true) dispatcher.start();
+  // T+3 taraması: vadesi geçen kasa girişleri OVERDUE olur (testlerde kapalı)
+  const overdue = new VaultOverdueWatcher(ctx.vault);
+  if (opts.sweepOverdue ?? true) overdue.start();
   // yayın durdu / açıldı olayları KZ'ye (soketin yanında güvence)
   publisher.onTradableChange = (tradable, reason) => enqueueEvent(ctx, tradable ? "price.resume" : "price.halt", { reason: reason ?? null, ts: new Date().toISOString() });
 
@@ -108,7 +114,7 @@ export async function buildApp(opts: { dbPath?: string; autoconnect?: boolean; d
   const autoconnect = opts.autoconnect ?? (process.env.SOURCE_AUTOCONNECT ?? "1") === "1";
   if (autoconnect) source.connect(getSetting(db, "source.url", SOURCE_URL));
 
-  app.addHook("onClose", async () => { dispatcher.stop(); publisher.stop(); source.disconnect(); db.close(); });
+  app.addHook("onClose", async () => { dispatcher.stop(); overdue.stop(); publisher.stop(); source.disconnect(); db.close(); });
   return { app, ctx };
 }
 

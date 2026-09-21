@@ -1,6 +1,7 @@
 /**
- * OpenAPI dışa aktarımı (Sprint 2: oturum, fiyat soketi, emirler, bakiye bilgisi, cari hesap ekstresi, belgeler, olaylar).
- * Sonraki sprintlerde kasa talimatı, teslimat, rafinasyon ve mahsuplaşma uçları eklenir. Çıktı: repo kökünde openapi.json.
+ * OpenAPI dışa aktarımı (Sprint 3: oturum, fiyat soketi, emirler, bakiye bilgisi, cari hesap ekstresi,
+ * kasa talimatları ve günlük kasa ekstresi, belgeler, olaylar).
+ * Sonraki sprintlerde teslimat, rafinasyon ve mahsuplaşma uçları eklenir. Çıktı: repo kökünde openapi.json.
  */
 import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -37,7 +38,25 @@ const doc = {
     "/v1/orders/{id}/cancel": { post: { summary: "İptal talebi, kesin cevap: işlenmemişse CANCELLED, işlenmişse mevcut sonuç (FILLED = geç fill)", parameters: [...authParams, idem, { name: "id", in: "path", required: true, schema: { type: "string" } }], responses: { "200": json(C.OrderResponse), "404": { description: "emir yok" } } } },
     "/v1/account": { get: { summary: "Bakiye bilgisi, anlık fotoğraf (02)", parameters: authParams, responses: { "200": json(C.Account) } } },
     "/v1/current-account/statement": { get: { summary: "Cari hesap ekstresi (12, adım 1): hareketler, T, kur bazında para, hizmet bedelleri, imza", parameters: [...authParams, { name: "from", in: "query", schema: { type: "string", format: "date-time" } }, { name: "to", in: "query", schema: { type: "string", format: "date-time" } }], responses: { "200": json(C.CurrentAccountStatement) } } },
-    "/v1/documents/{id}": { get: { summary: "Belge: Tahsis Belgesi, fişler, ekstreler (JSON içerik + sha256 + HMAC imza; PDF Sprint 3)", parameters: [...authParams, { name: "id", in: "path", required: true, schema: { type: "string" } }], responses: { "200": json(C.Document), "404": { description: "belge yok" } } } },
+    "/v1/vault/in": {
+      post: {
+        summary: "Kasa girişi talebi (05): cari hesaptaki gramı kasa hesabına taşır. Kabulde Kasa Giriş Fişi üretilir (mint dayanağı, K4).",
+        parameters: [...authParams, idem],
+        requestBody: { required: true, content: { "application/json": { schema: C.VaultRequestBody } } },
+        responses: { "200": json(C.VaultRequest, "REQUESTED (otomatik kabul açıksa ACCEPTED); aynı ref ile tekrar aynı talebi döner"), "400": { description: "geçersiz miktar" }, "409": { description: "cari hesap altını yetersiz (INSUFFICIENT_CURRENT_ACCOUNT) ya da ref başka talepte kullanıldı" } },
+      },
+    },
+    "/v1/vault/out": {
+      post: {
+        summary: "Kasa çıkışı talebi (06): kasa hesabındaki gramı cari hesaba taşır. Kabulde Kasa Çıkış Fişi üretilir ve talep biter.",
+        parameters: [...authParams, idem],
+        requestBody: { required: true, content: { "application/json": { schema: C.VaultRequestBody } } },
+        responses: { "200": json(C.VaultRequest, "REQUESTED (otomatik kabul açıksa ACCEPTED)"), "400": { description: "geçersiz miktar" }, "409": { description: "kasada yetersiz (INSUFFICIENT_VAULT); kasaya konuluyor sayılmaz" } },
+      },
+    },
+    "/v1/vault/requests/{id}": { get: { summary: "Kasa talimatı durumu ve geçmişi (request_id ya da KZ referansı ile)", parameters: [...authParams, { name: "id", in: "path", required: true, schema: { type: "string" } }], responses: { "200": json(C.VaultRequest), "404": { description: "talep yok" } } } },
+    "/v1/vault/statement": { get: { summary: "Günlük kasa ekstresi (rezerv kanıtı, V ≥ A): alt kalemler, hareketler, fiş referansları, imza", parameters: [...authParams, { name: "date", in: "query", schema: { type: "string" }, description: "YYYY-MM-DD; verilmezse bugün" }], responses: { "200": json(C.VaultStatement) } } },
+    "/v1/documents/{id}": { get: { summary: "Belge: Tahsis Belgesi, Kasa Giriş / Çıkış Fişi, ekstreler (JSON içerik + sha256 + HMAC imza)", parameters: [...authParams, { name: "id", in: "path", required: true, schema: { type: "string" } }], responses: { "200": json(C.Document), "404": { description: "belge yok" } } } },
   },
   webhooks: {
     event: {
@@ -70,6 +89,8 @@ const doc = {
       DocumentMeta: C.DocumentMeta,
       VaultRequestBody: C.VaultRequestBody,
       VaultRequest: C.VaultRequest,
+      VaultRequestStatus: C.VaultRequestStatus,
+      VaultStatement: C.VaultStatement,
       EventEnvelope: C.EventEnvelope,
     },
   },

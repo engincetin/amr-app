@@ -5,11 +5,13 @@
  *   POST /v1/orders · GET /v1/orders/:id · POST /v1/orders/:id/cancel   emir (03, 04), durum sorgusu, iptal (Cevapsız emir)
  *   GET  /v1/account                                bakiye bilgisi, anlık fotoğraf (02)
  *   GET  /v1/current-account/statement?from=&to=    cari hesap ekstresi (12, adım 1)
- *   GET  /v1/documents/:id                          Tahsis Belgesi ve fişler (JSON; PDF Sprint 3)
- * Sonraki sprintler: /v1/vault/in|out, /v1/deliveries, /v1/catalog, /v1/refining, /v1/settlements
+ *   POST /v1/vault/in · POST /v1/vault/out          kasa talimatı (05, 06) · GET /v1/vault/requests/:id
+ *   GET  /v1/vault/statement?date=                  günlük kasa ekstresi, rezerv kanıtı (Kontroller)
+ *   GET  /v1/documents/:id                          Tahsis Belgesi ve fişler (JSON)
+ * Sonraki sprintler: /v1/deliveries, /v1/catalog, /v1/refining, /v1/settlements
  */
 import type { FastifyInstance } from "fastify";
-import { OrderRequest, type CurrentAccountStatement, type SessionStatus, type WsAuth } from "@amr/contract";
+import { OrderRequest, VaultRequestBody, type CurrentAccountStatement, type SessionStatus, type VaultStatement, type WsAuth } from "@amr/contract";
 import { Value } from "@sinclair/typebox/value";
 import type { AppContext } from "../context.ts";
 import { verify } from "../auth.ts";
@@ -73,6 +75,24 @@ export async function kzRoutes(app: FastifyInstance, ctx: AppContext) {
     const { hash, signature } = signContent(ctx.db, base);
     return { ...base, hash, signature };
   });
+
+  // ----- kasa talimatları (05, 06) -----
+  const vaultRequest = (type: "IN" | "OUT") => async (req: any, reply: any) => {
+    const body = req.body as unknown;
+    if (!Value.Check(VaultRequestBody, body)) {
+      const err = [...Value.Errors(VaultRequestBody, body)][0];
+      return reply.code(400).send({ error: `geçersiz kasa talimatı: ${err?.path ?? ""} ${err?.message ?? ""}`.trim(), reject_reason: "INVALID_QTY" });
+    }
+    const r = ctx.vault.request(type, body.qty_mg, body.ref);
+    return reply.code(r.code).send(r.body);
+  };
+  app.post("/v1/vault/in", vaultRequest("IN"));
+  app.post("/v1/vault/out", vaultRequest("OUT"));
+  app.get<{ Params: { id: string } }>("/v1/vault/requests/:id", async (req, reply) => {
+    const r = ctx.vault.get(req.params.id);
+    return r ? r : reply.code(404).send({ error: "talep yok" });
+  });
+  app.get<{ Querystring: { date?: string } }>("/v1/vault/statement", async (req): Promise<VaultStatement> => ctx.vault.statement(req.query.date));
 
   // ----- belgeler -----
   app.get<{ Params: { id: string } }>("/v1/documents/:id", async (req, reply) => {

@@ -36,6 +36,15 @@ export const api = {
   order: (id: string) => req<Order>(`/admin/orders/${encodeURIComponent(id)}`),
   currentAccount: (limit = 200) => req<CurrentAccount>(`/admin/current-account?limit=${limit}`),
   requestSettlement: (reason: string) => req("/admin/settlement/request", { method: "POST", body: JSON.stringify({ reason }) }),
+  vault: (q: { type?: string; status?: string; limit?: number } = {}) => {
+    const u = new URLSearchParams(); for (const [k, v] of Object.entries(q)) if (v !== undefined && v !== "") u.set(k, String(v));
+    return req<VaultView>(`/admin/vault${u.size ? `?${u}` : ""}`);
+  },
+  vaultStatement: (date?: string) => req<VaultStatement>(`/admin/vault/statement${date ? `?date=${date}` : ""}`),
+  vaultAccept: (id: string) => req<VaultRequest>(`/admin/vault/${encodeURIComponent(id)}/accept`, { method: "POST", body: "{}" }),
+  vaultReject: (id: string, reason: string) => req<VaultRequest>(`/admin/vault/${encodeURIComponent(id)}/reject`, { method: "POST", body: JSON.stringify({ reason }) }),
+  vaultPlacing: (id: string) => req<VaultRequest>(`/admin/vault/${encodeURIComponent(id)}/placing`, { method: "POST", body: "{}" }),
+  vaultPlaced: (id: string) => req<VaultRequest>(`/admin/vault/${encodeURIComponent(id)}/placed`, { method: "POST", body: "{}" }),
   document: (id: string) => req<Doc>(`/admin/documents/${encodeURIComponent(id)}`),
   documents: () => req<{ doc_id: string; type: string; related_id: string; created_ts: string; sent_ts: string | null }[]>("/admin/documents"),
   events: () => req<{ event_id: string; type: string; status: string; attempts: number; next_ts: string; last_error: string | null; created_ts: string; sent_ts: string | null }[]>("/admin/events"),
@@ -55,6 +64,26 @@ export interface Order {
   quote_seq: number; limit_px: string; fill?: Fill; reject_reason?: string; allocation_certificate?: { doc_id: string; url: string }; account?: Account;
   received_ts: string; decided_ts?: string; history?: { status: string; ts: string; note?: string }[];
 }
+export type VaultStatus = "REQUESTED" | "ACCEPTED" | "PLACING" | "PLACED" | "OVERDUE" | "REJECTED";
+export interface VaultRequest {
+  request_id: string; type: "IN" | "OUT"; qty_mg: number; ref: string; status: VaultStatus;
+  doc_id?: string; reject_reason?: string; requested_ts: string; accepted_ts?: string; placing_ts?: string; placed_ts?: string; due_ts?: string;
+  history?: { status: string; ts: string; note?: string }[];
+}
+export interface VaultMovementRow { id: number; seq: number; type: string; in_vault_mg: number; placing_mg: number; shipping_mg: number; related_id: string | null; doc_id: string | null; ts: string }
+export interface VaultView {
+  account: Account; pending: VaultRequest[]; placing_queue: VaultRequest[]; requests: VaultRequest[]; movements: VaultMovementRow[];
+  accept_mode: string; accept_target_minutes: number; placement_due_days: number;
+}
+export interface VaultStatement {
+  date: string;
+  opening: { in_vault_mg: number; placing_mg: number; shipping_mg: number };
+  closing: { in_vault_mg: number; placing_mg: number; shipping_mg: number };
+  total_mg: number;
+  movements: { seq: number; type: string; in_vault_mg: number; placing_mg: number; shipping_mg: number; related_id?: string; doc_id?: string; ts: string }[];
+  slips: { doc_id: string; type: string; related_id: string; created_ts: string }[];
+  hash: string; signature: string;
+}
 export interface Movement { id: number; seq: number; type: string; gold_mg: number; ccy?: string; amount_cents?: number; ref?: string; related_id?: string; ts: string }
 export interface CurrentAccount { account: Account; limit: LimitUsage; movements: Movement[] }
 export interface Doc { meta: { doc_id: string; type: string; related_id: string; hash: string; signature: string; created_ts: string; sent_ts?: string }; content: Record<string, unknown> }
@@ -68,6 +97,8 @@ export interface Overview {
   account: Account;
   limit: LimitUsage;
   orders_today: { day: string; buy: { filled: number; mg: number; rejected: number }; sell: { filled: number; mg: number; rejected: number }; total: number };
+  vault_pending: number;
+  vault_overdue: number;
 }
 
 export type BusEvent =
@@ -77,6 +108,7 @@ export type BusEvent =
   | { kind: "subscribers"; count: number }
   | { kind: "notification"; id: number; type: string; title: string; body: string; created_ts: string }
   | { kind: "order"; order: Order }
+  | { kind: "vault"; request: VaultRequest }
   | { kind: "account"; account: Account }
   | { kind: "event"; event: { event_id: string; type: string; ts: string; status: string; error?: string | null } }
   | { kind: "heartbeat"; ts: string };
@@ -120,7 +152,7 @@ export function useLive() {
       } else if (ev.kind === "order") {
         setLastOrder(ev.order);
         scheduleRefresh();
-      } else if (ev.kind === "subscribers" || ev.kind === "notification") {
+      } else if (ev.kind === "vault" || ev.kind === "subscribers" || ev.kind === "notification") {
         scheduleRefresh();
       }
     };
@@ -141,4 +173,16 @@ export const fmtDT = (iso: string | null | undefined) => (iso ? new Date(iso).to
 export const STATUS_TR: Record<string, string> = { RECEIVED: "alındı", CANCEL_REQUESTED: "iptal isteniyor", FILLED: "gerçekleşti", REJECTED: "reddedildi", CANCELLED: "iptal" };
 export const REJECT_TR: Record<string, string> = { PRICE_OUTSIDE_LIMIT: "fiyat limit dışı (slippage)", STALE_QUOTE: "bayat quote_seq", TRADING_HALTED: "yayın durdu", CURRENT_ACCOUNT_LIMIT: "cari hesap limiti", DUPLICATE_ORDER: "tekrar emir", INVALID_QTY: "geçersiz miktar", INSUFFICIENT_CURRENT_ACCOUNT: "cari hesap altını yetersiz", INSUFFICIENT_VAULT: "kasada yetersiz", QUOTE_EXPIRED: "teklif süresi doldu", INTERNAL_ERROR: "iç hata" };
 export const MOVE_TR: Record<string, string> = { OPENING: "açılış devri", FILL_BUY: "alış (fill)", FILL_SELL: "satış (fill)", VAULT_IN: "kasa girişi", VAULT_OUT: "kasa çıkışı", FEE_DELIVERY: "lojistik bedeli", FEE_REFINING: "rafinasyon bedeli", SETTLEMENT_PAYMENT: "mahsuplaşma ödemesi" };
+export const VAULT_STATUS_TR: Record<string, string> = { REQUESTED: "talep edildi", ACCEPTED: "kabul edildi", PLACING: "kasaya konuluyor", PLACED: "kasaya konuldu", OVERDUE: "vade geçti (T+3)", REJECTED: "reddedildi" };
+export const VAULT_MOVE_TR: Record<string, string> = { OPENING: "açılış devri", IN_ACCEPTED: "giriş kabulü", PLACED: "kasaya konuldu", OUT_ACCEPTED: "çıkış kabulü", SHIP_READY: "sevkiyata çıktı", SHIP_RETURN: "kasaya döndü", DELIVERED: "teslim edildi" };
+/** Kalan süre: artı ise "x sonra", eksi ise "x gecikti". */
+export function untilText(iso: string | null | undefined): { text: string; late: boolean } | null {
+  if (!iso) return null;
+  const ms = Date.parse(iso) - Date.now();
+  const late = ms < 0;
+  const a = Math.abs(ms);
+  const d = Math.floor(a / 86_400_000), h = Math.floor((a % 86_400_000) / 3_600_000), m = Math.floor((a % 3_600_000) / 60_000);
+  const parts = d > 0 ? `${d} gün ${h} sa` : h > 0 ? `${h} sa ${m} dk` : `${m} dk`;
+  return { text: late ? `${parts} gecikti` : `${parts} kaldı`, late };
+}
 export const ageSec = (iso: string | null | undefined) => (iso ? Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 1000)) : null);

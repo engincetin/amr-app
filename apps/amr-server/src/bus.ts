@@ -8,6 +8,7 @@ export type BusEvent =
   | { kind: "subscribers"; count: number }
   | { kind: "notification"; id: number; type: string; title: string; body: string; created_ts: string }
   | { kind: "order"; order: unknown }
+  | { kind: "vault"; request: unknown }
   | { kind: "account"; account: unknown }
   | { kind: "event"; event: { event_id: string; type: string; ts: string; status: string; error?: string | null } }
   | { kind: "heartbeat"; ts: string };

@@ -235,13 +235,16 @@ export const VaultRequestBody = Type.Object({
   qty_mg: Type.Integer({ minimum: 1 }),
   ref: Type.String({ description: "Kanzasset referans numarası" }),
 });
+/** Giriş: REQUESTED → ACCEPTED → PLACING → PLACED (en geç T+3; geçerse OVERDUE). Çıkış: REQUESTED → ACCEPTED ile biter. */
 export const VaultRequestStatus = Type.Union([
   Type.Literal("REQUESTED"),
   Type.Literal("ACCEPTED"),
   Type.Literal("PLACING"),
   Type.Literal("PLACED"),
+  Type.Literal("OVERDUE"),
   Type.Literal("REJECTED"),
 ]);
+export type VaultRequestStatus = Static<typeof VaultRequestStatus>;
 export const VaultRequest = Type.Object({
   request_id: Type.String(),
   type: Type.Union([Type.Literal("IN"), Type.Literal("OUT")]),
@@ -252,15 +255,37 @@ export const VaultRequest = Type.Object({
   reject_reason: Type.Optional(Type.String()),
   requested_ts: IsoTs,
   accepted_ts: Type.Optional(IsoTs),
+  placing_ts: Type.Optional(IsoTs),
   placed_ts: Type.Optional(IsoTs),
-  due_ts: Type.Optional(IsoTs),
+  due_ts: Type.Optional(Type.String({ description: "kasaya koyma vadesi: kabul + T+3 (ISO 8601 UTC)" })),
+  history: Type.Optional(Type.Array(Type.Object({ status: VaultRequestStatus, ts: IsoTs, note: Type.Optional(Type.String()) }))),
 });
 export type VaultRequest = Static<typeof VaultRequest>;
+
+/** Günlük kasa ekstresi (rezerv kanıtı, V ≥ A): alt kalemler, hareketler, fiş referansları, imza. */
+export const VaultStatement = Type.Object({
+  date: Type.String({ description: "YYYY-MM-DD" }),
+  opening: Type.Object({ in_vault_mg: Type.Integer(), placing_mg: Type.Integer(), shipping_mg: Type.Integer() }),
+  closing: Type.Object({ in_vault_mg: Type.Integer(), placing_mg: Type.Integer(), shipping_mg: Type.Integer() }),
+  total_mg: Type.Integer({ description: "V = kasada + kasaya konuluyor + sevkiyatta (gün sonu)" }),
+  movements: Type.Array(Type.Object({
+    seq: Type.Integer(),
+    type: Type.String(),
+    in_vault_mg: Type.Integer(), placing_mg: Type.Integer(), shipping_mg: Type.Integer(),
+    related_id: Type.Optional(Type.String()),
+    doc_id: Type.Optional(Type.String()),
+    ts: IsoTs,
+  })),
+  slips: Type.Array(Type.Object({ doc_id: Type.String(), type: Type.String(), related_id: Type.String(), created_ts: IsoTs })),
+  hash: Type.String(),
+  signature: Type.String(),
+});
+export type VaultStatement = Static<typeof VaultStatement>;
 
 // ---------- Olay zarfı (06) ----------
 export const EVENT_TYPES = [
   "order.filled", "order.rejected", "order.cancelled",
-  "vault.in_accepted", "vault.in_placing", "vault.in_placed", "vault.in_rejected",
+  "vault.in_accepted", "vault.in_placing", "vault.in_placed", "vault.in_overdue", "vault.in_rejected",
   "vault.out_accepted", "vault.out_rejected",
   "delivery.quoted", "delivery.approved", "delivery.preparing", "delivery.ready", "delivery.shipped", "delivery.delivered", "delivery.cancelled", "delivery.failed",
   "catalog.updated",
