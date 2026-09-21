@@ -447,7 +447,7 @@ footer{margin-top:56px;border-top:1px solid var(--line);padding-top:14px;font-si
 <td><code>POST /vault/in</code> (05)</td>
 <td><code>qty_mg</code> · <code>ref</code></td>
 <td><code>request_id</code> · <code>status: REQUESTED</code></td>
-<td>kural: cari hesap altını ≥ <code>qty_mg</code>, değilse <code>INSUFFICIENT_CURRENT_ACCOUNT</code> · kabulde <code>vault.in_accepted</code> (Kasa Giriş Fişi + <code>account</code>), sonra <code>vault.in_placing</code>, <code>vault.in_placed</code>; red: <code>vault.in_rejected{reason}</code></td>
+<td>kural: cari hesap altını ≥ <code>qty_mg</code>, değilse <code>INSUFFICIENT_CURRENT_ACCOUNT</code> · kabulde <code>vault.in_accepted</code> (Kasa Giriş Fişi + <code>account</code>), sonra <code>vault.in_placing</code>, <code>vault.in_placed</code>; vade geçerse <code>vault.in_overdue</code>; red: <code>vault.in_rejected{reason}</code> · <code>ref</code> tekildir: aynı ref ile gelen istek aynı talebi döner (çift mint koruması)</td>
 </tr>
 <tr class="odd">
 <td><code>POST /vault/out</code> (06)</td>
@@ -459,7 +459,13 @@ footer{margin-top:56px;border-top:1px solid var(--line);padding-top:14px;font-si
 <td><code>GET /vault/requests/{id}</code></td>
 <td></td>
 <td>talep durumu ve geçmişi, fiş referansı</td>
+<td><code>request_id</code> ya da KZ referansı ile</td>
+</tr>
+<tr>
+<td><code>GET /vault/statement?date=</code></td>
 <td></td>
+<td>günlük kasa ekstresi: açılış / kapanış alt kalemleri · hareketler · fiş referansları · imza</td>
+<td>rezerv kanıtı (<code>V ≥ A</code>), Kontroller</td>
 </tr>
 <tr class="odd">
 <td><code>POST /deliveries</code> (10)</td>
@@ -567,7 +573,7 @@ footer{margin-top:56px;border-top:1px solid var(--line);padding-top:14px;font-si
 <td>emir + fill / red sebebi</td>
 </tr>
 <tr class="even">
-<td><code>vault.in_accepted</code> · <code>vault.in_placing</code> · <code>vault.in_placed</code> · <code>vault.in_rejected</code></td>
+<td><code>vault.in_accepted</code> · <code>vault.in_placing</code> · <code>vault.in_placed</code> · <code>vault.in_overdue</code> · <code>vault.in_rejected</code></td>
 <td>kasa girişi talebi kabul / kasaya konuluyor / kasaya konuldu / red (R4)</td>
 <td><code>request_id</code> · <code>qty_mg</code> · <code>ref</code> · fiş <code>doc_id</code> · zaman</td>
 </tr>
