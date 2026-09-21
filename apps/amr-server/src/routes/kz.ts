@@ -7,15 +7,19 @@
  *   GET  /v1/current-account/statement?from=&to=    cari hesap ekstresi (12, adım 1)
  *   POST /v1/vault/in · POST /v1/vault/out          kasa talimatı (05, 06) · GET /v1/vault/requests/:id
  *   GET  /v1/vault/statement?date=                  günlük kasa ekstresi, rezerv kanıtı (Kontroller)
+ *   POST /v1/deliveries · approve|cancel · GET       fiziksel teslimat (10)
+ *   GET  /v1/catalog                                rafinasyon ürün kataloğu (11)
+ *   POST /v1/refining · approve|cancel · GET        rafinasyon (11)
  *   GET  /v1/documents/:id                          Tahsis Belgesi ve fişler (JSON)
- * Sonraki sprintler: /v1/deliveries, /v1/catalog, /v1/refining, /v1/settlements
+ * Sonraki sprintler: /v1/settlements
  */
 import type { FastifyInstance } from "fastify";
-import { OrderRequest, VaultRequestBody, type CurrentAccountStatement, type SessionStatus, type VaultStatement, type WsAuth } from "@amr/contract";
+import { DeliveryRequestBody, OrderRequest, RefiningRequestBody, VaultRequestBody, type Catalog, type CurrentAccountStatement, type SessionStatus, type VaultStatement, type WsAuth } from "@amr/contract";
 import { Value } from "@sinclair/typebox/value";
 import type { AppContext } from "../context.ts";
 import { verify } from "../auth.ts";
 import { currentAccountBalance, getDocument, listCurrentAccountMovements, markDocumentSent, signContent } from "../ledger.ts";
+import { FulfilmentError } from "../fulfilment.ts";
 
 export async function kzRoutes(app: FastifyInstance, ctx: AppContext) {
   // REST kimlik doğrulama kancası (yalnız /v1/*); gövde imzaya ham metin olarak girer (KZ gönderdiği metni imzalar)
@@ -93,6 +97,48 @@ export async function kzRoutes(app: FastifyInstance, ctx: AppContext) {
     return r ? r : reply.code(404).send({ error: "talep yok" });
   });
   app.get<{ Querystring: { date?: string } }>("/v1/vault/statement", async (req): Promise<VaultStatement> => ctx.vault.statement(req.query.date));
+
+  // ----- fiziksel teslimat (10) ve rafinasyon (11) -----
+  /** Motor hatasını sözleşmedeki red sebebiyle birlikte döner. */
+  const guard = async (reply: any, fn: () => unknown) => {
+    try { return fn(); }
+    catch (e) {
+      const f = e as FulfilmentError;
+      return reply.code(f.code ?? 409).send({ error: f.message, ...(f.reason ? { reject_reason: f.reason } : {}) });
+    }
+  };
+
+  app.post("/v1/deliveries", async (req, reply) => {
+    const body = req.body as unknown;
+    if (!Value.Check(DeliveryRequestBody, body)) {
+      const err = [...Value.Errors(DeliveryRequestBody, body)][0];
+      return reply.code(400).send({ error: `geçersiz teslimat talebi: ${err?.path ?? ""} ${err?.message ?? ""}`.trim(), reject_reason: "INVALID_QTY" });
+    }
+    return guard(reply, () => ctx.deliveries.request(body));
+  });
+  app.get<{ Params: { id: string } }>("/v1/deliveries/:id", async (req, reply) =>
+    ctx.deliveries.get(req.params.id) ?? reply.code(404).send({ error: "teslimat talebi yok" }));
+  app.post<{ Params: { id: string }; Body: { quote_id?: string } }>("/v1/deliveries/:id/approve", async (req, reply) =>
+    guard(reply, () => ctx.deliveries.approve(req.params.id, req.body?.quote_id)));
+  app.post<{ Params: { id: string }; Body: { reason?: string } }>("/v1/deliveries/:id/cancel", async (req, reply) =>
+    guard(reply, () => ctx.deliveries.cancel(req.params.id, req.body?.reason?.trim() || "Kanzasset iptal etti", "kanzasset")));
+
+  app.get("/v1/catalog", async (): Promise<Catalog> => ctx.catalog.get());
+
+  app.post("/v1/refining", async (req, reply) => {
+    const body = req.body as unknown;
+    if (!Value.Check(RefiningRequestBody, body)) {
+      const err = [...Value.Errors(RefiningRequestBody, body)][0];
+      return reply.code(400).send({ error: `geçersiz rafinasyon talebi: ${err?.path ?? ""} ${err?.message ?? ""}`.trim(), reject_reason: "INVALID_QTY" });
+    }
+    return guard(reply, () => ctx.refining.request(body));
+  });
+  app.get<{ Params: { id: string } }>("/v1/refining/:id", async (req, reply) =>
+    ctx.refining.get(req.params.id) ?? reply.code(404).send({ error: "rafinasyon talebi yok" }));
+  app.post<{ Params: { id: string }; Body: { quote_id?: string } }>("/v1/refining/:id/approve", async (req, reply) =>
+    guard(reply, () => ctx.refining.approve(req.params.id, req.body?.quote_id)));
+  app.post<{ Params: { id: string }; Body: { reason?: string } }>("/v1/refining/:id/cancel", async (req, reply) =>
+    guard(reply, () => ctx.refining.cancel(req.params.id, req.body?.reason?.trim() || "Kanzasset iptal etti", "kanzasset")));
 
   // ----- belgeler -----
   app.get<{ Params: { id: string } }>("/v1/documents/:id", async (req, reply) => {

@@ -45,6 +45,21 @@ export const api = {
   vaultReject: (id: string, reason: string) => req<VaultRequest>(`/admin/vault/${encodeURIComponent(id)}/reject`, { method: "POST", body: JSON.stringify({ reason }) }),
   vaultPlacing: (id: string) => req<VaultRequest>(`/admin/vault/${encodeURIComponent(id)}/placing`, { method: "POST", body: "{}" }),
   vaultPlaced: (id: string) => req<VaultRequest>(`/admin/vault/${encodeURIComponent(id)}/placed`, { method: "POST", body: "{}" }),
+  // R6 fiziksel teslimat
+  deliveries: () => req<{ items: Delivery[]; open: number }>("/admin/deliveries"),
+  dlvQuote: (id: string, b: { carrier: string; amount: string; ccy: string }) => req<Delivery>(`/admin/deliveries/${id}/quote`, { method: "POST", body: JSON.stringify(b) }),
+  dlvStep: (id: string, step: "preparing" | "ready" | "delivered") => req<Delivery>(`/admin/deliveries/${id}/${step}`, { method: "POST", body: "{}" }),
+  dlvShipped: (id: string, carrier: string, tracking_no: string) => req<Delivery>(`/admin/deliveries/${id}/shipped`, { method: "POST", body: JSON.stringify({ carrier, tracking_no }) }),
+  dlvCancel: (id: string, reason: string) => req<Delivery>(`/admin/deliveries/${id}/cancel`, { method: "POST", body: JSON.stringify({ reason }) }),
+  dlvFailed: (id: string, reason: string) => req<Delivery>(`/admin/deliveries/${id}/failed`, { method: "POST", body: JSON.stringify({ reason }) }),
+  // R7 katalog ve rafinasyon
+  catalog: () => req<Catalog>("/admin/catalog"),
+  catalogSave: (item: Partial<CatalogItem> & { item_id: string }) => req<Catalog>("/admin/catalog", { method: "PUT", body: JSON.stringify(item) }),
+  refining: () => req<{ items: Refining[]; open: number }>("/admin/refining"),
+  rfnQuote: (id: string, b: { product: string; logistics: string; ccy: string; lead_time_days: number }) => req<Refining>(`/admin/refining/${id}/quote`, { method: "POST", body: JSON.stringify(b) }),
+  rfnStep: (id: string, step: "production" | "ready" | "delivered") => req<Refining>(`/admin/refining/${id}/${step}`, { method: "POST", body: "{}" }),
+  rfnShipped: (id: string, carrier: string, tracking_no: string) => req<Refining>(`/admin/refining/${id}/shipped`, { method: "POST", body: JSON.stringify({ carrier, tracking_no }) }),
+  rfnCancel: (id: string, reason: string) => req<Refining>(`/admin/refining/${id}/cancel`, { method: "POST", body: JSON.stringify({ reason }) }),
   document: (id: string) => req<Doc>(`/admin/documents/${encodeURIComponent(id)}`),
   documents: () => req<{ doc_id: string; type: string; related_id: string; created_ts: string; sent_ts: string | null }[]>("/admin/documents"),
   events: () => req<{ event_id: string; type: string; status: string; attempts: number; next_ts: string; last_error: string | null; created_ts: string; sent_ts: string | null }[]>("/admin/events"),
@@ -84,6 +99,23 @@ export interface VaultStatement {
   slips: { doc_id: string; type: string; related_id: string; created_ts: string }[];
   hash: string; signature: string;
 }
+export type DeliveryStatus = "REQUESTED" | "QUOTED" | "APPROVED" | "PREPARING" | "READY" | "SHIPPED" | "DELIVERED" | "CANCELLED" | "FAILED";
+export interface LogisticsQuote { quote_id: string; carrier: string; amount_cents: number; ccy: string; valid_until: string; doc_id?: string }
+export interface Delivery {
+  delivery_id: string; qty_mg: number; address_ref: string; insured_party_ref: string; ref: string; status: DeliveryStatus;
+  quote?: LogisticsQuote; carrier?: string; tracking_no?: string; shipping_doc_id?: string; pod_doc_id?: string; reject_reason?: string;
+  requested_ts: string; history?: { status: string; ts: string; note?: string }[];
+}
+export type RefiningStatus = "REQUESTED" | "QUOTED" | "APPROVED" | "IN_PRODUCTION" | "READY" | "SHIPPED" | "DELIVERED" | "CANCELLED" | "FAILED";
+export interface RefiningQuote { quote_id: string; product_cents: number; logistics_cents: number; ccy: string; lead_time_days: number; carrier?: string; valid_until: string; doc_id?: string }
+export interface Refining {
+  refining_id: string; items: { item_id: string; name: string; qty: number; weight_mg: number }[]; total_mg: number;
+  address_ref: string; insured_party_ref: string; ref: string; status: RefiningStatus;
+  quote?: RefiningQuote; carrier?: string; tracking_no?: string; shipping_doc_id?: string; pod_doc_id?: string; reject_reason?: string;
+  requested_ts: string; history?: { status: string; ts: string; note?: string }[];
+}
+export interface CatalogItem { item_id: string; name: string; weight_mg: number; fineness: string; unit_price_cents: number; ccy: string; lead_time_days: number; active: boolean }
+export interface Catalog { version: number; items: CatalogItem[]; updated_ts: string }
 export interface Movement { id: number; seq: number; type: string; gold_mg: number; ccy?: string; amount_cents?: number; ref?: string; related_id?: string; ts: string }
 export interface CurrentAccount { account: Account; limit: LimitUsage; movements: Movement[] }
 export interface Doc { meta: { doc_id: string; type: string; related_id: string; hash: string; signature: string; created_ts: string; sent_ts?: string }; content: Record<string, unknown> }
@@ -99,6 +131,8 @@ export interface Overview {
   orders_today: { day: string; buy: { filled: number; mg: number; rejected: number }; sell: { filled: number; mg: number; rejected: number }; total: number };
   vault_pending: number;
   vault_overdue: number;
+  deliveries_open: number;
+  refining_open: number;
 }
 
 export type BusEvent =
@@ -109,6 +143,9 @@ export type BusEvent =
   | { kind: "notification"; id: number; type: string; title: string; body: string; created_ts: string }
   | { kind: "order"; order: Order }
   | { kind: "vault"; request: VaultRequest }
+  | { kind: "delivery"; item: Delivery }
+  | { kind: "refining"; item: Refining }
+  | { kind: "catalog"; version: number }
   | { kind: "account"; account: Account }
   | { kind: "event"; event: { event_id: string; type: string; ts: string; status: string; error?: string | null } }
   | { kind: "heartbeat"; ts: string };
@@ -152,7 +189,7 @@ export function useLive() {
       } else if (ev.kind === "order") {
         setLastOrder(ev.order);
         scheduleRefresh();
-      } else if (ev.kind === "vault" || ev.kind === "subscribers" || ev.kind === "notification") {
+      } else if (ev.kind === "vault" || ev.kind === "delivery" || ev.kind === "refining" || ev.kind === "catalog" || ev.kind === "subscribers" || ev.kind === "notification") {
         scheduleRefresh();
       }
     };
@@ -174,6 +211,7 @@ export const STATUS_TR: Record<string, string> = { RECEIVED: "alındı", CANCEL_
 export const REJECT_TR: Record<string, string> = { PRICE_OUTSIDE_LIMIT: "fiyat limit dışı (slippage)", STALE_QUOTE: "bayat quote_seq", TRADING_HALTED: "yayın durdu", CURRENT_ACCOUNT_LIMIT: "cari hesap limiti", DUPLICATE_ORDER: "tekrar emir", INVALID_QTY: "geçersiz miktar", INSUFFICIENT_CURRENT_ACCOUNT: "cari hesap altını yetersiz", INSUFFICIENT_VAULT: "kasada yetersiz", QUOTE_EXPIRED: "teklif süresi doldu", INTERNAL_ERROR: "iç hata" };
 export const MOVE_TR: Record<string, string> = { OPENING: "açılış devri", FILL_BUY: "alış (fill)", FILL_SELL: "satış (fill)", VAULT_IN: "kasa girişi", VAULT_OUT: "kasa çıkışı", FEE_DELIVERY: "lojistik bedeli", FEE_REFINING: "rafinasyon bedeli", SETTLEMENT_PAYMENT: "mahsuplaşma ödemesi" };
 export const VAULT_STATUS_TR: Record<string, string> = { REQUESTED: "talep edildi", ACCEPTED: "kabul edildi", PLACING: "kasaya konuluyor", PLACED: "kasaya konuldu", OVERDUE: "vade geçti (T+3)", REJECTED: "reddedildi" };
+export const DLV_STATUS_TR: Record<string, string> = { REQUESTED: "talep edildi", QUOTED: "teklif verildi", APPROVED: "onaylandı", PREPARING: "hazırlanıyor", IN_PRODUCTION: "üretimde", READY: "hazır", SHIPPED: "taşıyıcıda", DELIVERED: "teslim edildi", CANCELLED: "iptal", FAILED: "teslim edilemedi" };
 export const VAULT_MOVE_TR: Record<string, string> = { OPENING: "açılış devri", IN_ACCEPTED: "giriş kabulü", PLACED: "kasaya konuldu", OUT_ACCEPTED: "çıkış kabulü", SHIP_READY: "sevkiyata çıktı", SHIP_RETURN: "kasaya döndü", DELIVERED: "teslim edildi" };
 /** Kalan süre: artı ise "x sonra", eksi ise "x gecikti". */
 export function untilText(iso: string | null | undefined): { text: string; late: boolean } | null {

@@ -8,6 +8,8 @@ import { R10Settings } from "./pages/R10Settings.tsx";
 import { R3Orders } from "./pages/R3Orders.tsx";
 import { R5CurrentAccount } from "./pages/R5CurrentAccount.tsx";
 import { R4Vault } from "./pages/R4Vault.tsx";
+import { R6Delivery } from "./pages/R6Delivery.tsx";
+import { R7Refining } from "./pages/R7Refining.tsx";
 
 export const SCREENS = [
   { code: "R1", path: "/", title: "Genel bakış", sprint: 1 },
@@ -15,8 +17,8 @@ export const SCREENS = [
   { code: "R3", path: "/emirler", title: "Emirler", sprint: 2, done: true },
   { code: "R4", path: "/kasa", title: "Kasa hesabı", sprint: 3, done: true },
   { code: "R5", path: "/cari", title: "Cari hesap", sprint: 2, done: true },
-  { code: "R6", path: "/teslimat", title: "Fiziksel teslimat", sprint: 4 },
-  { code: "R7", path: "/rafinasyon", title: "Rafinasyon", sprint: 4 },
+  { code: "R6", path: "/teslimat", title: "Fiziksel teslimat", sprint: 4, done: true },
+  { code: "R7", path: "/rafinasyon", title: "Rafinasyon", sprint: 4, done: true },
   { code: "R8", path: "/mahsuplasma", title: "Mahsuplaşma", sprint: 5 },
   { code: "R9", path: "/belgeler", title: "Belgeler", sprint: 5 },
   { code: "R10", path: "/ayarlar", title: "Ayarlar ve kullanıcılar", sprint: 1 },
@@ -44,8 +46,8 @@ export function App() {
           <Route path="/emirler" element={<R3Orders live={live} />} />
           <Route path="/kasa" element={<R4Vault live={live} />} />
           <Route path="/cari" element={<R5CurrentAccount live={live} />} />
-          <Route path="/teslimat" element={<Placeholder code="R6" title="Fiziksel teslimat" sprint={4} text="Ücretsiz külçe teslimatı: talep → Lojistik fiyatı gir → KZ onayı → Hazırlığa al → Hazır (Sevkiyat Fişi) → Taşıyıcıya verildi (takip no) → Teslim edildi. Masraf cari hesaba yazılır." />} />
-          <Route path="/rafinasyon" element={<Placeholder code="R7" title="Rafinasyon" sprint={4} text="Ürün kataloğu (ürün, gramaj, ayar, tarife, üretim süresi) ve rafinasyon talepleri: Teklif ver (ürün bedeli + lojistik) → KZ onayı → Üretime al → Hazır → Taşıyıcıya verildi → Teslim edildi." />} />
+          <Route path="/teslimat" element={<R6Delivery live={live} />} />
+          <Route path="/rafinasyon" element={<R7Refining live={live} />} />
           <Route path="/mahsuplasma" element={<Placeholder code="R8" title="Mahsuplaşma" sprint={5} text="Pencereler (kesim saati otomatik, talep iki yönlü, limit): ekstre taslağı, KZ ekstresiyle karşılaştırma (mutabakat), altın bacağı talepleri, para bacağı: ödeme bildirimi ve ödeme alındı." />} />
           <Route path="/belgeler" element={<Placeholder code="R9" title="Belgeler" sprint={5} text="Tahsis Belgesi, Kasa Giriş / Çıkış Fişi, Lojistik ve Rafinasyon Teklifi, Sevkiyat Fişi, Teslimat Kaydı, faturalar, ekstreler: oluşturma ve KZ'ye gönderim zamanı, indir, imza doğrulama." />} />
           <Route path="/ayarlar" element={<R10Settings live={live} />} />

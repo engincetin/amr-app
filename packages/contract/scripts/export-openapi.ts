@@ -1,7 +1,7 @@
 /**
- * OpenAPI dışa aktarımı (Sprint 3: oturum, fiyat soketi, emirler, bakiye bilgisi, cari hesap ekstresi,
- * kasa talimatları ve günlük kasa ekstresi, belgeler, olaylar).
- * Sonraki sprintlerde teslimat, rafinasyon ve mahsuplaşma uçları eklenir. Çıktı: repo kökünde openapi.json.
+ * OpenAPI dışa aktarımı (Sprint 4: oturum, fiyat soketi, emirler, bakiye bilgisi, cari hesap ekstresi,
+ * kasa talimatları ve günlük kasa ekstresi, fiziksel teslimat, katalog ve rafinasyon, belgeler, olaylar).
+ * Sonraki sprintte mahsuplaşma uçları eklenir. Çıktı: repo kökünde openapi.json.
  */
 import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -56,6 +56,29 @@ const doc = {
     },
     "/v1/vault/requests/{id}": { get: { summary: "Kasa talimatı durumu ve geçmişi (request_id ya da KZ referansı ile)", parameters: [...authParams, { name: "id", in: "path", required: true, schema: { type: "string" } }], responses: { "200": json(C.VaultRequest), "404": { description: "talep yok" } } } },
     "/v1/vault/statement": { get: { summary: "Günlük kasa ekstresi (rezerv kanıtı, V ≥ A): alt kalemler, hareketler, fiş referansları, imza", parameters: [...authParams, { name: "date", in: "query", schema: { type: "string" }, description: "YYYY-MM-DD; verilmezse bugün" }], responses: { "200": json(C.VaultStatement) } } },
+    "/v1/deliveries": {
+      post: {
+        summary: "Fiziksel teslimat talebi (10): gram · adres referansı · sigorta lehtarı referansı. Kasada yeterli gram yoksa red.",
+        parameters: [...authParams, idem],
+        requestBody: { required: true, content: { "application/json": { schema: C.DeliveryRequestBody } } },
+        responses: { "200": json(C.Delivery, "REQUESTED; aynı ref ile tekrar aynı talebi döner"), "400": { description: "geçersiz talep" }, "409": { description: "kasada yetersiz (INSUFFICIENT_VAULT)" } },
+      },
+    },
+    "/v1/deliveries/{id}": { get: { summary: "Teslimat durumu ve geçmişi", parameters: [...authParams, { name: "id", in: "path", required: true, schema: { type: "string" } }], responses: { "200": json(C.Delivery), "404": { description: "talep yok" } } } },
+    "/v1/deliveries/{id}/approve": { post: { summary: "Lojistik teklifini onayla (yalnız QUOTED iken ve teklif geçerliyken); onayla lojistik bedeli cari hesaba kalem olur", parameters: [...authParams, idem, { name: "id", in: "path", required: true, schema: { type: "string" } }], requestBody: { content: { "application/json": { schema: { type: "object", properties: { quote_id: { type: "string" } } } } } }, responses: { "200": json(C.Delivery), "409": { description: "durum ya da teklif süresi (QUOTE_EXPIRED)" } } } },
+    "/v1/deliveries/{id}/cancel": { post: { summary: "Teslimat iptali (sevkiyattan önce); READY'den iptalde külçe kasaya döner", parameters: [...authParams, idem, { name: "id", in: "path", required: true, schema: { type: "string" } }], responses: { "200": json(C.Delivery), "409": { description: "durum uygun değil" } } } },
+    "/v1/catalog": { get: { summary: "Rafinasyon ürün kataloğu (11): ürün · gramaj · ayar · tarife · üretim süresi. Değişince catalog.updated olayı gider.", parameters: authParams, responses: { "200": json(C.Catalog) } } },
+    "/v1/refining": {
+      post: {
+        summary: "Rafinasyon talebi (11): katalog kalemleri × adet. Kasada toplam saf gram yeterli olmalı.",
+        parameters: [...authParams, idem],
+        requestBody: { required: true, content: { "application/json": { schema: C.RefiningRequestBody } } },
+        responses: { "200": json(C.Refining, "REQUESTED · total_mg hesaplanır"), "400": { description: "geçersiz kalem" }, "409": { description: "kasada yetersiz (INSUFFICIENT_VAULT)" } },
+      },
+    },
+    "/v1/refining/{id}": { get: { summary: "Rafinasyon durumu ve geçmişi", parameters: [...authParams, { name: "id", in: "path", required: true, schema: { type: "string" } }], responses: { "200": json(C.Refining), "404": { description: "talep yok" } } } },
+    "/v1/refining/{id}/approve": { post: { summary: "Rafinasyon teklifini onayla (yalnız QUOTED iken); onayla ürün bedeli + lojistik cari hesaba kalem olur", parameters: [...authParams, idem, { name: "id", in: "path", required: true, schema: { type: "string" } }], requestBody: { content: { "application/json": { schema: { type: "object", properties: { quote_id: { type: "string" } } } } } }, responses: { "200": json(C.Refining), "409": { description: "durum ya da teklif süresi (QUOTE_EXPIRED)" } } } },
+    "/v1/refining/{id}/cancel": { post: { summary: "Rafinasyon iptali (üretime girmeden)", parameters: [...authParams, idem, { name: "id", in: "path", required: true, schema: { type: "string" } }], responses: { "200": json(C.Refining), "409": { description: "durum uygun değil" } } } },
     "/v1/documents/{id}": { get: { summary: "Belge: Tahsis Belgesi, Kasa Giriş / Çıkış Fişi, ekstreler (JSON içerik + sha256 + HMAC imza)", parameters: [...authParams, { name: "id", in: "path", required: true, schema: { type: "string" } }], responses: { "200": json(C.Document), "404": { description: "belge yok" } } } },
   },
   webhooks: {
@@ -91,6 +114,16 @@ const doc = {
       VaultRequest: C.VaultRequest,
       VaultRequestStatus: C.VaultRequestStatus,
       VaultStatement: C.VaultStatement,
+      DeliveryRequestBody: C.DeliveryRequestBody,
+      Delivery: C.Delivery,
+      DeliveryStatus: C.DeliveryStatus,
+      LogisticsQuote: C.LogisticsQuote,
+      Catalog: C.Catalog,
+      CatalogItem: C.CatalogItem,
+      RefiningRequestBody: C.RefiningRequestBody,
+      Refining: C.Refining,
+      RefiningStatus: C.RefiningStatus,
+      RefiningQuote: C.RefiningQuote,
       EventEnvelope: C.EventEnvelope,
     },
   },

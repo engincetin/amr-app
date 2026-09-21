@@ -19,6 +19,7 @@ import { Publisher } from "./publisher.ts";
 import { SourceConnection } from "./source.ts";
 import { OrderEngine } from "./orders.ts";
 import { VaultDesk, VaultOverdueWatcher, ensureVaultTables } from "./vault.ts";
+import { CatalogDesk, DeliveryDesk, RefiningDesk, ensureFulfilmentTables } from "./fulfilment.ts";
 import { EventDispatcher, enqueueEvent } from "./events.ts";
 import { kzRoutes } from "./routes/kz.ts";
 import { adminRoutes } from "./routes/admin.ts";
@@ -33,6 +34,7 @@ export async function buildApp(opts: { dbPath?: string; autoconnect?: boolean; d
   const db = openDb(opts.dbPath ?? DB_PATH);
   ensureLedgerTables(db);
   ensureVaultTables(db);
+  ensureFulfilmentTables(db);
   ensureApiClient(db, process.env.KZ_API_KEY ?? "kz-dev-key", "Kanzasset FZCO", process.env.KZ_API_SECRET ?? "kz-dev-secret", process.env.KZ_EVENT_URL ?? "http://localhost:5000/api/events");
   // varsayılan parametreler (R10)
   const defaults: Record<string, string> = {
@@ -74,6 +76,10 @@ export async function buildApp(opts: { dbPath?: string; autoconnect?: boolean; d
   } as AppContext;
   ctx.orders = new OrderEngine(ctx);
   ctx.vault = new VaultDesk(ctx);
+  ctx.catalog = new CatalogDesk(ctx);
+  ctx.catalog.seed();
+  ctx.deliveries = new DeliveryDesk(ctx);
+  ctx.refining = new RefiningDesk(ctx, ctx.catalog);
   const dispatcher = new EventDispatcher(ctx);
   if (opts.dispatchEvents ?? true) dispatcher.start();
   // T+3 taraması: vadesi geçen kasa girişleri OVERDUE olur (testlerde kapalı)

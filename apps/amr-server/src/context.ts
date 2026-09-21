@@ -3,6 +3,7 @@ import type { Publisher } from "./publisher.ts";
 import type { SourceConnection } from "./source.ts";
 import type { OrderEngine } from "./orders.ts";
 import type { VaultDesk } from "./vault.ts";
+import type { CatalogDesk, DeliveryDesk, RefiningDesk } from "./fulfilment.ts";
 
 export interface AppContext {
   db: Db;
@@ -12,6 +13,10 @@ export interface AppContext {
   orders: OrderEngine;
   /** kasa talimatları (Sprint 3, R4); buildApp içinde atanır */
   vault: VaultDesk;
+  /** fiziksel teslimat, katalog ve rafinasyon (Sprint 4, R6 ve R7) */
+  deliveries: DeliveryDesk;
+  refining: RefiningDesk;
+  catalog: CatalogDesk;
   /** bildirim oluşturur ve canlı akışa düşürür */
   notify: (type: string, title: string, body?: string, relatedId?: string) => number;
   /** elle aksiyon günlüğü */

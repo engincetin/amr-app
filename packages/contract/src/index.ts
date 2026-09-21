@@ -282,6 +282,112 @@ export const VaultStatement = Type.Object({
 });
 export type VaultStatement = Static<typeof VaultStatement>;
 
+// ---------- Fiziksel teslimat (10) ----------
+export const DeliveryStatus = Type.Union([
+  Type.Literal("REQUESTED"), Type.Literal("QUOTED"), Type.Literal("APPROVED"), Type.Literal("PREPARING"),
+  Type.Literal("READY"), Type.Literal("SHIPPED"), Type.Literal("DELIVERED"), Type.Literal("CANCELLED"), Type.Literal("FAILED"),
+]);
+export type DeliveryStatus = Static<typeof DeliveryStatus>;
+
+export const DeliveryRequestBody = Type.Object({
+  qty_mg: Type.Integer({ minimum: 1, description: "standart külçe toplamı" }),
+  address_ref: Type.String({ description: "adres referansı; müşteri adı taşımaz, KZ tarafında çözülür" }),
+  insured_party_ref: Type.String({ description: "taşıma sigortası lehtarı referansı" }),
+  ref: Type.String({ description: "Kanzasset referans numarası" }),
+});
+
+/** Lojistik Teklifi: rafineri taşıyıcıdan aldığı fiyatı girer, KZ onaylar (varsayılan geçerlilik 24 sa). */
+export const LogisticsQuote = Type.Object({
+  quote_id: Type.String(),
+  carrier: Type.String(),
+  amount_cents: Type.Integer({ minimum: 0 }),
+  ccy: Ccy,
+  valid_until: IsoTs,
+  doc_id: Type.Optional(Type.String()),
+});
+export type LogisticsQuote = Static<typeof LogisticsQuote>;
+
+export const Delivery = Type.Object({
+  delivery_id: Type.String(),
+  qty_mg: Type.Integer(),
+  address_ref: Type.String(),
+  insured_party_ref: Type.String(),
+  ref: Type.String(),
+  status: DeliveryStatus,
+  quote: Type.Optional(LogisticsQuote),
+  carrier: Type.Optional(Type.String()),
+  tracking_no: Type.Optional(Type.String()),
+  shipping_doc_id: Type.Optional(Type.String({ description: "Sevkiyat Fişi" })),
+  pod_doc_id: Type.Optional(Type.String({ description: "Teslimat Kaydı" })),
+  reject_reason: Type.Optional(Type.String()),
+  requested_ts: IsoTs,
+  history: Type.Optional(Type.Array(Type.Object({ status: DeliveryStatus, ts: IsoTs, note: Type.Optional(Type.String()) }))),
+});
+export type Delivery = Static<typeof Delivery>;
+
+// ---------- Rafinasyon (11) ----------
+export const CatalogItem = Type.Object({
+  item_id: Type.String(),
+  name: Type.String(),
+  weight_mg: Type.Integer({ minimum: 1, description: "ürünün saf gramajı" }),
+  fineness: Type.String({ description: "ayar, ör. 999.9" }),
+  unit_price_cents: Type.Integer({ minimum: 0, description: "kalem başına tarife (işçilik)" }),
+  ccy: Ccy,
+  lead_time_days: Type.Integer({ minimum: 0 }),
+  active: Type.Boolean(),
+});
+export type CatalogItem = Static<typeof CatalogItem>;
+export const Catalog = Type.Object({ version: Type.Integer(), items: Type.Array(CatalogItem), updated_ts: IsoTs });
+export type Catalog = Static<typeof Catalog>;
+
+export const RefiningStatus = Type.Union([
+  Type.Literal("REQUESTED"), Type.Literal("QUOTED"), Type.Literal("APPROVED"), Type.Literal("IN_PRODUCTION"),
+  Type.Literal("READY"), Type.Literal("SHIPPED"), Type.Literal("DELIVERED"), Type.Literal("CANCELLED"), Type.Literal("FAILED"),
+]);
+export type RefiningStatus = Static<typeof RefiningStatus>;
+
+export const RefiningRequestBody = Type.Object({
+  items: Type.Array(Type.Object({ item_id: Type.String(), qty: Type.Integer({ minimum: 1 }) }), { minItems: 1 }),
+  address_ref: Type.String(),
+  insured_party_ref: Type.String(),
+  ref: Type.String(),
+});
+
+/** Rafinasyon Teklifi: ürün bedeli + lojistik, üretim süresi (varsayılan geçerlilik 48 sa). */
+export const RefiningQuote = Type.Object({
+  quote_id: Type.String(),
+  product_cents: Type.Integer({ minimum: 0 }),
+  logistics_cents: Type.Integer({ minimum: 0 }),
+  ccy: Ccy,
+  lead_time_days: Type.Integer({ minimum: 0 }),
+  carrier: Type.Optional(Type.String()),
+  valid_until: IsoTs,
+  doc_id: Type.Optional(Type.String()),
+});
+export type RefiningQuote = Static<typeof RefiningQuote>;
+
+export const Refining = Type.Object({
+  refining_id: Type.String(),
+  items: Type.Array(Type.Object({ item_id: Type.String(), name: Type.String(), qty: Type.Integer(), weight_mg: Type.Integer() })),
+  total_mg: Type.Integer({ description: "ürünlerin toplam saf gramı" }),
+  address_ref: Type.String(),
+  insured_party_ref: Type.String(),
+  ref: Type.String(),
+  status: RefiningStatus,
+  quote: Type.Optional(RefiningQuote),
+  carrier: Type.Optional(Type.String()),
+  tracking_no: Type.Optional(Type.String()),
+  shipping_doc_id: Type.Optional(Type.String()),
+  pod_doc_id: Type.Optional(Type.String()),
+  reject_reason: Type.Optional(Type.String()),
+  requested_ts: IsoTs,
+  history: Type.Optional(Type.Array(Type.Object({ status: RefiningStatus, ts: IsoTs, note: Type.Optional(Type.String()) }))),
+});
+export type Refining = Static<typeof Refining>;
+
+/** Teklif geçerlilik süreleri (Parametreler): lojistik 24 sa, rafinasyon 48 sa. */
+export const QUOTE_RULES = { deliveryValidHours: 24, refiningValidHours: 48 } as const;
+
 // ---------- Olay zarfı (06) ----------
 export const EVENT_TYPES = [
   "order.filled", "order.rejected", "order.cancelled",

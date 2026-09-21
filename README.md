@@ -63,6 +63,7 @@ Test: `npm test`. OpenAPI: `npm run openapi:export` → `openapi.json` (repo kö
 - REST `/v1/*`: başlıklar `X-API-Key`, `X-Timestamp`, `X-Signature = HMAC-SHA256(secret, ts + METHOD + path + ham gövde)`, POST'ta `Idempotency-Key`. Zaman sapması en çok 5 dk.
 - Soket `/v1/prices`: ilk mesaj `auth {api_key, ts, sig}` (imza `ts + "GET" + "/v1/prices"`), sonra `subscribed`, `snapshot`, `tick` (yalnız değişince, saniyede en çok 1), `heartbeat` (5 sn), `halt {reason}`, `resume` (+snapshot).
 - Emirler: `POST /v1/orders` (FOK, `quote_seq`, `limit_px`, `time_limit_ms`) · `GET /v1/orders/{id}` · `POST /v1/orders/{id}/cancel` (kesin cevap). Fill cevabında bakiye bilgisi (`account`) ve alışta Tahsis Belgesi.
+- Teslimat ve rafinasyon: `POST /v1/deliveries` · `POST /v1/deliveries/{id}/approve|cancel` · `GET /v1/catalog` · `POST /v1/refining` · `POST /v1/refining/{id}/approve|cancel`. Her adımda `delivery.*` ve `refining.*` olayı gider.
 - Kasa talimatları: `POST /v1/vault/in` · `POST /v1/vault/out` (gövde `qty_mg` + `ref`; `ref` tekildir, aynı ref aynı talebi döner) · `GET /v1/vault/requests/{id}`. Kabulde Kasa Giriş / Çıkış Fişi ve bakiye bilgisi olayla gider.
 - Hesap: `GET /v1/account` (anlık fotoğraf) · `GET /v1/current-account/statement` · `GET /v1/vault/statement?date=` (günlük kasa ekstresi, rezerv kanıtı) · `GET /v1/documents/{id}`.
 - Olaylar (webhook): her durum değişikliği KZ olay adresine POST edilir (`order.*`, `price.halt / resume`, `settlement.requested` ...), aynı imza başlıkları, 2xx değilse üstel bekleme ile tekrar.
@@ -90,6 +91,6 @@ curl -X POST localhost:4110/control/jump -H 'content-type: application/json' -d 
 | 1 ✓ | iskelet, sözleşme, mock merkez, fiyat soketi, merkez bağlantısı, yayın durdur / başlat, bildirimler, ayarlar | R1, R2, R10 |
 | 2 ✓ | emirler (fill / red / iptal, Tahsis Belgesi), bakiye bilgisi, cari hesap ve limit (K3), olaylar (webhook), cevapsız emir | R3, R5 |
 | 3 ✓ | kasa talimatları (kabul / red, kasaya konuluyor / konuldu, T+3), Kasa Giriş / Çıkış Fişi, günlük kasa ekstresi, büyük alış / satış karşılığı | R4 |
-| 4 | fiziksel teslimat (lojistik teklifi, Sevkiyat Fişi, takip no), rafinasyon + katalog | R6, R7 |
+| 4 ✓ | fiziksel teslimat (lojistik teklifi, Sevkiyat Fişi, takip no, teslimat kaydı), rafinasyon + katalog | R6, R7 |
 | 5 | mahsuplaşma (kesim saati otomatik, talep iki yönlü), belgeler, kullanıcılar | R8, R9 |
 | 6 | demo senaryoları S0..S9, kullanım kılavuzu, teslim paketi | |

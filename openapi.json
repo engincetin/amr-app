@@ -2549,6 +2549,2390 @@
         }
       }
     },
+    "/v1/deliveries": {
+      "post": {
+        "summary": "Fiziksel teslimat talebi (10): gram · adres referansı · sigorta lehtarı referansı. Kasada yeterli gram yoksa red.",
+        "parameters": [
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Timestamp",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "X-Signature",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "HMAC-SHA256(secret, ts + METHOD + path + body) hex"
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "qty_mg",
+                  "address_ref",
+                  "insured_party_ref",
+                  "ref"
+                ],
+                "properties": {
+                  "qty_mg": {
+                    "minimum": 1,
+                    "description": "standart külçe toplamı",
+                    "type": "integer"
+                  },
+                  "address_ref": {
+                    "description": "adres referansı; müşteri adı taşımaz, KZ tarafında çözülür",
+                    "type": "string"
+                  },
+                  "insured_party_ref": {
+                    "description": "taşıma sigortası lehtarı referansı",
+                    "type": "string"
+                  },
+                  "ref": {
+                    "description": "Kanzasset referans numarası",
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "REQUESTED; aynı ref ile tekrar aynı talebi döner",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "delivery_id",
+                    "qty_mg",
+                    "address_ref",
+                    "insured_party_ref",
+                    "ref",
+                    "status",
+                    "requested_ts"
+                  ],
+                  "properties": {
+                    "delivery_id": {
+                      "type": "string"
+                    },
+                    "qty_mg": {
+                      "type": "integer"
+                    },
+                    "address_ref": {
+                      "type": "string"
+                    },
+                    "insured_party_ref": {
+                      "type": "string"
+                    },
+                    "ref": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "anyOf": [
+                        {
+                          "const": "REQUESTED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "QUOTED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "APPROVED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "PREPARING",
+                          "type": "string"
+                        },
+                        {
+                          "const": "READY",
+                          "type": "string"
+                        },
+                        {
+                          "const": "SHIPPED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "DELIVERED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "CANCELLED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "FAILED",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "quote": {
+                      "type": "object",
+                      "required": [
+                        "quote_id",
+                        "carrier",
+                        "amount_cents",
+                        "ccy",
+                        "valid_until"
+                      ],
+                      "properties": {
+                        "quote_id": {
+                          "type": "string"
+                        },
+                        "carrier": {
+                          "type": "string"
+                        },
+                        "amount_cents": {
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "ccy": {
+                          "anyOf": [
+                            {
+                              "const": "USD",
+                              "type": "string"
+                            },
+                            {
+                              "const": "EUR",
+                              "type": "string"
+                            },
+                            {
+                              "const": "AED",
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "valid_until": {
+                          "description": "ISO 8601 UTC",
+                          "type": "string"
+                        },
+                        "doc_id": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "carrier": {
+                      "type": "string"
+                    },
+                    "tracking_no": {
+                      "type": "string"
+                    },
+                    "shipping_doc_id": {
+                      "description": "Sevkiyat Fişi",
+                      "type": "string"
+                    },
+                    "pod_doc_id": {
+                      "description": "Teslimat Kaydı",
+                      "type": "string"
+                    },
+                    "reject_reason": {
+                      "type": "string"
+                    },
+                    "requested_ts": {
+                      "description": "ISO 8601 UTC",
+                      "type": "string"
+                    },
+                    "history": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "status",
+                          "ts"
+                        ],
+                        "properties": {
+                          "status": {
+                            "anyOf": [
+                              {
+                                "const": "REQUESTED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "QUOTED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "APPROVED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "PREPARING",
+                                "type": "string"
+                              },
+                              {
+                                "const": "READY",
+                                "type": "string"
+                              },
+                              {
+                                "const": "SHIPPED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "DELIVERED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "CANCELLED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "FAILED",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "ts": {
+                            "description": "ISO 8601 UTC",
+                            "type": "string"
+                          },
+                          "note": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "geçersiz talep"
+          },
+          "409": {
+            "description": "kasada yetersiz (INSUFFICIENT_VAULT)"
+          }
+        }
+      }
+    },
+    "/v1/deliveries/{id}": {
+      "get": {
+        "summary": "Teslimat durumu ve geçmişi",
+        "parameters": [
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Timestamp",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "X-Signature",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "HMAC-SHA256(secret, ts + METHOD + path + body) hex"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "delivery_id",
+                    "qty_mg",
+                    "address_ref",
+                    "insured_party_ref",
+                    "ref",
+                    "status",
+                    "requested_ts"
+                  ],
+                  "properties": {
+                    "delivery_id": {
+                      "type": "string"
+                    },
+                    "qty_mg": {
+                      "type": "integer"
+                    },
+                    "address_ref": {
+                      "type": "string"
+                    },
+                    "insured_party_ref": {
+                      "type": "string"
+                    },
+                    "ref": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "anyOf": [
+                        {
+                          "const": "REQUESTED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "QUOTED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "APPROVED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "PREPARING",
+                          "type": "string"
+                        },
+                        {
+                          "const": "READY",
+                          "type": "string"
+                        },
+                        {
+                          "const": "SHIPPED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "DELIVERED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "CANCELLED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "FAILED",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "quote": {
+                      "type": "object",
+                      "required": [
+                        "quote_id",
+                        "carrier",
+                        "amount_cents",
+                        "ccy",
+                        "valid_until"
+                      ],
+                      "properties": {
+                        "quote_id": {
+                          "type": "string"
+                        },
+                        "carrier": {
+                          "type": "string"
+                        },
+                        "amount_cents": {
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "ccy": {
+                          "anyOf": [
+                            {
+                              "const": "USD",
+                              "type": "string"
+                            },
+                            {
+                              "const": "EUR",
+                              "type": "string"
+                            },
+                            {
+                              "const": "AED",
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "valid_until": {
+                          "description": "ISO 8601 UTC",
+                          "type": "string"
+                        },
+                        "doc_id": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "carrier": {
+                      "type": "string"
+                    },
+                    "tracking_no": {
+                      "type": "string"
+                    },
+                    "shipping_doc_id": {
+                      "description": "Sevkiyat Fişi",
+                      "type": "string"
+                    },
+                    "pod_doc_id": {
+                      "description": "Teslimat Kaydı",
+                      "type": "string"
+                    },
+                    "reject_reason": {
+                      "type": "string"
+                    },
+                    "requested_ts": {
+                      "description": "ISO 8601 UTC",
+                      "type": "string"
+                    },
+                    "history": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "status",
+                          "ts"
+                        ],
+                        "properties": {
+                          "status": {
+                            "anyOf": [
+                              {
+                                "const": "REQUESTED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "QUOTED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "APPROVED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "PREPARING",
+                                "type": "string"
+                              },
+                              {
+                                "const": "READY",
+                                "type": "string"
+                              },
+                              {
+                                "const": "SHIPPED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "DELIVERED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "CANCELLED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "FAILED",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "ts": {
+                            "description": "ISO 8601 UTC",
+                            "type": "string"
+                          },
+                          "note": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "talep yok"
+          }
+        }
+      }
+    },
+    "/v1/deliveries/{id}/approve": {
+      "post": {
+        "summary": "Lojistik teklifini onayla (yalnız QUOTED iken ve teklif geçerliyken); onayla lojistik bedeli cari hesaba kalem olur",
+        "parameters": [
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Timestamp",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "X-Signature",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "HMAC-SHA256(secret, ts + METHOD + path + body) hex"
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "quote_id": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "delivery_id",
+                    "qty_mg",
+                    "address_ref",
+                    "insured_party_ref",
+                    "ref",
+                    "status",
+                    "requested_ts"
+                  ],
+                  "properties": {
+                    "delivery_id": {
+                      "type": "string"
+                    },
+                    "qty_mg": {
+                      "type": "integer"
+                    },
+                    "address_ref": {
+                      "type": "string"
+                    },
+                    "insured_party_ref": {
+                      "type": "string"
+                    },
+                    "ref": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "anyOf": [
+                        {
+                          "const": "REQUESTED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "QUOTED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "APPROVED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "PREPARING",
+                          "type": "string"
+                        },
+                        {
+                          "const": "READY",
+                          "type": "string"
+                        },
+                        {
+                          "const": "SHIPPED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "DELIVERED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "CANCELLED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "FAILED",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "quote": {
+                      "type": "object",
+                      "required": [
+                        "quote_id",
+                        "carrier",
+                        "amount_cents",
+                        "ccy",
+                        "valid_until"
+                      ],
+                      "properties": {
+                        "quote_id": {
+                          "type": "string"
+                        },
+                        "carrier": {
+                          "type": "string"
+                        },
+                        "amount_cents": {
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "ccy": {
+                          "anyOf": [
+                            {
+                              "const": "USD",
+                              "type": "string"
+                            },
+                            {
+                              "const": "EUR",
+                              "type": "string"
+                            },
+                            {
+                              "const": "AED",
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "valid_until": {
+                          "description": "ISO 8601 UTC",
+                          "type": "string"
+                        },
+                        "doc_id": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "carrier": {
+                      "type": "string"
+                    },
+                    "tracking_no": {
+                      "type": "string"
+                    },
+                    "shipping_doc_id": {
+                      "description": "Sevkiyat Fişi",
+                      "type": "string"
+                    },
+                    "pod_doc_id": {
+                      "description": "Teslimat Kaydı",
+                      "type": "string"
+                    },
+                    "reject_reason": {
+                      "type": "string"
+                    },
+                    "requested_ts": {
+                      "description": "ISO 8601 UTC",
+                      "type": "string"
+                    },
+                    "history": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "status",
+                          "ts"
+                        ],
+                        "properties": {
+                          "status": {
+                            "anyOf": [
+                              {
+                                "const": "REQUESTED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "QUOTED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "APPROVED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "PREPARING",
+                                "type": "string"
+                              },
+                              {
+                                "const": "READY",
+                                "type": "string"
+                              },
+                              {
+                                "const": "SHIPPED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "DELIVERED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "CANCELLED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "FAILED",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "ts": {
+                            "description": "ISO 8601 UTC",
+                            "type": "string"
+                          },
+                          "note": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "durum ya da teklif süresi (QUOTE_EXPIRED)"
+          }
+        }
+      }
+    },
+    "/v1/deliveries/{id}/cancel": {
+      "post": {
+        "summary": "Teslimat iptali (sevkiyattan önce); READY'den iptalde külçe kasaya döner",
+        "parameters": [
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Timestamp",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "X-Signature",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "HMAC-SHA256(secret, ts + METHOD + path + body) hex"
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "delivery_id",
+                    "qty_mg",
+                    "address_ref",
+                    "insured_party_ref",
+                    "ref",
+                    "status",
+                    "requested_ts"
+                  ],
+                  "properties": {
+                    "delivery_id": {
+                      "type": "string"
+                    },
+                    "qty_mg": {
+                      "type": "integer"
+                    },
+                    "address_ref": {
+                      "type": "string"
+                    },
+                    "insured_party_ref": {
+                      "type": "string"
+                    },
+                    "ref": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "anyOf": [
+                        {
+                          "const": "REQUESTED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "QUOTED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "APPROVED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "PREPARING",
+                          "type": "string"
+                        },
+                        {
+                          "const": "READY",
+                          "type": "string"
+                        },
+                        {
+                          "const": "SHIPPED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "DELIVERED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "CANCELLED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "FAILED",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "quote": {
+                      "type": "object",
+                      "required": [
+                        "quote_id",
+                        "carrier",
+                        "amount_cents",
+                        "ccy",
+                        "valid_until"
+                      ],
+                      "properties": {
+                        "quote_id": {
+                          "type": "string"
+                        },
+                        "carrier": {
+                          "type": "string"
+                        },
+                        "amount_cents": {
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "ccy": {
+                          "anyOf": [
+                            {
+                              "const": "USD",
+                              "type": "string"
+                            },
+                            {
+                              "const": "EUR",
+                              "type": "string"
+                            },
+                            {
+                              "const": "AED",
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "valid_until": {
+                          "description": "ISO 8601 UTC",
+                          "type": "string"
+                        },
+                        "doc_id": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "carrier": {
+                      "type": "string"
+                    },
+                    "tracking_no": {
+                      "type": "string"
+                    },
+                    "shipping_doc_id": {
+                      "description": "Sevkiyat Fişi",
+                      "type": "string"
+                    },
+                    "pod_doc_id": {
+                      "description": "Teslimat Kaydı",
+                      "type": "string"
+                    },
+                    "reject_reason": {
+                      "type": "string"
+                    },
+                    "requested_ts": {
+                      "description": "ISO 8601 UTC",
+                      "type": "string"
+                    },
+                    "history": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "status",
+                          "ts"
+                        ],
+                        "properties": {
+                          "status": {
+                            "anyOf": [
+                              {
+                                "const": "REQUESTED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "QUOTED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "APPROVED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "PREPARING",
+                                "type": "string"
+                              },
+                              {
+                                "const": "READY",
+                                "type": "string"
+                              },
+                              {
+                                "const": "SHIPPED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "DELIVERED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "CANCELLED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "FAILED",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "ts": {
+                            "description": "ISO 8601 UTC",
+                            "type": "string"
+                          },
+                          "note": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "durum uygun değil"
+          }
+        }
+      }
+    },
+    "/v1/catalog": {
+      "get": {
+        "summary": "Rafinasyon ürün kataloğu (11): ürün · gramaj · ayar · tarife · üretim süresi. Değişince catalog.updated olayı gider.",
+        "parameters": [
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Timestamp",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "X-Signature",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "HMAC-SHA256(secret, ts + METHOD + path + body) hex"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "version",
+                    "items",
+                    "updated_ts"
+                  ],
+                  "properties": {
+                    "version": {
+                      "type": "integer"
+                    },
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "item_id",
+                          "name",
+                          "weight_mg",
+                          "fineness",
+                          "unit_price_cents",
+                          "ccy",
+                          "lead_time_days",
+                          "active"
+                        ],
+                        "properties": {
+                          "item_id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "weight_mg": {
+                            "minimum": 1,
+                            "description": "ürünün saf gramajı",
+                            "type": "integer"
+                          },
+                          "fineness": {
+                            "description": "ayar, ör. 999.9",
+                            "type": "string"
+                          },
+                          "unit_price_cents": {
+                            "minimum": 0,
+                            "description": "kalem başına tarife (işçilik)",
+                            "type": "integer"
+                          },
+                          "ccy": {
+                            "anyOf": [
+                              {
+                                "const": "USD",
+                                "type": "string"
+                              },
+                              {
+                                "const": "EUR",
+                                "type": "string"
+                              },
+                              {
+                                "const": "AED",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "lead_time_days": {
+                            "minimum": 0,
+                            "type": "integer"
+                          },
+                          "active": {
+                            "type": "boolean"
+                          }
+                        }
+                      }
+                    },
+                    "updated_ts": {
+                      "description": "ISO 8601 UTC",
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/refining": {
+      "post": {
+        "summary": "Rafinasyon talebi (11): katalog kalemleri × adet. Kasada toplam saf gram yeterli olmalı.",
+        "parameters": [
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Timestamp",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "X-Signature",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "HMAC-SHA256(secret, ts + METHOD + path + body) hex"
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "items",
+                  "address_ref",
+                  "insured_party_ref",
+                  "ref"
+                ],
+                "properties": {
+                  "items": {
+                    "minItems": 1,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "item_id",
+                        "qty"
+                      ],
+                      "properties": {
+                        "item_id": {
+                          "type": "string"
+                        },
+                        "qty": {
+                          "minimum": 1,
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  },
+                  "address_ref": {
+                    "type": "string"
+                  },
+                  "insured_party_ref": {
+                    "type": "string"
+                  },
+                  "ref": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "REQUESTED · total_mg hesaplanır",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "refining_id",
+                    "items",
+                    "total_mg",
+                    "address_ref",
+                    "insured_party_ref",
+                    "ref",
+                    "status",
+                    "requested_ts"
+                  ],
+                  "properties": {
+                    "refining_id": {
+                      "type": "string"
+                    },
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "item_id",
+                          "name",
+                          "qty",
+                          "weight_mg"
+                        ],
+                        "properties": {
+                          "item_id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "qty": {
+                            "type": "integer"
+                          },
+                          "weight_mg": {
+                            "type": "integer"
+                          }
+                        }
+                      }
+                    },
+                    "total_mg": {
+                      "description": "ürünlerin toplam saf gramı",
+                      "type": "integer"
+                    },
+                    "address_ref": {
+                      "type": "string"
+                    },
+                    "insured_party_ref": {
+                      "type": "string"
+                    },
+                    "ref": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "anyOf": [
+                        {
+                          "const": "REQUESTED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "QUOTED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "APPROVED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "IN_PRODUCTION",
+                          "type": "string"
+                        },
+                        {
+                          "const": "READY",
+                          "type": "string"
+                        },
+                        {
+                          "const": "SHIPPED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "DELIVERED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "CANCELLED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "FAILED",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "quote": {
+                      "type": "object",
+                      "required": [
+                        "quote_id",
+                        "product_cents",
+                        "logistics_cents",
+                        "ccy",
+                        "lead_time_days",
+                        "valid_until"
+                      ],
+                      "properties": {
+                        "quote_id": {
+                          "type": "string"
+                        },
+                        "product_cents": {
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "logistics_cents": {
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "ccy": {
+                          "anyOf": [
+                            {
+                              "const": "USD",
+                              "type": "string"
+                            },
+                            {
+                              "const": "EUR",
+                              "type": "string"
+                            },
+                            {
+                              "const": "AED",
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "lead_time_days": {
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "carrier": {
+                          "type": "string"
+                        },
+                        "valid_until": {
+                          "description": "ISO 8601 UTC",
+                          "type": "string"
+                        },
+                        "doc_id": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "carrier": {
+                      "type": "string"
+                    },
+                    "tracking_no": {
+                      "type": "string"
+                    },
+                    "shipping_doc_id": {
+                      "type": "string"
+                    },
+                    "pod_doc_id": {
+                      "type": "string"
+                    },
+                    "reject_reason": {
+                      "type": "string"
+                    },
+                    "requested_ts": {
+                      "description": "ISO 8601 UTC",
+                      "type": "string"
+                    },
+                    "history": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "status",
+                          "ts"
+                        ],
+                        "properties": {
+                          "status": {
+                            "anyOf": [
+                              {
+                                "const": "REQUESTED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "QUOTED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "APPROVED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "IN_PRODUCTION",
+                                "type": "string"
+                              },
+                              {
+                                "const": "READY",
+                                "type": "string"
+                              },
+                              {
+                                "const": "SHIPPED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "DELIVERED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "CANCELLED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "FAILED",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "ts": {
+                            "description": "ISO 8601 UTC",
+                            "type": "string"
+                          },
+                          "note": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "geçersiz kalem"
+          },
+          "409": {
+            "description": "kasada yetersiz (INSUFFICIENT_VAULT)"
+          }
+        }
+      }
+    },
+    "/v1/refining/{id}": {
+      "get": {
+        "summary": "Rafinasyon durumu ve geçmişi",
+        "parameters": [
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Timestamp",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "X-Signature",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "HMAC-SHA256(secret, ts + METHOD + path + body) hex"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "refining_id",
+                    "items",
+                    "total_mg",
+                    "address_ref",
+                    "insured_party_ref",
+                    "ref",
+                    "status",
+                    "requested_ts"
+                  ],
+                  "properties": {
+                    "refining_id": {
+                      "type": "string"
+                    },
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "item_id",
+                          "name",
+                          "qty",
+                          "weight_mg"
+                        ],
+                        "properties": {
+                          "item_id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "qty": {
+                            "type": "integer"
+                          },
+                          "weight_mg": {
+                            "type": "integer"
+                          }
+                        }
+                      }
+                    },
+                    "total_mg": {
+                      "description": "ürünlerin toplam saf gramı",
+                      "type": "integer"
+                    },
+                    "address_ref": {
+                      "type": "string"
+                    },
+                    "insured_party_ref": {
+                      "type": "string"
+                    },
+                    "ref": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "anyOf": [
+                        {
+                          "const": "REQUESTED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "QUOTED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "APPROVED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "IN_PRODUCTION",
+                          "type": "string"
+                        },
+                        {
+                          "const": "READY",
+                          "type": "string"
+                        },
+                        {
+                          "const": "SHIPPED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "DELIVERED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "CANCELLED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "FAILED",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "quote": {
+                      "type": "object",
+                      "required": [
+                        "quote_id",
+                        "product_cents",
+                        "logistics_cents",
+                        "ccy",
+                        "lead_time_days",
+                        "valid_until"
+                      ],
+                      "properties": {
+                        "quote_id": {
+                          "type": "string"
+                        },
+                        "product_cents": {
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "logistics_cents": {
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "ccy": {
+                          "anyOf": [
+                            {
+                              "const": "USD",
+                              "type": "string"
+                            },
+                            {
+                              "const": "EUR",
+                              "type": "string"
+                            },
+                            {
+                              "const": "AED",
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "lead_time_days": {
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "carrier": {
+                          "type": "string"
+                        },
+                        "valid_until": {
+                          "description": "ISO 8601 UTC",
+                          "type": "string"
+                        },
+                        "doc_id": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "carrier": {
+                      "type": "string"
+                    },
+                    "tracking_no": {
+                      "type": "string"
+                    },
+                    "shipping_doc_id": {
+                      "type": "string"
+                    },
+                    "pod_doc_id": {
+                      "type": "string"
+                    },
+                    "reject_reason": {
+                      "type": "string"
+                    },
+                    "requested_ts": {
+                      "description": "ISO 8601 UTC",
+                      "type": "string"
+                    },
+                    "history": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "status",
+                          "ts"
+                        ],
+                        "properties": {
+                          "status": {
+                            "anyOf": [
+                              {
+                                "const": "REQUESTED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "QUOTED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "APPROVED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "IN_PRODUCTION",
+                                "type": "string"
+                              },
+                              {
+                                "const": "READY",
+                                "type": "string"
+                              },
+                              {
+                                "const": "SHIPPED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "DELIVERED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "CANCELLED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "FAILED",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "ts": {
+                            "description": "ISO 8601 UTC",
+                            "type": "string"
+                          },
+                          "note": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "talep yok"
+          }
+        }
+      }
+    },
+    "/v1/refining/{id}/approve": {
+      "post": {
+        "summary": "Rafinasyon teklifini onayla (yalnız QUOTED iken); onayla ürün bedeli + lojistik cari hesaba kalem olur",
+        "parameters": [
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Timestamp",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "X-Signature",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "HMAC-SHA256(secret, ts + METHOD + path + body) hex"
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "quote_id": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "refining_id",
+                    "items",
+                    "total_mg",
+                    "address_ref",
+                    "insured_party_ref",
+                    "ref",
+                    "status",
+                    "requested_ts"
+                  ],
+                  "properties": {
+                    "refining_id": {
+                      "type": "string"
+                    },
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "item_id",
+                          "name",
+                          "qty",
+                          "weight_mg"
+                        ],
+                        "properties": {
+                          "item_id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "qty": {
+                            "type": "integer"
+                          },
+                          "weight_mg": {
+                            "type": "integer"
+                          }
+                        }
+                      }
+                    },
+                    "total_mg": {
+                      "description": "ürünlerin toplam saf gramı",
+                      "type": "integer"
+                    },
+                    "address_ref": {
+                      "type": "string"
+                    },
+                    "insured_party_ref": {
+                      "type": "string"
+                    },
+                    "ref": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "anyOf": [
+                        {
+                          "const": "REQUESTED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "QUOTED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "APPROVED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "IN_PRODUCTION",
+                          "type": "string"
+                        },
+                        {
+                          "const": "READY",
+                          "type": "string"
+                        },
+                        {
+                          "const": "SHIPPED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "DELIVERED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "CANCELLED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "FAILED",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "quote": {
+                      "type": "object",
+                      "required": [
+                        "quote_id",
+                        "product_cents",
+                        "logistics_cents",
+                        "ccy",
+                        "lead_time_days",
+                        "valid_until"
+                      ],
+                      "properties": {
+                        "quote_id": {
+                          "type": "string"
+                        },
+                        "product_cents": {
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "logistics_cents": {
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "ccy": {
+                          "anyOf": [
+                            {
+                              "const": "USD",
+                              "type": "string"
+                            },
+                            {
+                              "const": "EUR",
+                              "type": "string"
+                            },
+                            {
+                              "const": "AED",
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "lead_time_days": {
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "carrier": {
+                          "type": "string"
+                        },
+                        "valid_until": {
+                          "description": "ISO 8601 UTC",
+                          "type": "string"
+                        },
+                        "doc_id": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "carrier": {
+                      "type": "string"
+                    },
+                    "tracking_no": {
+                      "type": "string"
+                    },
+                    "shipping_doc_id": {
+                      "type": "string"
+                    },
+                    "pod_doc_id": {
+                      "type": "string"
+                    },
+                    "reject_reason": {
+                      "type": "string"
+                    },
+                    "requested_ts": {
+                      "description": "ISO 8601 UTC",
+                      "type": "string"
+                    },
+                    "history": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "status",
+                          "ts"
+                        ],
+                        "properties": {
+                          "status": {
+                            "anyOf": [
+                              {
+                                "const": "REQUESTED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "QUOTED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "APPROVED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "IN_PRODUCTION",
+                                "type": "string"
+                              },
+                              {
+                                "const": "READY",
+                                "type": "string"
+                              },
+                              {
+                                "const": "SHIPPED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "DELIVERED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "CANCELLED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "FAILED",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "ts": {
+                            "description": "ISO 8601 UTC",
+                            "type": "string"
+                          },
+                          "note": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "durum ya da teklif süresi (QUOTE_EXPIRED)"
+          }
+        }
+      }
+    },
+    "/v1/refining/{id}/cancel": {
+      "post": {
+        "summary": "Rafinasyon iptali (üretime girmeden)",
+        "parameters": [
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Timestamp",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "X-Signature",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "HMAC-SHA256(secret, ts + METHOD + path + body) hex"
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "refining_id",
+                    "items",
+                    "total_mg",
+                    "address_ref",
+                    "insured_party_ref",
+                    "ref",
+                    "status",
+                    "requested_ts"
+                  ],
+                  "properties": {
+                    "refining_id": {
+                      "type": "string"
+                    },
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "item_id",
+                          "name",
+                          "qty",
+                          "weight_mg"
+                        ],
+                        "properties": {
+                          "item_id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "qty": {
+                            "type": "integer"
+                          },
+                          "weight_mg": {
+                            "type": "integer"
+                          }
+                        }
+                      }
+                    },
+                    "total_mg": {
+                      "description": "ürünlerin toplam saf gramı",
+                      "type": "integer"
+                    },
+                    "address_ref": {
+                      "type": "string"
+                    },
+                    "insured_party_ref": {
+                      "type": "string"
+                    },
+                    "ref": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "anyOf": [
+                        {
+                          "const": "REQUESTED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "QUOTED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "APPROVED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "IN_PRODUCTION",
+                          "type": "string"
+                        },
+                        {
+                          "const": "READY",
+                          "type": "string"
+                        },
+                        {
+                          "const": "SHIPPED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "DELIVERED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "CANCELLED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "FAILED",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "quote": {
+                      "type": "object",
+                      "required": [
+                        "quote_id",
+                        "product_cents",
+                        "logistics_cents",
+                        "ccy",
+                        "lead_time_days",
+                        "valid_until"
+                      ],
+                      "properties": {
+                        "quote_id": {
+                          "type": "string"
+                        },
+                        "product_cents": {
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "logistics_cents": {
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "ccy": {
+                          "anyOf": [
+                            {
+                              "const": "USD",
+                              "type": "string"
+                            },
+                            {
+                              "const": "EUR",
+                              "type": "string"
+                            },
+                            {
+                              "const": "AED",
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "lead_time_days": {
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "carrier": {
+                          "type": "string"
+                        },
+                        "valid_until": {
+                          "description": "ISO 8601 UTC",
+                          "type": "string"
+                        },
+                        "doc_id": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "carrier": {
+                      "type": "string"
+                    },
+                    "tracking_no": {
+                      "type": "string"
+                    },
+                    "shipping_doc_id": {
+                      "type": "string"
+                    },
+                    "pod_doc_id": {
+                      "type": "string"
+                    },
+                    "reject_reason": {
+                      "type": "string"
+                    },
+                    "requested_ts": {
+                      "description": "ISO 8601 UTC",
+                      "type": "string"
+                    },
+                    "history": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "status",
+                          "ts"
+                        ],
+                        "properties": {
+                          "status": {
+                            "anyOf": [
+                              {
+                                "const": "REQUESTED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "QUOTED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "APPROVED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "IN_PRODUCTION",
+                                "type": "string"
+                              },
+                              {
+                                "const": "READY",
+                                "type": "string"
+                              },
+                              {
+                                "const": "SHIPPED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "DELIVERED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "CANCELLED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "FAILED",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "ts": {
+                            "description": "ISO 8601 UTC",
+                            "type": "string"
+                          },
+                          "note": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "durum uygun değil"
+          }
+        }
+      }
+    },
     "/v1/documents/{id}": {
       "get": {
         "summary": "Belge: Tahsis Belgesi, Kasa Giriş / Çıkış Fişi, ekstreler (JSON içerik + sha256 + HMAC imza)",
@@ -4477,6 +6861,812 @@
             "type": "string"
           },
           "signature": {
+            "type": "string"
+          }
+        }
+      },
+      "DeliveryRequestBody": {
+        "type": "object",
+        "required": [
+          "qty_mg",
+          "address_ref",
+          "insured_party_ref",
+          "ref"
+        ],
+        "properties": {
+          "qty_mg": {
+            "minimum": 1,
+            "description": "standart külçe toplamı",
+            "type": "integer"
+          },
+          "address_ref": {
+            "description": "adres referansı; müşteri adı taşımaz, KZ tarafında çözülür",
+            "type": "string"
+          },
+          "insured_party_ref": {
+            "description": "taşıma sigortası lehtarı referansı",
+            "type": "string"
+          },
+          "ref": {
+            "description": "Kanzasset referans numarası",
+            "type": "string"
+          }
+        }
+      },
+      "Delivery": {
+        "type": "object",
+        "required": [
+          "delivery_id",
+          "qty_mg",
+          "address_ref",
+          "insured_party_ref",
+          "ref",
+          "status",
+          "requested_ts"
+        ],
+        "properties": {
+          "delivery_id": {
+            "type": "string"
+          },
+          "qty_mg": {
+            "type": "integer"
+          },
+          "address_ref": {
+            "type": "string"
+          },
+          "insured_party_ref": {
+            "type": "string"
+          },
+          "ref": {
+            "type": "string"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "const": "REQUESTED",
+                "type": "string"
+              },
+              {
+                "const": "QUOTED",
+                "type": "string"
+              },
+              {
+                "const": "APPROVED",
+                "type": "string"
+              },
+              {
+                "const": "PREPARING",
+                "type": "string"
+              },
+              {
+                "const": "READY",
+                "type": "string"
+              },
+              {
+                "const": "SHIPPED",
+                "type": "string"
+              },
+              {
+                "const": "DELIVERED",
+                "type": "string"
+              },
+              {
+                "const": "CANCELLED",
+                "type": "string"
+              },
+              {
+                "const": "FAILED",
+                "type": "string"
+              }
+            ]
+          },
+          "quote": {
+            "type": "object",
+            "required": [
+              "quote_id",
+              "carrier",
+              "amount_cents",
+              "ccy",
+              "valid_until"
+            ],
+            "properties": {
+              "quote_id": {
+                "type": "string"
+              },
+              "carrier": {
+                "type": "string"
+              },
+              "amount_cents": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "ccy": {
+                "anyOf": [
+                  {
+                    "const": "USD",
+                    "type": "string"
+                  },
+                  {
+                    "const": "EUR",
+                    "type": "string"
+                  },
+                  {
+                    "const": "AED",
+                    "type": "string"
+                  }
+                ]
+              },
+              "valid_until": {
+                "description": "ISO 8601 UTC",
+                "type": "string"
+              },
+              "doc_id": {
+                "type": "string"
+              }
+            }
+          },
+          "carrier": {
+            "type": "string"
+          },
+          "tracking_no": {
+            "type": "string"
+          },
+          "shipping_doc_id": {
+            "description": "Sevkiyat Fişi",
+            "type": "string"
+          },
+          "pod_doc_id": {
+            "description": "Teslimat Kaydı",
+            "type": "string"
+          },
+          "reject_reason": {
+            "type": "string"
+          },
+          "requested_ts": {
+            "description": "ISO 8601 UTC",
+            "type": "string"
+          },
+          "history": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "status",
+                "ts"
+              ],
+              "properties": {
+                "status": {
+                  "anyOf": [
+                    {
+                      "const": "REQUESTED",
+                      "type": "string"
+                    },
+                    {
+                      "const": "QUOTED",
+                      "type": "string"
+                    },
+                    {
+                      "const": "APPROVED",
+                      "type": "string"
+                    },
+                    {
+                      "const": "PREPARING",
+                      "type": "string"
+                    },
+                    {
+                      "const": "READY",
+                      "type": "string"
+                    },
+                    {
+                      "const": "SHIPPED",
+                      "type": "string"
+                    },
+                    {
+                      "const": "DELIVERED",
+                      "type": "string"
+                    },
+                    {
+                      "const": "CANCELLED",
+                      "type": "string"
+                    },
+                    {
+                      "const": "FAILED",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "ts": {
+                  "description": "ISO 8601 UTC",
+                  "type": "string"
+                },
+                "note": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "DeliveryStatus": {
+        "anyOf": [
+          {
+            "const": "REQUESTED",
+            "type": "string"
+          },
+          {
+            "const": "QUOTED",
+            "type": "string"
+          },
+          {
+            "const": "APPROVED",
+            "type": "string"
+          },
+          {
+            "const": "PREPARING",
+            "type": "string"
+          },
+          {
+            "const": "READY",
+            "type": "string"
+          },
+          {
+            "const": "SHIPPED",
+            "type": "string"
+          },
+          {
+            "const": "DELIVERED",
+            "type": "string"
+          },
+          {
+            "const": "CANCELLED",
+            "type": "string"
+          },
+          {
+            "const": "FAILED",
+            "type": "string"
+          }
+        ]
+      },
+      "LogisticsQuote": {
+        "type": "object",
+        "required": [
+          "quote_id",
+          "carrier",
+          "amount_cents",
+          "ccy",
+          "valid_until"
+        ],
+        "properties": {
+          "quote_id": {
+            "type": "string"
+          },
+          "carrier": {
+            "type": "string"
+          },
+          "amount_cents": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "ccy": {
+            "anyOf": [
+              {
+                "const": "USD",
+                "type": "string"
+              },
+              {
+                "const": "EUR",
+                "type": "string"
+              },
+              {
+                "const": "AED",
+                "type": "string"
+              }
+            ]
+          },
+          "valid_until": {
+            "description": "ISO 8601 UTC",
+            "type": "string"
+          },
+          "doc_id": {
+            "type": "string"
+          }
+        }
+      },
+      "Catalog": {
+        "type": "object",
+        "required": [
+          "version",
+          "items",
+          "updated_ts"
+        ],
+        "properties": {
+          "version": {
+            "type": "integer"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "item_id",
+                "name",
+                "weight_mg",
+                "fineness",
+                "unit_price_cents",
+                "ccy",
+                "lead_time_days",
+                "active"
+              ],
+              "properties": {
+                "item_id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "weight_mg": {
+                  "minimum": 1,
+                  "description": "ürünün saf gramajı",
+                  "type": "integer"
+                },
+                "fineness": {
+                  "description": "ayar, ör. 999.9",
+                  "type": "string"
+                },
+                "unit_price_cents": {
+                  "minimum": 0,
+                  "description": "kalem başına tarife (işçilik)",
+                  "type": "integer"
+                },
+                "ccy": {
+                  "anyOf": [
+                    {
+                      "const": "USD",
+                      "type": "string"
+                    },
+                    {
+                      "const": "EUR",
+                      "type": "string"
+                    },
+                    {
+                      "const": "AED",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "lead_time_days": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "active": {
+                  "type": "boolean"
+                }
+              }
+            }
+          },
+          "updated_ts": {
+            "description": "ISO 8601 UTC",
+            "type": "string"
+          }
+        }
+      },
+      "CatalogItem": {
+        "type": "object",
+        "required": [
+          "item_id",
+          "name",
+          "weight_mg",
+          "fineness",
+          "unit_price_cents",
+          "ccy",
+          "lead_time_days",
+          "active"
+        ],
+        "properties": {
+          "item_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "weight_mg": {
+            "minimum": 1,
+            "description": "ürünün saf gramajı",
+            "type": "integer"
+          },
+          "fineness": {
+            "description": "ayar, ör. 999.9",
+            "type": "string"
+          },
+          "unit_price_cents": {
+            "minimum": 0,
+            "description": "kalem başına tarife (işçilik)",
+            "type": "integer"
+          },
+          "ccy": {
+            "anyOf": [
+              {
+                "const": "USD",
+                "type": "string"
+              },
+              {
+                "const": "EUR",
+                "type": "string"
+              },
+              {
+                "const": "AED",
+                "type": "string"
+              }
+            ]
+          },
+          "lead_time_days": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "active": {
+            "type": "boolean"
+          }
+        }
+      },
+      "RefiningRequestBody": {
+        "type": "object",
+        "required": [
+          "items",
+          "address_ref",
+          "insured_party_ref",
+          "ref"
+        ],
+        "properties": {
+          "items": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "item_id",
+                "qty"
+              ],
+              "properties": {
+                "item_id": {
+                  "type": "string"
+                },
+                "qty": {
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "address_ref": {
+            "type": "string"
+          },
+          "insured_party_ref": {
+            "type": "string"
+          },
+          "ref": {
+            "type": "string"
+          }
+        }
+      },
+      "Refining": {
+        "type": "object",
+        "required": [
+          "refining_id",
+          "items",
+          "total_mg",
+          "address_ref",
+          "insured_party_ref",
+          "ref",
+          "status",
+          "requested_ts"
+        ],
+        "properties": {
+          "refining_id": {
+            "type": "string"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "item_id",
+                "name",
+                "qty",
+                "weight_mg"
+              ],
+              "properties": {
+                "item_id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "qty": {
+                  "type": "integer"
+                },
+                "weight_mg": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "total_mg": {
+            "description": "ürünlerin toplam saf gramı",
+            "type": "integer"
+          },
+          "address_ref": {
+            "type": "string"
+          },
+          "insured_party_ref": {
+            "type": "string"
+          },
+          "ref": {
+            "type": "string"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "const": "REQUESTED",
+                "type": "string"
+              },
+              {
+                "const": "QUOTED",
+                "type": "string"
+              },
+              {
+                "const": "APPROVED",
+                "type": "string"
+              },
+              {
+                "const": "IN_PRODUCTION",
+                "type": "string"
+              },
+              {
+                "const": "READY",
+                "type": "string"
+              },
+              {
+                "const": "SHIPPED",
+                "type": "string"
+              },
+              {
+                "const": "DELIVERED",
+                "type": "string"
+              },
+              {
+                "const": "CANCELLED",
+                "type": "string"
+              },
+              {
+                "const": "FAILED",
+                "type": "string"
+              }
+            ]
+          },
+          "quote": {
+            "type": "object",
+            "required": [
+              "quote_id",
+              "product_cents",
+              "logistics_cents",
+              "ccy",
+              "lead_time_days",
+              "valid_until"
+            ],
+            "properties": {
+              "quote_id": {
+                "type": "string"
+              },
+              "product_cents": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "logistics_cents": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "ccy": {
+                "anyOf": [
+                  {
+                    "const": "USD",
+                    "type": "string"
+                  },
+                  {
+                    "const": "EUR",
+                    "type": "string"
+                  },
+                  {
+                    "const": "AED",
+                    "type": "string"
+                  }
+                ]
+              },
+              "lead_time_days": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "carrier": {
+                "type": "string"
+              },
+              "valid_until": {
+                "description": "ISO 8601 UTC",
+                "type": "string"
+              },
+              "doc_id": {
+                "type": "string"
+              }
+            }
+          },
+          "carrier": {
+            "type": "string"
+          },
+          "tracking_no": {
+            "type": "string"
+          },
+          "shipping_doc_id": {
+            "type": "string"
+          },
+          "pod_doc_id": {
+            "type": "string"
+          },
+          "reject_reason": {
+            "type": "string"
+          },
+          "requested_ts": {
+            "description": "ISO 8601 UTC",
+            "type": "string"
+          },
+          "history": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "status",
+                "ts"
+              ],
+              "properties": {
+                "status": {
+                  "anyOf": [
+                    {
+                      "const": "REQUESTED",
+                      "type": "string"
+                    },
+                    {
+                      "const": "QUOTED",
+                      "type": "string"
+                    },
+                    {
+                      "const": "APPROVED",
+                      "type": "string"
+                    },
+                    {
+                      "const": "IN_PRODUCTION",
+                      "type": "string"
+                    },
+                    {
+                      "const": "READY",
+                      "type": "string"
+                    },
+                    {
+                      "const": "SHIPPED",
+                      "type": "string"
+                    },
+                    {
+                      "const": "DELIVERED",
+                      "type": "string"
+                    },
+                    {
+                      "const": "CANCELLED",
+                      "type": "string"
+                    },
+                    {
+                      "const": "FAILED",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "ts": {
+                  "description": "ISO 8601 UTC",
+                  "type": "string"
+                },
+                "note": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "RefiningStatus": {
+        "anyOf": [
+          {
+            "const": "REQUESTED",
+            "type": "string"
+          },
+          {
+            "const": "QUOTED",
+            "type": "string"
+          },
+          {
+            "const": "APPROVED",
+            "type": "string"
+          },
+          {
+            "const": "IN_PRODUCTION",
+            "type": "string"
+          },
+          {
+            "const": "READY",
+            "type": "string"
+          },
+          {
+            "const": "SHIPPED",
+            "type": "string"
+          },
+          {
+            "const": "DELIVERED",
+            "type": "string"
+          },
+          {
+            "const": "CANCELLED",
+            "type": "string"
+          },
+          {
+            "const": "FAILED",
+            "type": "string"
+          }
+        ]
+      },
+      "RefiningQuote": {
+        "type": "object",
+        "required": [
+          "quote_id",
+          "product_cents",
+          "logistics_cents",
+          "ccy",
+          "lead_time_days",
+          "valid_until"
+        ],
+        "properties": {
+          "quote_id": {
+            "type": "string"
+          },
+          "product_cents": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "logistics_cents": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "ccy": {
+            "anyOf": [
+              {
+                "const": "USD",
+                "type": "string"
+              },
+              {
+                "const": "EUR",
+                "type": "string"
+              },
+              {
+                "const": "AED",
+                "type": "string"
+              }
+            ]
+          },
+          "lead_time_days": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "carrier": {
+            "type": "string"
+          },
+          "valid_until": {
+            "description": "ISO 8601 UTC",
+            "type": "string"
+          },
+          "doc_id": {
             "type": "string"
           }
         }

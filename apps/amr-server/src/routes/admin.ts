@@ -8,9 +8,18 @@ import { allSettings, getSetting, listAudit, listNotifications, markNotification
 import { getDocument, limitUsage, listCurrentAccountMovements, listDocuments, listVaultMovements } from "../ledger.ts";
 import { enqueueEvent, listDeliveries } from "../events.ts";
 import type { VaultError } from "../vault.ts";
+import type { FulfilmentError } from "../fulfilment.ts";
+import type { CatalogItem } from "@amr/contract";
 import { bus, type BusEvent } from "../bus.ts";
 
 const ACTOR = "admin"; // Sprint 1: tek kullanıcı
+
+/** R7 teklif formu: tutarlar cent ya da ondalık dize olarak gelebilir. */
+interface RefiningQuoteBody {
+  product_cents?: number; product?: string;
+  logistics_cents?: number; logistics?: string;
+  ccy?: "USD" | "EUR" | "AED"; lead_time_days?: number; carrier?: string; valid_hours?: number;
+}
 
 export async function adminRoutes(app: FastifyInstance, ctx: AppContext) {
   const token = process.env.ADMIN_TOKEN;
@@ -31,6 +40,8 @@ export async function adminRoutes(app: FastifyInstance, ctx: AppContext) {
     orders_today: ctx.orders.todaySummary(),
     vault_pending: ctx.vault.pending().length,
     vault_overdue: ctx.vault.placingQueue().filter((r) => r.status === "OVERDUE").length,
+    deliveries_open: ctx.deliveries.open().length,
+    refining_open: ctx.refining.open().length,
   });
 
   app.get("/admin/overview", async () => overview());
@@ -84,6 +95,55 @@ export async function adminRoutes(app: FastifyInstance, ctx: AppContext) {
     ctx.notify("settlement.requested", "Mahsuplaşma talep edildi (AMR)", reason, id);
     return { ok: true, event_id: id };
   });
+
+  // ----- R6: fiziksel teslimat (10) -----
+  /** R6 ve R7 aksiyonları; motor hatası durum koduyla döner. */
+  const step = (fn: (id: string, body: any) => unknown) => async (req: any, reply: any) => {
+    try { return fn(req.params.id, req.body ?? {}); }
+    catch (e) { return reply.code((e as FulfilmentError).code ?? 409).send({ error: (e as Error).message }); }
+  };
+
+  app.get("/admin/deliveries", async () => ({ items: ctx.deliveries.list(300), open: ctx.deliveries.open().length }));
+  app.get<{ Params: { id: string } }>("/admin/deliveries/:id", async (req, reply) => ctx.deliveries.get(req.params.id) ?? reply.code(404).send({ error: "talep yok" }));
+  app.post<{ Params: { id: string }; Body: { carrier?: string; amount?: string; amount_cents?: number; ccy?: string; valid_hours?: number } }>("/admin/deliveries/:id/quote", async (req, reply) => {
+    const b = req.body ?? {};
+    const cents = b.amount_cents ?? Math.round(Number(String(b.amount ?? "").replace(",", ".")) * 100);
+    if (!b.carrier?.trim()) return reply.code(400).send({ error: "taşıyıcı zorunlu" });
+    if (!Number.isFinite(cents) || cents < 0) return reply.code(400).send({ error: "tutar geçersiz" });
+    try { return ctx.deliveries.quote(req.params.id, { carrier: b.carrier.trim(), amount_cents: cents, ccy: b.ccy ?? "USD", valid_hours: b.valid_hours }, ACTOR); }
+    catch (e) { return reply.code((e as FulfilmentError).code ?? 409).send({ error: (e as Error).message }); }
+  });
+  app.post<{ Params: { id: string } }>("/admin/deliveries/:id/preparing", step((id) => ctx.deliveries.preparing(id, ACTOR)));
+  app.post<{ Params: { id: string } }>("/admin/deliveries/:id/ready", step((id) => ctx.deliveries.ready(id, ACTOR)));
+  app.post<{ Params: { id: string }; Body: { carrier?: string; tracking_no?: string } }>("/admin/deliveries/:id/shipped", step((id, b) => ctx.deliveries.shipped(id, (b.carrier ?? "").trim(), (b.tracking_no ?? "").trim(), ACTOR)));
+  app.post<{ Params: { id: string } }>("/admin/deliveries/:id/delivered", step((id) => ctx.deliveries.delivered(id, ACTOR)));
+  app.post<{ Params: { id: string }; Body: { reason?: string } }>("/admin/deliveries/:id/cancel", step((id, b) => ctx.deliveries.cancel(id, (b.reason ?? "").trim() || "rafineri iptal etti", ACTOR)));
+  app.post<{ Params: { id: string }; Body: { reason?: string } }>("/admin/deliveries/:id/failed", step((id, b) => ctx.deliveries.failed(id, (b.reason ?? "").trim() || "teslim edilemedi", ACTOR)));
+
+  // ----- R7: katalog ve rafinasyon (11) -----
+  app.get("/admin/catalog", async () => ctx.catalog.get());
+  app.put<{ Body: Partial<CatalogItem> & { item_id?: string } }>("/admin/catalog", async (req, reply) => {
+    const b = (req.body ?? {}) as Partial<CatalogItem> & { item_id?: string };
+    if (!b.item_id) return reply.code(400).send({ error: "item_id zorunlu" });
+    try { return ctx.catalog.upsert(b as Partial<CatalogItem> & { item_id: string }, ACTOR); }
+    catch (e) { return reply.code((e as FulfilmentError).code ?? 409).send({ error: (e as Error).message }); }
+  });
+  app.get("/admin/refining", async () => ({ items: ctx.refining.list(300), open: ctx.refining.open().length }));
+  app.get<{ Params: { id: string } }>("/admin/refining/:id", async (req, reply) => ctx.refining.get(req.params.id) ?? reply.code(404).send({ error: "talep yok" }));
+  app.post<{ Params: { id: string }; Body: RefiningQuoteBody }>("/admin/refining/:id/quote", async (req, reply) => {
+    const b = (req.body ?? {}) as RefiningQuoteBody;
+    const product = b.product_cents ?? Math.round(Number(String(b.product ?? "").replace(",", ".")) * 100);
+    const logistics = b.logistics_cents ?? Math.round(Number(String(b.logistics ?? "").replace(",", ".")) * 100);
+    if (!Number.isFinite(product) || product < 0 || !Number.isFinite(logistics) || logistics < 0) return reply.code(400).send({ error: "tutarlar geçersiz" });
+    try { return ctx.refining.quote(req.params.id, { product_cents: product, logistics_cents: logistics, ccy: b.ccy ?? "USD", lead_time_days: Number(b.lead_time_days ?? 3), carrier: b.carrier, valid_hours: b.valid_hours }, ACTOR); }
+    catch (e) { return reply.code((e as FulfilmentError).code ?? 409).send({ error: (e as Error).message }); }
+  });
+  app.post<{ Params: { id: string } }>("/admin/refining/:id/production", step((id) => ctx.refining.inProduction(id, ACTOR)));
+  app.post<{ Params: { id: string } }>("/admin/refining/:id/ready", step((id) => ctx.refining.ready(id, ACTOR)));
+  app.post<{ Params: { id: string }; Body: { carrier?: string; tracking_no?: string } }>("/admin/refining/:id/shipped", step((id, b) => ctx.refining.shipped(id, (b.carrier ?? "").trim(), (b.tracking_no ?? "").trim(), ACTOR)));
+  app.post<{ Params: { id: string } }>("/admin/refining/:id/delivered", step((id) => ctx.refining.delivered(id, ACTOR)));
+  app.post<{ Params: { id: string }; Body: { reason?: string } }>("/admin/refining/:id/cancel", step((id, b) => ctx.refining.cancel(id, (b.reason ?? "").trim() || "rafineri iptal etti", ACTOR)));
+  app.post<{ Params: { id: string }; Body: { reason?: string } }>("/admin/refining/:id/failed", step((id, b) => ctx.refining.failed(id, (b.reason ?? "").trim() || "teslim edilemedi", ACTOR)));
 
   // ----- R9 (ön): belgeler ve olay teslimleri -----
   app.get("/admin/documents", async () => listDocuments(ctx.db));

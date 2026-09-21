@@ -41,6 +41,13 @@ Bu repo Ahlatcı Metal Refinery (AMR) tarafındaki uygulamadır. Kanzasset taraf
 - Kabulde fiş üretilir ve defter aynı demette işlenir; fiş olmadan gram hareket etmez. Çıkış kabulle biter, girişte `PLACING → PLACED` adımları vardır.
 - `VaultOverdueWatcher` dakikada bir tarar: vadesi geçen giriş `OVERDUE` olur, `vault.in_overdue` gider. Durum `PLACED` ile kapanır.
 
+## Teslimat ve rafinasyon (fulfilment.ts)
+
+- İki akış aynı iskeleti paylaşır; rafinasyonda `IN_PRODUCTION` adımı vardır. Ortak kasa hareketleri `ShipmentDesk` içinde.
+- `READY` kasadan sevkiyata taşır (V toplamı değişmez), `DELIVERED` sevkiyattan düşer (V −x). Teslimat `READY`'den iptal edilebilir (külçe kasaya döner); rafinasyon iptali yalnız üretime kadardır.
+- Onaylanan bedel cari hesaba kalem olur: teslimatta `FEE_DELIVERY`, rafinasyonda `FEE_REFINING`.
+- Katalog rafineride tutulur; değişince sürüm artar ve `catalog.updated` gider.
+
 ## Sprint durumu
 
-Sprint 1, 2 ve 3 tamam: sözleşme, mock merkez, kaynak bağlantısı, yayın, HMAC, bildirimler, ayarlar, defter, emirler, cari hesap ve limit, Tahsis Belgesi, olaylar, kasa talimatları ve fişler, günlük kasa ekstresi; ekranlar R1, R2, R3, R4, R5, R10. Belgeler imzalı JSON'dur, PDF çıktısı Sprint 6'dadır. Sonraki: Sprint 4 (fiziksel teslimat R6, rafinasyon R7). Plan `README.md` sonunda.
+Sprint 1, 2, 3 ve 4 tamam: sözleşme, mock merkez, kaynak bağlantısı, yayın, HMAC, bildirimler, ayarlar, defter, emirler, cari hesap ve limit, Tahsis Belgesi, olaylar, kasa talimatları ve fişler, günlük kasa ekstresi, fiziksel teslimat, katalog ve rafinasyon; ekranlar R1, R2, R3, R4, R5, R6, R7, R10. Sonraki: Sprint 5 (mahsuplaşma R8, belgeler R9, kullanıcılar R10). Plan `README.md` sonunda.
