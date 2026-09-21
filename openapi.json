@@ -1,0 +1,3587 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "AMR uygulaması API",
+    "version": "2.0.0",
+    "description": "Kanzasset ↔ AMR sözleşmesi. Kimlik: X-API-Key, X-Timestamp, X-Signature (HMAC-SHA256: ts + yöntem + yol + ham gövde). POST için Idempotency-Key. Miktarlar tam sayı (mg, cent), fiyatlar ondalık dize. Rafineri tarafında mint / burn / token kavramı yoktur."
+  },
+  "paths": {
+    "/v1/session/status": {
+      "get": {
+        "summary": "Oturum durumu: yayın açık mı, merkez bağlı mı",
+        "parameters": [
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Timestamp",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "X-Signature",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "HMAC-SHA256(secret, ts + METHOD + path + body) hex"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "tradable",
+                    "source_connected",
+                    "ts"
+                  ],
+                  "properties": {
+                    "status": {
+                      "anyOf": [
+                        {
+                          "const": "OPEN",
+                          "type": "string"
+                        },
+                        {
+                          "const": "HALTED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "MAINTENANCE",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "tradable": {
+                      "type": "boolean"
+                    },
+                    "source_connected": {
+                      "description": "merkez bağlantısı",
+                      "type": "boolean"
+                    },
+                    "halt_reason": {
+                      "type": "string"
+                    },
+                    "ts": {
+                      "description": "ISO 8601 UTC",
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/prices": {
+      "get": {
+        "summary": "WebSocket fiyat yayını (01). İlk mesaj auth; sonra subscribed, snapshot, tick, heartbeat, halt, resume.",
+        "responses": {
+          "101": {
+            "description": "WebSocket"
+          }
+        }
+      }
+    },
+    "/v1/orders": {
+      "post": {
+        "summary": "Alış / satış emri (03, 04, 07, 08, 09). FOK: tümü ya hiç. Aynı client_order_id ile tekrar aynı cevabı alır.",
+        "parameters": [
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Timestamp",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "X-Signature",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "HMAC-SHA256(secret, ts + METHOD + path + body) hex"
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "client_order_id",
+                  "side",
+                  "qty_mg",
+                  "ccy",
+                  "quote_seq",
+                  "limit_px",
+                  "tif",
+                  "time_limit_ms"
+                ],
+                "properties": {
+                  "client_order_id": {
+                    "description": "KZ tarafında tekil; aynı id ile tekrar gelen istek aynı cevabı alır",
+                    "type": "string"
+                  },
+                  "side": {
+                    "anyOf": [
+                      {
+                        "const": "BUY",
+                        "type": "string"
+                      },
+                      {
+                        "const": "SELL",
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "qty_mg": {
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "ccy": {
+                    "anyOf": [
+                      {
+                        "const": "USD",
+                        "type": "string"
+                      },
+                      {
+                        "const": "EUR",
+                        "type": "string"
+                      },
+                      {
+                        "const": "AED",
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "quote_seq": {
+                    "description": "emrin dayandığı fiyat tick'i",
+                    "type": "integer"
+                  },
+                  "limit_px": {
+                    "pattern": "^-?\\d+(\\.\\d+)?$",
+                    "description": "ondalık dize, ör. \"142.00\"",
+                    "type": "string"
+                  },
+                  "tif": {
+                    "const": "FOK",
+                    "type": "string"
+                  },
+                  "time_limit_ms": {
+                    "minimum": 100,
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "FILLED / REJECTED / CANCELLED; FILLED cevabında account (bakiye bilgisi) ve alışta allocation_certificate",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "order_id",
+                    "client_order_id",
+                    "status",
+                    "side",
+                    "qty_mg",
+                    "ccy",
+                    "quote_seq",
+                    "limit_px",
+                    "received_ts"
+                  ],
+                  "properties": {
+                    "order_id": {
+                      "type": "string"
+                    },
+                    "client_order_id": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "anyOf": [
+                        {
+                          "const": "RECEIVED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "CANCEL_REQUESTED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "FILLED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "REJECTED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "CANCELLED",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "side": {
+                      "anyOf": [
+                        {
+                          "const": "BUY",
+                          "type": "string"
+                        },
+                        {
+                          "const": "SELL",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "qty_mg": {
+                      "type": "integer"
+                    },
+                    "ccy": {
+                      "anyOf": [
+                        {
+                          "const": "USD",
+                          "type": "string"
+                        },
+                        {
+                          "const": "EUR",
+                          "type": "string"
+                        },
+                        {
+                          "const": "AED",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "quote_seq": {
+                      "type": "integer"
+                    },
+                    "limit_px": {
+                      "pattern": "^-?\\d+(\\.\\d+)?$",
+                      "description": "ondalık dize, ör. \"142.00\"",
+                      "type": "string"
+                    },
+                    "fill": {
+                      "type": "object",
+                      "required": [
+                        "px",
+                        "qty_mg",
+                        "amount_cents",
+                        "ccy",
+                        "trade_ts"
+                      ],
+                      "properties": {
+                        "px": {
+                          "pattern": "^-?\\d+(\\.\\d+)?$",
+                          "description": "ondalık dize, ör. \"142.00\"",
+                          "type": "string"
+                        },
+                        "qty_mg": {
+                          "type": "integer"
+                        },
+                        "amount_cents": {
+                          "type": "integer"
+                        },
+                        "ccy": {
+                          "anyOf": [
+                            {
+                              "const": "USD",
+                              "type": "string"
+                            },
+                            {
+                              "const": "EUR",
+                              "type": "string"
+                            },
+                            {
+                              "const": "AED",
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "trade_ts": {
+                          "description": "ISO 8601 UTC",
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "reject_reason": {
+                      "anyOf": [
+                        {
+                          "const": "PRICE_OUTSIDE_LIMIT",
+                          "type": "string"
+                        },
+                        {
+                          "const": "STALE_QUOTE",
+                          "type": "string"
+                        },
+                        {
+                          "const": "TRADING_HALTED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "CURRENT_ACCOUNT_LIMIT",
+                          "type": "string"
+                        },
+                        {
+                          "const": "DUPLICATE_ORDER",
+                          "type": "string"
+                        },
+                        {
+                          "const": "INVALID_QTY",
+                          "type": "string"
+                        },
+                        {
+                          "const": "INSUFFICIENT_CURRENT_ACCOUNT",
+                          "type": "string"
+                        },
+                        {
+                          "const": "INSUFFICIENT_VAULT",
+                          "type": "string"
+                        },
+                        {
+                          "const": "QUOTE_EXPIRED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "INTERNAL_ERROR",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "allocation_certificate": {
+                      "type": "object",
+                      "required": [
+                        "doc_id",
+                        "url"
+                      ],
+                      "properties": {
+                        "doc_id": {
+                          "type": "string"
+                        },
+                        "url": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "account": {
+                      "type": "object",
+                      "required": [
+                        "seq",
+                        "vault",
+                        "current_account",
+                        "status"
+                      ],
+                      "properties": {
+                        "seq": {
+                          "description": "hesap hareket numarası (fiyat seq'inden ayrı)",
+                          "type": "integer"
+                        },
+                        "vault": {
+                          "type": "object",
+                          "required": [
+                            "in_vault_mg",
+                            "placing_mg",
+                            "shipping_mg"
+                          ],
+                          "properties": {
+                            "in_vault_mg": {
+                              "description": "kasada",
+                              "type": "integer"
+                            },
+                            "placing_mg": {
+                              "description": "kasaya konuluyor (kabul edildi, en geç T+3)",
+                              "type": "integer"
+                            },
+                            "shipping_mg": {
+                              "description": "sevkiyatta (çıktı, henüz teslim edilmedi)",
+                              "type": "integer"
+                            }
+                          }
+                        },
+                        "current_account": {
+                          "type": "object",
+                          "required": [
+                            "gold_mg",
+                            "money"
+                          ],
+                          "properties": {
+                            "gold_mg": {
+                              "description": "T: artı = aldık, kasaya konmadı; eksi = sattık, kasadan çıkmadı",
+                              "type": "integer"
+                            },
+                            "money": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "required": [
+                                  "ccy",
+                                  "cents"
+                                ],
+                                "properties": {
+                                  "ccy": {
+                                    "anyOf": [
+                                      {
+                                        "const": "USD",
+                                        "type": "string"
+                                      },
+                                      {
+                                        "const": "EUR",
+                                        "type": "string"
+                                      },
+                                      {
+                                        "const": "AED",
+                                        "type": "string"
+                                      }
+                                    ]
+                                  },
+                                  "cents": {
+                                    "description": "eksi = Kanzasset borçlu, artı = rafineri borçlu",
+                                    "type": "integer"
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        },
+                        "status": {
+                          "anyOf": [
+                            {
+                              "const": "OK",
+                              "type": "string"
+                            },
+                            {
+                              "const": "RECONCILE",
+                              "type": "string"
+                            },
+                            {
+                              "const": "HALTED",
+                              "type": "string"
+                            }
+                          ]
+                        }
+                      }
+                    },
+                    "received_ts": {
+                      "description": "ISO 8601 UTC",
+                      "type": "string"
+                    },
+                    "decided_ts": {
+                      "description": "ISO 8601 UTC",
+                      "type": "string"
+                    },
+                    "history": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "status",
+                          "ts"
+                        ],
+                        "properties": {
+                          "status": {
+                            "anyOf": [
+                              {
+                                "const": "RECEIVED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "CANCEL_REQUESTED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "FILLED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "REJECTED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "CANCELLED",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "ts": {
+                            "description": "ISO 8601 UTC",
+                            "type": "string"
+                          },
+                          "note": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "geçersiz emir"
+          },
+          "401": {
+            "description": "kimlik"
+          },
+          "409": {
+            "description": "client_order_id başka gövdeyle kullanıldı (DUPLICATE_ORDER)"
+          }
+        }
+      }
+    },
+    "/v1/orders/{id}": {
+      "get": {
+        "summary": "Durum sorgusu (order_id ya da client_order_id)",
+        "parameters": [
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Timestamp",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "X-Signature",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "HMAC-SHA256(secret, ts + METHOD + path + body) hex"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "order_id",
+                    "client_order_id",
+                    "status",
+                    "side",
+                    "qty_mg",
+                    "ccy",
+                    "quote_seq",
+                    "limit_px",
+                    "received_ts"
+                  ],
+                  "properties": {
+                    "order_id": {
+                      "type": "string"
+                    },
+                    "client_order_id": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "anyOf": [
+                        {
+                          "const": "RECEIVED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "CANCEL_REQUESTED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "FILLED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "REJECTED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "CANCELLED",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "side": {
+                      "anyOf": [
+                        {
+                          "const": "BUY",
+                          "type": "string"
+                        },
+                        {
+                          "const": "SELL",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "qty_mg": {
+                      "type": "integer"
+                    },
+                    "ccy": {
+                      "anyOf": [
+                        {
+                          "const": "USD",
+                          "type": "string"
+                        },
+                        {
+                          "const": "EUR",
+                          "type": "string"
+                        },
+                        {
+                          "const": "AED",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "quote_seq": {
+                      "type": "integer"
+                    },
+                    "limit_px": {
+                      "pattern": "^-?\\d+(\\.\\d+)?$",
+                      "description": "ondalık dize, ör. \"142.00\"",
+                      "type": "string"
+                    },
+                    "fill": {
+                      "type": "object",
+                      "required": [
+                        "px",
+                        "qty_mg",
+                        "amount_cents",
+                        "ccy",
+                        "trade_ts"
+                      ],
+                      "properties": {
+                        "px": {
+                          "pattern": "^-?\\d+(\\.\\d+)?$",
+                          "description": "ondalık dize, ör. \"142.00\"",
+                          "type": "string"
+                        },
+                        "qty_mg": {
+                          "type": "integer"
+                        },
+                        "amount_cents": {
+                          "type": "integer"
+                        },
+                        "ccy": {
+                          "anyOf": [
+                            {
+                              "const": "USD",
+                              "type": "string"
+                            },
+                            {
+                              "const": "EUR",
+                              "type": "string"
+                            },
+                            {
+                              "const": "AED",
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "trade_ts": {
+                          "description": "ISO 8601 UTC",
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "reject_reason": {
+                      "anyOf": [
+                        {
+                          "const": "PRICE_OUTSIDE_LIMIT",
+                          "type": "string"
+                        },
+                        {
+                          "const": "STALE_QUOTE",
+                          "type": "string"
+                        },
+                        {
+                          "const": "TRADING_HALTED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "CURRENT_ACCOUNT_LIMIT",
+                          "type": "string"
+                        },
+                        {
+                          "const": "DUPLICATE_ORDER",
+                          "type": "string"
+                        },
+                        {
+                          "const": "INVALID_QTY",
+                          "type": "string"
+                        },
+                        {
+                          "const": "INSUFFICIENT_CURRENT_ACCOUNT",
+                          "type": "string"
+                        },
+                        {
+                          "const": "INSUFFICIENT_VAULT",
+                          "type": "string"
+                        },
+                        {
+                          "const": "QUOTE_EXPIRED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "INTERNAL_ERROR",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "allocation_certificate": {
+                      "type": "object",
+                      "required": [
+                        "doc_id",
+                        "url"
+                      ],
+                      "properties": {
+                        "doc_id": {
+                          "type": "string"
+                        },
+                        "url": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "account": {
+                      "type": "object",
+                      "required": [
+                        "seq",
+                        "vault",
+                        "current_account",
+                        "status"
+                      ],
+                      "properties": {
+                        "seq": {
+                          "description": "hesap hareket numarası (fiyat seq'inden ayrı)",
+                          "type": "integer"
+                        },
+                        "vault": {
+                          "type": "object",
+                          "required": [
+                            "in_vault_mg",
+                            "placing_mg",
+                            "shipping_mg"
+                          ],
+                          "properties": {
+                            "in_vault_mg": {
+                              "description": "kasada",
+                              "type": "integer"
+                            },
+                            "placing_mg": {
+                              "description": "kasaya konuluyor (kabul edildi, en geç T+3)",
+                              "type": "integer"
+                            },
+                            "shipping_mg": {
+                              "description": "sevkiyatta (çıktı, henüz teslim edilmedi)",
+                              "type": "integer"
+                            }
+                          }
+                        },
+                        "current_account": {
+                          "type": "object",
+                          "required": [
+                            "gold_mg",
+                            "money"
+                          ],
+                          "properties": {
+                            "gold_mg": {
+                              "description": "T: artı = aldık, kasaya konmadı; eksi = sattık, kasadan çıkmadı",
+                              "type": "integer"
+                            },
+                            "money": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "required": [
+                                  "ccy",
+                                  "cents"
+                                ],
+                                "properties": {
+                                  "ccy": {
+                                    "anyOf": [
+                                      {
+                                        "const": "USD",
+                                        "type": "string"
+                                      },
+                                      {
+                                        "const": "EUR",
+                                        "type": "string"
+                                      },
+                                      {
+                                        "const": "AED",
+                                        "type": "string"
+                                      }
+                                    ]
+                                  },
+                                  "cents": {
+                                    "description": "eksi = Kanzasset borçlu, artı = rafineri borçlu",
+                                    "type": "integer"
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        },
+                        "status": {
+                          "anyOf": [
+                            {
+                              "const": "OK",
+                              "type": "string"
+                            },
+                            {
+                              "const": "RECONCILE",
+                              "type": "string"
+                            },
+                            {
+                              "const": "HALTED",
+                              "type": "string"
+                            }
+                          ]
+                        }
+                      }
+                    },
+                    "received_ts": {
+                      "description": "ISO 8601 UTC",
+                      "type": "string"
+                    },
+                    "decided_ts": {
+                      "description": "ISO 8601 UTC",
+                      "type": "string"
+                    },
+                    "history": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "status",
+                          "ts"
+                        ],
+                        "properties": {
+                          "status": {
+                            "anyOf": [
+                              {
+                                "const": "RECEIVED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "CANCEL_REQUESTED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "FILLED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "REJECTED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "CANCELLED",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "ts": {
+                            "description": "ISO 8601 UTC",
+                            "type": "string"
+                          },
+                          "note": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "emir yok"
+          }
+        }
+      }
+    },
+    "/v1/orders/{id}/cancel": {
+      "post": {
+        "summary": "İptal talebi, kesin cevap: işlenmemişse CANCELLED, işlenmişse mevcut sonuç (FILLED = geç fill)",
+        "parameters": [
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Timestamp",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "X-Signature",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "HMAC-SHA256(secret, ts + METHOD + path + body) hex"
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "order_id",
+                    "client_order_id",
+                    "status",
+                    "side",
+                    "qty_mg",
+                    "ccy",
+                    "quote_seq",
+                    "limit_px",
+                    "received_ts"
+                  ],
+                  "properties": {
+                    "order_id": {
+                      "type": "string"
+                    },
+                    "client_order_id": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "anyOf": [
+                        {
+                          "const": "RECEIVED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "CANCEL_REQUESTED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "FILLED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "REJECTED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "CANCELLED",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "side": {
+                      "anyOf": [
+                        {
+                          "const": "BUY",
+                          "type": "string"
+                        },
+                        {
+                          "const": "SELL",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "qty_mg": {
+                      "type": "integer"
+                    },
+                    "ccy": {
+                      "anyOf": [
+                        {
+                          "const": "USD",
+                          "type": "string"
+                        },
+                        {
+                          "const": "EUR",
+                          "type": "string"
+                        },
+                        {
+                          "const": "AED",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "quote_seq": {
+                      "type": "integer"
+                    },
+                    "limit_px": {
+                      "pattern": "^-?\\d+(\\.\\d+)?$",
+                      "description": "ondalık dize, ör. \"142.00\"",
+                      "type": "string"
+                    },
+                    "fill": {
+                      "type": "object",
+                      "required": [
+                        "px",
+                        "qty_mg",
+                        "amount_cents",
+                        "ccy",
+                        "trade_ts"
+                      ],
+                      "properties": {
+                        "px": {
+                          "pattern": "^-?\\d+(\\.\\d+)?$",
+                          "description": "ondalık dize, ör. \"142.00\"",
+                          "type": "string"
+                        },
+                        "qty_mg": {
+                          "type": "integer"
+                        },
+                        "amount_cents": {
+                          "type": "integer"
+                        },
+                        "ccy": {
+                          "anyOf": [
+                            {
+                              "const": "USD",
+                              "type": "string"
+                            },
+                            {
+                              "const": "EUR",
+                              "type": "string"
+                            },
+                            {
+                              "const": "AED",
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "trade_ts": {
+                          "description": "ISO 8601 UTC",
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "reject_reason": {
+                      "anyOf": [
+                        {
+                          "const": "PRICE_OUTSIDE_LIMIT",
+                          "type": "string"
+                        },
+                        {
+                          "const": "STALE_QUOTE",
+                          "type": "string"
+                        },
+                        {
+                          "const": "TRADING_HALTED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "CURRENT_ACCOUNT_LIMIT",
+                          "type": "string"
+                        },
+                        {
+                          "const": "DUPLICATE_ORDER",
+                          "type": "string"
+                        },
+                        {
+                          "const": "INVALID_QTY",
+                          "type": "string"
+                        },
+                        {
+                          "const": "INSUFFICIENT_CURRENT_ACCOUNT",
+                          "type": "string"
+                        },
+                        {
+                          "const": "INSUFFICIENT_VAULT",
+                          "type": "string"
+                        },
+                        {
+                          "const": "QUOTE_EXPIRED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "INTERNAL_ERROR",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "allocation_certificate": {
+                      "type": "object",
+                      "required": [
+                        "doc_id",
+                        "url"
+                      ],
+                      "properties": {
+                        "doc_id": {
+                          "type": "string"
+                        },
+                        "url": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "account": {
+                      "type": "object",
+                      "required": [
+                        "seq",
+                        "vault",
+                        "current_account",
+                        "status"
+                      ],
+                      "properties": {
+                        "seq": {
+                          "description": "hesap hareket numarası (fiyat seq'inden ayrı)",
+                          "type": "integer"
+                        },
+                        "vault": {
+                          "type": "object",
+                          "required": [
+                            "in_vault_mg",
+                            "placing_mg",
+                            "shipping_mg"
+                          ],
+                          "properties": {
+                            "in_vault_mg": {
+                              "description": "kasada",
+                              "type": "integer"
+                            },
+                            "placing_mg": {
+                              "description": "kasaya konuluyor (kabul edildi, en geç T+3)",
+                              "type": "integer"
+                            },
+                            "shipping_mg": {
+                              "description": "sevkiyatta (çıktı, henüz teslim edilmedi)",
+                              "type": "integer"
+                            }
+                          }
+                        },
+                        "current_account": {
+                          "type": "object",
+                          "required": [
+                            "gold_mg",
+                            "money"
+                          ],
+                          "properties": {
+                            "gold_mg": {
+                              "description": "T: artı = aldık, kasaya konmadı; eksi = sattık, kasadan çıkmadı",
+                              "type": "integer"
+                            },
+                            "money": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "required": [
+                                  "ccy",
+                                  "cents"
+                                ],
+                                "properties": {
+                                  "ccy": {
+                                    "anyOf": [
+                                      {
+                                        "const": "USD",
+                                        "type": "string"
+                                      },
+                                      {
+                                        "const": "EUR",
+                                        "type": "string"
+                                      },
+                                      {
+                                        "const": "AED",
+                                        "type": "string"
+                                      }
+                                    ]
+                                  },
+                                  "cents": {
+                                    "description": "eksi = Kanzasset borçlu, artı = rafineri borçlu",
+                                    "type": "integer"
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        },
+                        "status": {
+                          "anyOf": [
+                            {
+                              "const": "OK",
+                              "type": "string"
+                            },
+                            {
+                              "const": "RECONCILE",
+                              "type": "string"
+                            },
+                            {
+                              "const": "HALTED",
+                              "type": "string"
+                            }
+                          ]
+                        }
+                      }
+                    },
+                    "received_ts": {
+                      "description": "ISO 8601 UTC",
+                      "type": "string"
+                    },
+                    "decided_ts": {
+                      "description": "ISO 8601 UTC",
+                      "type": "string"
+                    },
+                    "history": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "status",
+                          "ts"
+                        ],
+                        "properties": {
+                          "status": {
+                            "anyOf": [
+                              {
+                                "const": "RECEIVED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "CANCEL_REQUESTED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "FILLED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "REJECTED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "CANCELLED",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "ts": {
+                            "description": "ISO 8601 UTC",
+                            "type": "string"
+                          },
+                          "note": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "emir yok"
+          }
+        }
+      }
+    },
+    "/v1/account": {
+      "get": {
+        "summary": "Bakiye bilgisi, anlık fotoğraf (02)",
+        "parameters": [
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Timestamp",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "X-Signature",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "HMAC-SHA256(secret, ts + METHOD + path + body) hex"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "seq",
+                    "vault",
+                    "current_account",
+                    "status"
+                  ],
+                  "properties": {
+                    "seq": {
+                      "description": "hesap hareket numarası (fiyat seq'inden ayrı)",
+                      "type": "integer"
+                    },
+                    "vault": {
+                      "type": "object",
+                      "required": [
+                        "in_vault_mg",
+                        "placing_mg",
+                        "shipping_mg"
+                      ],
+                      "properties": {
+                        "in_vault_mg": {
+                          "description": "kasada",
+                          "type": "integer"
+                        },
+                        "placing_mg": {
+                          "description": "kasaya konuluyor (kabul edildi, en geç T+3)",
+                          "type": "integer"
+                        },
+                        "shipping_mg": {
+                          "description": "sevkiyatta (çıktı, henüz teslim edilmedi)",
+                          "type": "integer"
+                        }
+                      }
+                    },
+                    "current_account": {
+                      "type": "object",
+                      "required": [
+                        "gold_mg",
+                        "money"
+                      ],
+                      "properties": {
+                        "gold_mg": {
+                          "description": "T: artı = aldık, kasaya konmadı; eksi = sattık, kasadan çıkmadı",
+                          "type": "integer"
+                        },
+                        "money": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "ccy",
+                              "cents"
+                            ],
+                            "properties": {
+                              "ccy": {
+                                "anyOf": [
+                                  {
+                                    "const": "USD",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "EUR",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "AED",
+                                    "type": "string"
+                                  }
+                                ]
+                              },
+                              "cents": {
+                                "description": "eksi = Kanzasset borçlu, artı = rafineri borçlu",
+                                "type": "integer"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "status": {
+                      "anyOf": [
+                        {
+                          "const": "OK",
+                          "type": "string"
+                        },
+                        {
+                          "const": "RECONCILE",
+                          "type": "string"
+                        },
+                        {
+                          "const": "HALTED",
+                          "type": "string"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/current-account/statement": {
+      "get": {
+        "summary": "Cari hesap ekstresi (12, adım 1): hareketler, T, kur bazında para, hizmet bedelleri, imza",
+        "parameters": [
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Timestamp",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "X-Signature",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "HMAC-SHA256(secret, ts + METHOD + path + body) hex"
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "window_from",
+                    "window_to",
+                    "movements",
+                    "gold_mg",
+                    "money",
+                    "fees",
+                    "hash",
+                    "signature"
+                  ],
+                  "properties": {
+                    "window_from": {
+                      "description": "ISO 8601 UTC",
+                      "type": "string"
+                    },
+                    "window_to": {
+                      "description": "ISO 8601 UTC",
+                      "type": "string"
+                    },
+                    "movements": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "id",
+                          "seq",
+                          "type",
+                          "gold_mg",
+                          "ts"
+                        ],
+                        "properties": {
+                          "id": {
+                            "type": "integer"
+                          },
+                          "seq": {
+                            "type": "integer"
+                          },
+                          "type": {
+                            "anyOf": [
+                              {
+                                "const": "OPENING",
+                                "type": "string"
+                              },
+                              {
+                                "const": "FILL_BUY",
+                                "type": "string"
+                              },
+                              {
+                                "const": "FILL_SELL",
+                                "type": "string"
+                              },
+                              {
+                                "const": "VAULT_IN",
+                                "type": "string"
+                              },
+                              {
+                                "const": "VAULT_OUT",
+                                "type": "string"
+                              },
+                              {
+                                "const": "FEE_DELIVERY",
+                                "type": "string"
+                              },
+                              {
+                                "const": "FEE_REFINING",
+                                "type": "string"
+                              },
+                              {
+                                "const": "SETTLEMENT_PAYMENT",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "gold_mg": {
+                            "description": "işaretli",
+                            "type": "integer"
+                          },
+                          "ccy": {
+                            "anyOf": [
+                              {
+                                "const": "USD",
+                                "type": "string"
+                              },
+                              {
+                                "const": "EUR",
+                                "type": "string"
+                              },
+                              {
+                                "const": "AED",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "amount_cents": {
+                            "description": "işaretli: eksi Kanzasset borçlu",
+                            "type": "integer"
+                          },
+                          "ref": {
+                            "type": "string"
+                          },
+                          "related_id": {
+                            "type": "string"
+                          },
+                          "ts": {
+                            "description": "ISO 8601 UTC",
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "gold_mg": {
+                      "type": "integer"
+                    },
+                    "money": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "ccy",
+                          "cents"
+                        ],
+                        "properties": {
+                          "ccy": {
+                            "anyOf": [
+                              {
+                                "const": "USD",
+                                "type": "string"
+                              },
+                              {
+                                "const": "EUR",
+                                "type": "string"
+                              },
+                              {
+                                "const": "AED",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "cents": {
+                            "description": "eksi = Kanzasset borçlu, artı = rafineri borçlu",
+                            "type": "integer"
+                          }
+                        }
+                      }
+                    },
+                    "fees": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "type",
+                          "ccy",
+                          "amount_cents"
+                        ],
+                        "properties": {
+                          "type": {
+                            "type": "string"
+                          },
+                          "ccy": {
+                            "anyOf": [
+                              {
+                                "const": "USD",
+                                "type": "string"
+                              },
+                              {
+                                "const": "EUR",
+                                "type": "string"
+                              },
+                              {
+                                "const": "AED",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "amount_cents": {
+                            "type": "integer"
+                          }
+                        }
+                      }
+                    },
+                    "hash": {
+                      "type": "string"
+                    },
+                    "signature": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/documents/{id}": {
+      "get": {
+        "summary": "Belge: Tahsis Belgesi, fişler, ekstreler (JSON içerik + sha256 + HMAC imza; PDF Sprint 3)",
+        "parameters": [
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Timestamp",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "X-Signature",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "HMAC-SHA256(secret, ts + METHOD + path + body) hex"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "meta",
+                    "content"
+                  ],
+                  "properties": {
+                    "meta": {
+                      "type": "object",
+                      "required": [
+                        "doc_id",
+                        "type",
+                        "related_id",
+                        "hash",
+                        "signature",
+                        "created_ts"
+                      ],
+                      "properties": {
+                        "doc_id": {
+                          "type": "string"
+                        },
+                        "type": {
+                          "anyOf": [
+                            {
+                              "const": "ALLOCATION_CERTIFICATE",
+                              "type": "string"
+                            },
+                            {
+                              "const": "VAULT_IN_SLIP",
+                              "type": "string"
+                            },
+                            {
+                              "const": "VAULT_OUT_SLIP",
+                              "type": "string"
+                            },
+                            {
+                              "const": "LOGISTICS_QUOTE",
+                              "type": "string"
+                            },
+                            {
+                              "const": "REFINING_QUOTE",
+                              "type": "string"
+                            },
+                            {
+                              "const": "SHIPPING_SLIP",
+                              "type": "string"
+                            },
+                            {
+                              "const": "DELIVERY_RECORD",
+                              "type": "string"
+                            },
+                            {
+                              "const": "VAULT_STATEMENT",
+                              "type": "string"
+                            },
+                            {
+                              "const": "CURRENT_ACCOUNT_STATEMENT",
+                              "type": "string"
+                            },
+                            {
+                              "const": "SETTLEMENT_STATEMENT",
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "related_id": {
+                          "type": "string"
+                        },
+                        "hash": {
+                          "description": "sha256(content)",
+                          "type": "string"
+                        },
+                        "signature": {
+                          "description": "HMAC-SHA256(rafineri belge anahtarı, hash)",
+                          "type": "string"
+                        },
+                        "created_ts": {
+                          "description": "ISO 8601 UTC",
+                          "type": "string"
+                        },
+                        "sent_ts": {
+                          "description": "ISO 8601 UTC",
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "content": {
+                      "type": "object",
+                      "patternProperties": {
+                        "^(.*)$": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "belge yok"
+          }
+        }
+      }
+    }
+  },
+  "webhooks": {
+    "event": {
+      "post": {
+        "summary": "AMR → KZ olay teslimi (06). KZ olay adresine POST; imza başlıkları REST ile aynı; Idempotency-Key = event_id. 2xx değilse üstel bekleme ile tekrar.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "event_id",
+                  "type",
+                  "ts",
+                  "data"
+                ],
+                "properties": {
+                  "event_id": {
+                    "description": "tekil; KZ tekrarı bununla ayıklar",
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string"
+                  },
+                  "ts": {
+                    "description": "ISO 8601 UTC",
+                    "type": "string"
+                  },
+                  "seq": {
+                    "description": "hesap seq; metal hareketi varsa",
+                    "type": "integer"
+                  },
+                  "data": {},
+                  "account": {
+                    "type": "object",
+                    "required": [
+                      "seq",
+                      "vault",
+                      "current_account",
+                      "status"
+                    ],
+                    "properties": {
+                      "seq": {
+                        "description": "hesap hareket numarası (fiyat seq'inden ayrı)",
+                        "type": "integer"
+                      },
+                      "vault": {
+                        "type": "object",
+                        "required": [
+                          "in_vault_mg",
+                          "placing_mg",
+                          "shipping_mg"
+                        ],
+                        "properties": {
+                          "in_vault_mg": {
+                            "description": "kasada",
+                            "type": "integer"
+                          },
+                          "placing_mg": {
+                            "description": "kasaya konuluyor (kabul edildi, en geç T+3)",
+                            "type": "integer"
+                          },
+                          "shipping_mg": {
+                            "description": "sevkiyatta (çıktı, henüz teslim edilmedi)",
+                            "type": "integer"
+                          }
+                        }
+                      },
+                      "current_account": {
+                        "type": "object",
+                        "required": [
+                          "gold_mg",
+                          "money"
+                        ],
+                        "properties": {
+                          "gold_mg": {
+                            "description": "T: artı = aldık, kasaya konmadı; eksi = sattık, kasadan çıkmadı",
+                            "type": "integer"
+                          },
+                          "money": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "required": [
+                                "ccy",
+                                "cents"
+                              ],
+                              "properties": {
+                                "ccy": {
+                                  "anyOf": [
+                                    {
+                                      "const": "USD",
+                                      "type": "string"
+                                    },
+                                    {
+                                      "const": "EUR",
+                                      "type": "string"
+                                    },
+                                    {
+                                      "const": "AED",
+                                      "type": "string"
+                                    }
+                                  ]
+                                },
+                                "cents": {
+                                  "description": "eksi = Kanzasset borçlu, artı = rafineri borçlu",
+                                  "type": "integer"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "status": {
+                        "anyOf": [
+                          {
+                            "const": "OK",
+                            "type": "string"
+                          },
+                          {
+                            "const": "RECONCILE",
+                            "type": "string"
+                          },
+                          {
+                            "const": "HALTED",
+                            "type": "string"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "alındı"
+          }
+        },
+        "description": "Olay türleri: order.filled, order.rejected, order.cancelled, vault.in_accepted, vault.in_placing, vault.in_placed, vault.in_rejected, vault.out_accepted, vault.out_rejected, delivery.quoted, delivery.approved, delivery.preparing, delivery.ready, delivery.shipped, delivery.delivered, delivery.cancelled, delivery.failed, catalog.updated, refining.quoted, refining.approved, refining.in_production, refining.ready, refining.shipped, refining.delivered, refining.cancelled, refining.failed, settlement.requested, settlement.opened, settlement.statement, settlement.reconciled, settlement.mismatch, settlement.payment_notice, settlement.settled, price.halt, price.resume, account.reconcile"
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "SessionStatus": {
+        "type": "object",
+        "required": [
+          "status",
+          "tradable",
+          "source_connected",
+          "ts"
+        ],
+        "properties": {
+          "status": {
+            "anyOf": [
+              {
+                "const": "OPEN",
+                "type": "string"
+              },
+              {
+                "const": "HALTED",
+                "type": "string"
+              },
+              {
+                "const": "MAINTENANCE",
+                "type": "string"
+              }
+            ]
+          },
+          "tradable": {
+            "type": "boolean"
+          },
+          "source_connected": {
+            "description": "merkez bağlantısı",
+            "type": "boolean"
+          },
+          "halt_reason": {
+            "type": "string"
+          },
+          "ts": {
+            "description": "ISO 8601 UTC",
+            "type": "string"
+          }
+        }
+      },
+      "Account": {
+        "type": "object",
+        "required": [
+          "seq",
+          "vault",
+          "current_account",
+          "status"
+        ],
+        "properties": {
+          "seq": {
+            "description": "hesap hareket numarası (fiyat seq'inden ayrı)",
+            "type": "integer"
+          },
+          "vault": {
+            "type": "object",
+            "required": [
+              "in_vault_mg",
+              "placing_mg",
+              "shipping_mg"
+            ],
+            "properties": {
+              "in_vault_mg": {
+                "description": "kasada",
+                "type": "integer"
+              },
+              "placing_mg": {
+                "description": "kasaya konuluyor (kabul edildi, en geç T+3)",
+                "type": "integer"
+              },
+              "shipping_mg": {
+                "description": "sevkiyatta (çıktı, henüz teslim edilmedi)",
+                "type": "integer"
+              }
+            }
+          },
+          "current_account": {
+            "type": "object",
+            "required": [
+              "gold_mg",
+              "money"
+            ],
+            "properties": {
+              "gold_mg": {
+                "description": "T: artı = aldık, kasaya konmadı; eksi = sattık, kasadan çıkmadı",
+                "type": "integer"
+              },
+              "money": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "ccy",
+                    "cents"
+                  ],
+                  "properties": {
+                    "ccy": {
+                      "anyOf": [
+                        {
+                          "const": "USD",
+                          "type": "string"
+                        },
+                        {
+                          "const": "EUR",
+                          "type": "string"
+                        },
+                        {
+                          "const": "AED",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "cents": {
+                      "description": "eksi = Kanzasset borçlu, artı = rafineri borçlu",
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "status": {
+            "anyOf": [
+              {
+                "const": "OK",
+                "type": "string"
+              },
+              {
+                "const": "RECONCILE",
+                "type": "string"
+              },
+              {
+                "const": "HALTED",
+                "type": "string"
+              }
+            ]
+          }
+        }
+      },
+      "PriceLevel": {
+        "type": "object",
+        "required": [
+          "ccy",
+          "bid",
+          "ask"
+        ],
+        "properties": {
+          "ccy": {
+            "anyOf": [
+              {
+                "const": "USD",
+                "type": "string"
+              },
+              {
+                "const": "EUR",
+                "type": "string"
+              },
+              {
+                "const": "AED",
+                "type": "string"
+              }
+            ]
+          },
+          "bid": {
+            "pattern": "^-?\\d+(\\.\\d+)?$",
+            "description": "ondalık dize, ör. \"142.00\"",
+            "type": "string"
+          },
+          "ask": {
+            "pattern": "^-?\\d+(\\.\\d+)?$",
+            "description": "ondalık dize, ör. \"142.00\"",
+            "type": "string"
+          }
+        }
+      },
+      "WsAuth": {
+        "type": "object",
+        "required": [
+          "type",
+          "api_key",
+          "ts",
+          "sig"
+        ],
+        "properties": {
+          "type": {
+            "const": "auth",
+            "type": "string"
+          },
+          "api_key": {
+            "type": "string"
+          },
+          "ts": {
+            "description": "ISO 8601 UTC",
+            "type": "string"
+          },
+          "sig": {
+            "description": "HMAC-SHA256(secret, ts + 'GET' + '/v1/prices') hex",
+            "type": "string"
+          }
+        }
+      },
+      "WsSnapshot": {
+        "type": "object",
+        "required": [
+          "type",
+          "seq",
+          "ts",
+          "tradable",
+          "prices"
+        ],
+        "properties": {
+          "type": {
+            "const": "snapshot",
+            "type": "string"
+          },
+          "seq": {
+            "type": "integer"
+          },
+          "ts": {
+            "description": "ISO 8601 UTC",
+            "type": "string"
+          },
+          "tradable": {
+            "type": "boolean"
+          },
+          "prices": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "ccy",
+                "bid",
+                "ask"
+              ],
+              "properties": {
+                "ccy": {
+                  "anyOf": [
+                    {
+                      "const": "USD",
+                      "type": "string"
+                    },
+                    {
+                      "const": "EUR",
+                      "type": "string"
+                    },
+                    {
+                      "const": "AED",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "bid": {
+                  "pattern": "^-?\\d+(\\.\\d+)?$",
+                  "description": "ondalık dize, ör. \"142.00\"",
+                  "type": "string"
+                },
+                "ask": {
+                  "pattern": "^-?\\d+(\\.\\d+)?$",
+                  "description": "ondalık dize, ör. \"142.00\"",
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "WsTick": {
+        "type": "object",
+        "required": [
+          "type",
+          "seq",
+          "ts",
+          "tradable",
+          "prices"
+        ],
+        "properties": {
+          "type": {
+            "const": "tick",
+            "type": "string"
+          },
+          "seq": {
+            "type": "integer"
+          },
+          "ts": {
+            "description": "ISO 8601 UTC",
+            "type": "string"
+          },
+          "tradable": {
+            "type": "boolean"
+          },
+          "prices": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "ccy",
+                "bid",
+                "ask"
+              ],
+              "properties": {
+                "ccy": {
+                  "anyOf": [
+                    {
+                      "const": "USD",
+                      "type": "string"
+                    },
+                    {
+                      "const": "EUR",
+                      "type": "string"
+                    },
+                    {
+                      "const": "AED",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "bid": {
+                  "pattern": "^-?\\d+(\\.\\d+)?$",
+                  "description": "ondalık dize, ör. \"142.00\"",
+                  "type": "string"
+                },
+                "ask": {
+                  "pattern": "^-?\\d+(\\.\\d+)?$",
+                  "description": "ondalık dize, ör. \"142.00\"",
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "WsHeartbeat": {
+        "type": "object",
+        "required": [
+          "type",
+          "seq",
+          "ts",
+          "tradable"
+        ],
+        "properties": {
+          "type": {
+            "const": "heartbeat",
+            "type": "string"
+          },
+          "seq": {
+            "type": "integer"
+          },
+          "ts": {
+            "description": "ISO 8601 UTC",
+            "type": "string"
+          },
+          "tradable": {
+            "type": "boolean"
+          }
+        }
+      },
+      "WsHalt": {
+        "type": "object",
+        "required": [
+          "type",
+          "ts",
+          "reason"
+        ],
+        "properties": {
+          "type": {
+            "const": "halt",
+            "type": "string"
+          },
+          "ts": {
+            "description": "ISO 8601 UTC",
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      },
+      "WsResume": {
+        "type": "object",
+        "required": [
+          "type",
+          "seq",
+          "ts"
+        ],
+        "properties": {
+          "type": {
+            "const": "resume",
+            "type": "string"
+          },
+          "seq": {
+            "type": "integer"
+          },
+          "ts": {
+            "description": "ISO 8601 UTC",
+            "type": "string"
+          }
+        }
+      },
+      "OrderRequest": {
+        "type": "object",
+        "required": [
+          "client_order_id",
+          "side",
+          "qty_mg",
+          "ccy",
+          "quote_seq",
+          "limit_px",
+          "tif",
+          "time_limit_ms"
+        ],
+        "properties": {
+          "client_order_id": {
+            "description": "KZ tarafında tekil; aynı id ile tekrar gelen istek aynı cevabı alır",
+            "type": "string"
+          },
+          "side": {
+            "anyOf": [
+              {
+                "const": "BUY",
+                "type": "string"
+              },
+              {
+                "const": "SELL",
+                "type": "string"
+              }
+            ]
+          },
+          "qty_mg": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "ccy": {
+            "anyOf": [
+              {
+                "const": "USD",
+                "type": "string"
+              },
+              {
+                "const": "EUR",
+                "type": "string"
+              },
+              {
+                "const": "AED",
+                "type": "string"
+              }
+            ]
+          },
+          "quote_seq": {
+            "description": "emrin dayandığı fiyat tick'i",
+            "type": "integer"
+          },
+          "limit_px": {
+            "pattern": "^-?\\d+(\\.\\d+)?$",
+            "description": "ondalık dize, ör. \"142.00\"",
+            "type": "string"
+          },
+          "tif": {
+            "const": "FOK",
+            "type": "string"
+          },
+          "time_limit_ms": {
+            "minimum": 100,
+            "type": "integer"
+          }
+        }
+      },
+      "OrderResponse": {
+        "type": "object",
+        "required": [
+          "order_id",
+          "client_order_id",
+          "status",
+          "side",
+          "qty_mg",
+          "ccy",
+          "quote_seq",
+          "limit_px",
+          "received_ts"
+        ],
+        "properties": {
+          "order_id": {
+            "type": "string"
+          },
+          "client_order_id": {
+            "type": "string"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "const": "RECEIVED",
+                "type": "string"
+              },
+              {
+                "const": "CANCEL_REQUESTED",
+                "type": "string"
+              },
+              {
+                "const": "FILLED",
+                "type": "string"
+              },
+              {
+                "const": "REJECTED",
+                "type": "string"
+              },
+              {
+                "const": "CANCELLED",
+                "type": "string"
+              }
+            ]
+          },
+          "side": {
+            "anyOf": [
+              {
+                "const": "BUY",
+                "type": "string"
+              },
+              {
+                "const": "SELL",
+                "type": "string"
+              }
+            ]
+          },
+          "qty_mg": {
+            "type": "integer"
+          },
+          "ccy": {
+            "anyOf": [
+              {
+                "const": "USD",
+                "type": "string"
+              },
+              {
+                "const": "EUR",
+                "type": "string"
+              },
+              {
+                "const": "AED",
+                "type": "string"
+              }
+            ]
+          },
+          "quote_seq": {
+            "type": "integer"
+          },
+          "limit_px": {
+            "pattern": "^-?\\d+(\\.\\d+)?$",
+            "description": "ondalık dize, ör. \"142.00\"",
+            "type": "string"
+          },
+          "fill": {
+            "type": "object",
+            "required": [
+              "px",
+              "qty_mg",
+              "amount_cents",
+              "ccy",
+              "trade_ts"
+            ],
+            "properties": {
+              "px": {
+                "pattern": "^-?\\d+(\\.\\d+)?$",
+                "description": "ondalık dize, ör. \"142.00\"",
+                "type": "string"
+              },
+              "qty_mg": {
+                "type": "integer"
+              },
+              "amount_cents": {
+                "type": "integer"
+              },
+              "ccy": {
+                "anyOf": [
+                  {
+                    "const": "USD",
+                    "type": "string"
+                  },
+                  {
+                    "const": "EUR",
+                    "type": "string"
+                  },
+                  {
+                    "const": "AED",
+                    "type": "string"
+                  }
+                ]
+              },
+              "trade_ts": {
+                "description": "ISO 8601 UTC",
+                "type": "string"
+              }
+            }
+          },
+          "reject_reason": {
+            "anyOf": [
+              {
+                "const": "PRICE_OUTSIDE_LIMIT",
+                "type": "string"
+              },
+              {
+                "const": "STALE_QUOTE",
+                "type": "string"
+              },
+              {
+                "const": "TRADING_HALTED",
+                "type": "string"
+              },
+              {
+                "const": "CURRENT_ACCOUNT_LIMIT",
+                "type": "string"
+              },
+              {
+                "const": "DUPLICATE_ORDER",
+                "type": "string"
+              },
+              {
+                "const": "INVALID_QTY",
+                "type": "string"
+              },
+              {
+                "const": "INSUFFICIENT_CURRENT_ACCOUNT",
+                "type": "string"
+              },
+              {
+                "const": "INSUFFICIENT_VAULT",
+                "type": "string"
+              },
+              {
+                "const": "QUOTE_EXPIRED",
+                "type": "string"
+              },
+              {
+                "const": "INTERNAL_ERROR",
+                "type": "string"
+              }
+            ]
+          },
+          "allocation_certificate": {
+            "type": "object",
+            "required": [
+              "doc_id",
+              "url"
+            ],
+            "properties": {
+              "doc_id": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              }
+            }
+          },
+          "account": {
+            "type": "object",
+            "required": [
+              "seq",
+              "vault",
+              "current_account",
+              "status"
+            ],
+            "properties": {
+              "seq": {
+                "description": "hesap hareket numarası (fiyat seq'inden ayrı)",
+                "type": "integer"
+              },
+              "vault": {
+                "type": "object",
+                "required": [
+                  "in_vault_mg",
+                  "placing_mg",
+                  "shipping_mg"
+                ],
+                "properties": {
+                  "in_vault_mg": {
+                    "description": "kasada",
+                    "type": "integer"
+                  },
+                  "placing_mg": {
+                    "description": "kasaya konuluyor (kabul edildi, en geç T+3)",
+                    "type": "integer"
+                  },
+                  "shipping_mg": {
+                    "description": "sevkiyatta (çıktı, henüz teslim edilmedi)",
+                    "type": "integer"
+                  }
+                }
+              },
+              "current_account": {
+                "type": "object",
+                "required": [
+                  "gold_mg",
+                  "money"
+                ],
+                "properties": {
+                  "gold_mg": {
+                    "description": "T: artı = aldık, kasaya konmadı; eksi = sattık, kasadan çıkmadı",
+                    "type": "integer"
+                  },
+                  "money": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "ccy",
+                        "cents"
+                      ],
+                      "properties": {
+                        "ccy": {
+                          "anyOf": [
+                            {
+                              "const": "USD",
+                              "type": "string"
+                            },
+                            {
+                              "const": "EUR",
+                              "type": "string"
+                            },
+                            {
+                              "const": "AED",
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "cents": {
+                          "description": "eksi = Kanzasset borçlu, artı = rafineri borçlu",
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "status": {
+                "anyOf": [
+                  {
+                    "const": "OK",
+                    "type": "string"
+                  },
+                  {
+                    "const": "RECONCILE",
+                    "type": "string"
+                  },
+                  {
+                    "const": "HALTED",
+                    "type": "string"
+                  }
+                ]
+              }
+            }
+          },
+          "received_ts": {
+            "description": "ISO 8601 UTC",
+            "type": "string"
+          },
+          "decided_ts": {
+            "description": "ISO 8601 UTC",
+            "type": "string"
+          },
+          "history": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "status",
+                "ts"
+              ],
+              "properties": {
+                "status": {
+                  "anyOf": [
+                    {
+                      "const": "RECEIVED",
+                      "type": "string"
+                    },
+                    {
+                      "const": "CANCEL_REQUESTED",
+                      "type": "string"
+                    },
+                    {
+                      "const": "FILLED",
+                      "type": "string"
+                    },
+                    {
+                      "const": "REJECTED",
+                      "type": "string"
+                    },
+                    {
+                      "const": "CANCELLED",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "ts": {
+                  "description": "ISO 8601 UTC",
+                  "type": "string"
+                },
+                "note": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "OrderStatus": {
+        "anyOf": [
+          {
+            "const": "RECEIVED",
+            "type": "string"
+          },
+          {
+            "const": "CANCEL_REQUESTED",
+            "type": "string"
+          },
+          {
+            "const": "FILLED",
+            "type": "string"
+          },
+          {
+            "const": "REJECTED",
+            "type": "string"
+          },
+          {
+            "const": "CANCELLED",
+            "type": "string"
+          }
+        ]
+      },
+      "RejectReason": {
+        "anyOf": [
+          {
+            "const": "PRICE_OUTSIDE_LIMIT",
+            "type": "string"
+          },
+          {
+            "const": "STALE_QUOTE",
+            "type": "string"
+          },
+          {
+            "const": "TRADING_HALTED",
+            "type": "string"
+          },
+          {
+            "const": "CURRENT_ACCOUNT_LIMIT",
+            "type": "string"
+          },
+          {
+            "const": "DUPLICATE_ORDER",
+            "type": "string"
+          },
+          {
+            "const": "INVALID_QTY",
+            "type": "string"
+          },
+          {
+            "const": "INSUFFICIENT_CURRENT_ACCOUNT",
+            "type": "string"
+          },
+          {
+            "const": "INSUFFICIENT_VAULT",
+            "type": "string"
+          },
+          {
+            "const": "QUOTE_EXPIRED",
+            "type": "string"
+          },
+          {
+            "const": "INTERNAL_ERROR",
+            "type": "string"
+          }
+        ]
+      },
+      "Movement": {
+        "type": "object",
+        "required": [
+          "id",
+          "seq",
+          "type",
+          "gold_mg",
+          "ts"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "seq": {
+            "type": "integer"
+          },
+          "type": {
+            "anyOf": [
+              {
+                "const": "OPENING",
+                "type": "string"
+              },
+              {
+                "const": "FILL_BUY",
+                "type": "string"
+              },
+              {
+                "const": "FILL_SELL",
+                "type": "string"
+              },
+              {
+                "const": "VAULT_IN",
+                "type": "string"
+              },
+              {
+                "const": "VAULT_OUT",
+                "type": "string"
+              },
+              {
+                "const": "FEE_DELIVERY",
+                "type": "string"
+              },
+              {
+                "const": "FEE_REFINING",
+                "type": "string"
+              },
+              {
+                "const": "SETTLEMENT_PAYMENT",
+                "type": "string"
+              }
+            ]
+          },
+          "gold_mg": {
+            "description": "işaretli",
+            "type": "integer"
+          },
+          "ccy": {
+            "anyOf": [
+              {
+                "const": "USD",
+                "type": "string"
+              },
+              {
+                "const": "EUR",
+                "type": "string"
+              },
+              {
+                "const": "AED",
+                "type": "string"
+              }
+            ]
+          },
+          "amount_cents": {
+            "description": "işaretli: eksi Kanzasset borçlu",
+            "type": "integer"
+          },
+          "ref": {
+            "type": "string"
+          },
+          "related_id": {
+            "type": "string"
+          },
+          "ts": {
+            "description": "ISO 8601 UTC",
+            "type": "string"
+          }
+        }
+      },
+      "CurrentAccountStatement": {
+        "type": "object",
+        "required": [
+          "window_from",
+          "window_to",
+          "movements",
+          "gold_mg",
+          "money",
+          "fees",
+          "hash",
+          "signature"
+        ],
+        "properties": {
+          "window_from": {
+            "description": "ISO 8601 UTC",
+            "type": "string"
+          },
+          "window_to": {
+            "description": "ISO 8601 UTC",
+            "type": "string"
+          },
+          "movements": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "seq",
+                "type",
+                "gold_mg",
+                "ts"
+              ],
+              "properties": {
+                "id": {
+                  "type": "integer"
+                },
+                "seq": {
+                  "type": "integer"
+                },
+                "type": {
+                  "anyOf": [
+                    {
+                      "const": "OPENING",
+                      "type": "string"
+                    },
+                    {
+                      "const": "FILL_BUY",
+                      "type": "string"
+                    },
+                    {
+                      "const": "FILL_SELL",
+                      "type": "string"
+                    },
+                    {
+                      "const": "VAULT_IN",
+                      "type": "string"
+                    },
+                    {
+                      "const": "VAULT_OUT",
+                      "type": "string"
+                    },
+                    {
+                      "const": "FEE_DELIVERY",
+                      "type": "string"
+                    },
+                    {
+                      "const": "FEE_REFINING",
+                      "type": "string"
+                    },
+                    {
+                      "const": "SETTLEMENT_PAYMENT",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "gold_mg": {
+                  "description": "işaretli",
+                  "type": "integer"
+                },
+                "ccy": {
+                  "anyOf": [
+                    {
+                      "const": "USD",
+                      "type": "string"
+                    },
+                    {
+                      "const": "EUR",
+                      "type": "string"
+                    },
+                    {
+                      "const": "AED",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "amount_cents": {
+                  "description": "işaretli: eksi Kanzasset borçlu",
+                  "type": "integer"
+                },
+                "ref": {
+                  "type": "string"
+                },
+                "related_id": {
+                  "type": "string"
+                },
+                "ts": {
+                  "description": "ISO 8601 UTC",
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "gold_mg": {
+            "type": "integer"
+          },
+          "money": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "ccy",
+                "cents"
+              ],
+              "properties": {
+                "ccy": {
+                  "anyOf": [
+                    {
+                      "const": "USD",
+                      "type": "string"
+                    },
+                    {
+                      "const": "EUR",
+                      "type": "string"
+                    },
+                    {
+                      "const": "AED",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "cents": {
+                  "description": "eksi = Kanzasset borçlu, artı = rafineri borçlu",
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "fees": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "type",
+                "ccy",
+                "amount_cents"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string"
+                },
+                "ccy": {
+                  "anyOf": [
+                    {
+                      "const": "USD",
+                      "type": "string"
+                    },
+                    {
+                      "const": "EUR",
+                      "type": "string"
+                    },
+                    {
+                      "const": "AED",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "amount_cents": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "hash": {
+            "type": "string"
+          },
+          "signature": {
+            "type": "string"
+          }
+        }
+      },
+      "Document": {
+        "type": "object",
+        "required": [
+          "meta",
+          "content"
+        ],
+        "properties": {
+          "meta": {
+            "type": "object",
+            "required": [
+              "doc_id",
+              "type",
+              "related_id",
+              "hash",
+              "signature",
+              "created_ts"
+            ],
+            "properties": {
+              "doc_id": {
+                "type": "string"
+              },
+              "type": {
+                "anyOf": [
+                  {
+                    "const": "ALLOCATION_CERTIFICATE",
+                    "type": "string"
+                  },
+                  {
+                    "const": "VAULT_IN_SLIP",
+                    "type": "string"
+                  },
+                  {
+                    "const": "VAULT_OUT_SLIP",
+                    "type": "string"
+                  },
+                  {
+                    "const": "LOGISTICS_QUOTE",
+                    "type": "string"
+                  },
+                  {
+                    "const": "REFINING_QUOTE",
+                    "type": "string"
+                  },
+                  {
+                    "const": "SHIPPING_SLIP",
+                    "type": "string"
+                  },
+                  {
+                    "const": "DELIVERY_RECORD",
+                    "type": "string"
+                  },
+                  {
+                    "const": "VAULT_STATEMENT",
+                    "type": "string"
+                  },
+                  {
+                    "const": "CURRENT_ACCOUNT_STATEMENT",
+                    "type": "string"
+                  },
+                  {
+                    "const": "SETTLEMENT_STATEMENT",
+                    "type": "string"
+                  }
+                ]
+              },
+              "related_id": {
+                "type": "string"
+              },
+              "hash": {
+                "description": "sha256(content)",
+                "type": "string"
+              },
+              "signature": {
+                "description": "HMAC-SHA256(rafineri belge anahtarı, hash)",
+                "type": "string"
+              },
+              "created_ts": {
+                "description": "ISO 8601 UTC",
+                "type": "string"
+              },
+              "sent_ts": {
+                "description": "ISO 8601 UTC",
+                "type": "string"
+              }
+            }
+          },
+          "content": {
+            "type": "object",
+            "patternProperties": {
+              "^(.*)$": {}
+            }
+          }
+        }
+      },
+      "DocumentMeta": {
+        "type": "object",
+        "required": [
+          "doc_id",
+          "type",
+          "related_id",
+          "hash",
+          "signature",
+          "created_ts"
+        ],
+        "properties": {
+          "doc_id": {
+            "type": "string"
+          },
+          "type": {
+            "anyOf": [
+              {
+                "const": "ALLOCATION_CERTIFICATE",
+                "type": "string"
+              },
+              {
+                "const": "VAULT_IN_SLIP",
+                "type": "string"
+              },
+              {
+                "const": "VAULT_OUT_SLIP",
+                "type": "string"
+              },
+              {
+                "const": "LOGISTICS_QUOTE",
+                "type": "string"
+              },
+              {
+                "const": "REFINING_QUOTE",
+                "type": "string"
+              },
+              {
+                "const": "SHIPPING_SLIP",
+                "type": "string"
+              },
+              {
+                "const": "DELIVERY_RECORD",
+                "type": "string"
+              },
+              {
+                "const": "VAULT_STATEMENT",
+                "type": "string"
+              },
+              {
+                "const": "CURRENT_ACCOUNT_STATEMENT",
+                "type": "string"
+              },
+              {
+                "const": "SETTLEMENT_STATEMENT",
+                "type": "string"
+              }
+            ]
+          },
+          "related_id": {
+            "type": "string"
+          },
+          "hash": {
+            "description": "sha256(content)",
+            "type": "string"
+          },
+          "signature": {
+            "description": "HMAC-SHA256(rafineri belge anahtarı, hash)",
+            "type": "string"
+          },
+          "created_ts": {
+            "description": "ISO 8601 UTC",
+            "type": "string"
+          },
+          "sent_ts": {
+            "description": "ISO 8601 UTC",
+            "type": "string"
+          }
+        }
+      },
+      "VaultRequestBody": {
+        "type": "object",
+        "required": [
+          "qty_mg",
+          "ref"
+        ],
+        "properties": {
+          "qty_mg": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "ref": {
+            "description": "Kanzasset referans numarası",
+            "type": "string"
+          }
+        }
+      },
+      "VaultRequest": {
+        "type": "object",
+        "required": [
+          "request_id",
+          "type",
+          "qty_mg",
+          "ref",
+          "status",
+          "requested_ts"
+        ],
+        "properties": {
+          "request_id": {
+            "type": "string"
+          },
+          "type": {
+            "anyOf": [
+              {
+                "const": "IN",
+                "type": "string"
+              },
+              {
+                "const": "OUT",
+                "type": "string"
+              }
+            ]
+          },
+          "qty_mg": {
+            "type": "integer"
+          },
+          "ref": {
+            "type": "string"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "const": "REQUESTED",
+                "type": "string"
+              },
+              {
+                "const": "ACCEPTED",
+                "type": "string"
+              },
+              {
+                "const": "PLACING",
+                "type": "string"
+              },
+              {
+                "const": "PLACED",
+                "type": "string"
+              },
+              {
+                "const": "REJECTED",
+                "type": "string"
+              }
+            ]
+          },
+          "doc_id": {
+            "description": "Kasa Giriş / Çıkış Fişi",
+            "type": "string"
+          },
+          "reject_reason": {
+            "type": "string"
+          },
+          "requested_ts": {
+            "description": "ISO 8601 UTC",
+            "type": "string"
+          },
+          "accepted_ts": {
+            "description": "ISO 8601 UTC",
+            "type": "string"
+          },
+          "placed_ts": {
+            "description": "ISO 8601 UTC",
+            "type": "string"
+          },
+          "due_ts": {
+            "description": "ISO 8601 UTC",
+            "type": "string"
+          }
+        }
+      },
+      "EventEnvelope": {
+        "type": "object",
+        "required": [
+          "event_id",
+          "type",
+          "ts",
+          "data"
+        ],
+        "properties": {
+          "event_id": {
+            "description": "tekil; KZ tekrarı bununla ayıklar",
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "ts": {
+            "description": "ISO 8601 UTC",
+            "type": "string"
+          },
+          "seq": {
+            "description": "hesap seq; metal hareketi varsa",
+            "type": "integer"
+          },
+          "data": {},
+          "account": {
+            "type": "object",
+            "required": [
+              "seq",
+              "vault",
+              "current_account",
+              "status"
+            ],
+            "properties": {
+              "seq": {
+                "description": "hesap hareket numarası (fiyat seq'inden ayrı)",
+                "type": "integer"
+              },
+              "vault": {
+                "type": "object",
+                "required": [
+                  "in_vault_mg",
+                  "placing_mg",
+                  "shipping_mg"
+                ],
+                "properties": {
+                  "in_vault_mg": {
+                    "description": "kasada",
+                    "type": "integer"
+                  },
+                  "placing_mg": {
+                    "description": "kasaya konuluyor (kabul edildi, en geç T+3)",
+                    "type": "integer"
+                  },
+                  "shipping_mg": {
+                    "description": "sevkiyatta (çıktı, henüz teslim edilmedi)",
+                    "type": "integer"
+                  }
+                }
+              },
+              "current_account": {
+                "type": "object",
+                "required": [
+                  "gold_mg",
+                  "money"
+                ],
+                "properties": {
+                  "gold_mg": {
+                    "description": "T: artı = aldık, kasaya konmadı; eksi = sattık, kasadan çıkmadı",
+                    "type": "integer"
+                  },
+                  "money": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "ccy",
+                        "cents"
+                      ],
+                      "properties": {
+                        "ccy": {
+                          "anyOf": [
+                            {
+                              "const": "USD",
+                              "type": "string"
+                            },
+                            {
+                              "const": "EUR",
+                              "type": "string"
+                            },
+                            {
+                              "const": "AED",
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "cents": {
+                          "description": "eksi = Kanzasset borçlu, artı = rafineri borçlu",
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "status": {
+                "anyOf": [
+                  {
+                    "const": "OK",
+                    "type": "string"
+                  },
+                  {
+                    "const": "RECONCILE",
+                    "type": "string"
+                  },
+                  {
+                    "const": "HALTED",
+                    "type": "string"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

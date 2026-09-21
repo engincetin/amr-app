@@ -37,7 +37,7 @@ Tarayıcı: `http://localhost:4001` (geliştirme) ya da `npm run build && npm st
 
 Tek tek: `npm run dev:merkez`, `npm run dev:server`, `npm run dev:web`.
 
-Test: `npm test`. OpenAPI: `npm run openapi:export` → `packages/contract/openapi.json`.
+Test: `npm test`. OpenAPI: `npm run openapi:export` → `openapi.json` (repo kökü).
 
 ## Ortam değişkenleri
 
@@ -48,6 +48,8 @@ Test: `npm test`. OpenAPI: `npm run openapi:export` → `packages/contract/opena
 | `SOURCE_URL` | `ws://localhost:4100/prices` | merkez fiyat soketi (R2'den de değiştirilir) |
 | `SOURCE_AUTOCONNECT` | `1` | açılışta merkeze bağlan |
 | `KZ_API_KEY` / `KZ_API_SECRET` | `kz-dev-key` / `kz-dev-secret` | Kanzasset istemcisi (ilk açılışta yazılır) |
+| `KZ_EVENT_URL` | `http://localhost:5000/api/events` | Kanzasset olay adresi (webhook) |
+| `VAULT_OPENING_MG` | `0` | açılış devri: kasada Kanzasset adına duran gram, yalnız defter boşken (demo: `20000000`) |
 | `ADMIN_TOKEN` | boş | verilirse panel API'si `X-Admin-Token` ister |
 | `LOG_LEVEL` | `info` | |
 | `MERKEZ_WS_PORT` / `MERKEZ_HTTP_PORT` | `4100` / `4110` | mock merkez |
@@ -55,11 +57,18 @@ Test: `npm test`. OpenAPI: `npm run openapi:export` → `packages/contract/opena
 
 ## Kanzasset'e verilen arayüz
 
-- REST `/v1/*`: başlıklar `X-API-Key`, `X-Timestamp`, `X-Signature = HMAC-SHA256(secret, ts + METHOD + path + body)`, POST'ta `Idempotency-Key`. Zaman sapması en çok 5 dk.
+- REST `/v1/*`: başlıklar `X-API-Key`, `X-Timestamp`, `X-Signature = HMAC-SHA256(secret, ts + METHOD + path + ham gövde)`, POST'ta `Idempotency-Key`. Zaman sapması en çok 5 dk.
 - Soket `/v1/prices`: ilk mesaj `auth {api_key, ts, sig}` (imza `ts + "GET" + "/v1/prices"`), sonra `subscribed`, `snapshot`, `tick` (yalnız değişince, saniyede en çok 1), `heartbeat` (5 sn), `halt {reason}`, `resume` (+snapshot).
+- Emirler: `POST /v1/orders` (FOK, `quote_seq`, `limit_px`, `time_limit_ms`) · `GET /v1/orders/{id}` · `POST /v1/orders/{id}/cancel` (kesin cevap). Fill cevabında bakiye bilgisi (`account`) ve alışta Tahsis Belgesi.
+- Hesap: `GET /v1/account` (anlık fotoğraf) · `GET /v1/current-account/statement` · `GET /v1/documents/{id}`.
+- Olaylar (webhook): her durum değişikliği KZ olay adresine POST edilir (`order.*`, `price.halt / resume`, `settlement.requested` ...), aynı imza başlıkları, 2xx değilse üstel bekleme ile tekrar.
 - Tüm miktarlar tam sayı: gram için mg, para için cent. Fiyatlar ondalık string.
 
-Sözleşme `packages/contract/src/index.ts` içindedir. Değişiklik yalnız burada yapılır, sonra `kz-treasury` içinde `npm run contract:sync` çalıştırılır.
+Sözleşme `packages/contract/src/index.ts` içindedir. Değişiklik yalnız burada yapılır, sonra `kz-treasury` içinde `npm run contract:sync` çalıştırılır. OpenAPI: `openapi.json` (repo kökü).
+
+## Demo ayarları (R10 → parametreler)
+
+`debug.order_delay_ms`: emir kararını geciktirir (cevapsız emir ve geç fill senaryoları) · `order.quote_max_age_ms`: quote_seq tazeliği · `limit.current_account_*`: cari hesap limitleri · `limit.warn_pct`: uyarı eşiği · `events.retry_schedule_ms`: olay tekrar takvimi.
 
 ## Mock merkez kontrolü (test)
 
@@ -75,7 +84,7 @@ curl -X POST localhost:4110/control/jump -H 'content-type: application/json' -d 
 | Sprint | Kapsam | Ekranlar |
 |---|---|---|
 | 1 ✓ | iskelet, sözleşme, mock merkez, fiyat soketi, merkez bağlantısı, yayın durdur / başlat, bildirimler, ayarlar | R1, R2, R10 |
-| 2 | emirler, bakiye bilgisi, cari hesap, K1..K3 kontrolleri | R3, R5 |
+| 2 ✓ | emirler (fill / red / iptal, Tahsis Belgesi), bakiye bilgisi, cari hesap ve limit (K3), olaylar (webhook), cevapsız emir | R3, R5 |
 | 3 | kasa talimatları, Kasa Giriş / Çıkış Fişi (PDF), büyük alış / satış | R4 |
 | 4 | fiziksel teslimat (lojistik teklifi, Sevkiyat Fişi, takip no), rafinasyon + katalog | R6, R7 |
 | 5 | mahsuplaşma (kesim saati otomatik, talep iki yönlü), belgeler, kullanıcılar | R8, R9 |

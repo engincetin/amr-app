@@ -29,6 +29,16 @@ export const api = {
   settings: () => req<Record<string, string>>("/admin/settings"),
   saveSettings: (s: Record<string, string>) => req<Record<string, string>>("/admin/settings", { method: "PUT", body: JSON.stringify(s) }),
   audit: () => req<AuditRow[]>("/admin/audit"),
+  orders: (q: { day?: string; side?: string; status?: string; limit?: number } = {}) => {
+    const u = new URLSearchParams(); for (const [k, v] of Object.entries(q)) if (v !== undefined && v !== "") u.set(k, String(v));
+    return req<Order[]>(`/admin/orders${u.size ? `?${u}` : ""}`);
+  },
+  order: (id: string) => req<Order>(`/admin/orders/${encodeURIComponent(id)}`),
+  currentAccount: (limit = 200) => req<CurrentAccount>(`/admin/current-account?limit=${limit}`),
+  requestSettlement: (reason: string) => req("/admin/settlement/request", { method: "POST", body: JSON.stringify({ reason }) }),
+  document: (id: string) => req<Doc>(`/admin/documents/${encodeURIComponent(id)}`),
+  documents: () => req<{ doc_id: string; type: string; related_id: string; created_ts: string; sent_ts: string | null }[]>("/admin/documents"),
+  events: () => req<{ event_id: string; type: string; status: string; attempts: number; next_ts: string; last_error: string | null; created_ts: string; sent_ts: string | null }[]>("/admin/events"),
 };
 
 export interface PriceLevel { ccy: "USD" | "EUR" | "AED"; bid: string; ask: string }
@@ -37,6 +47,17 @@ export interface Notification { id: number; type: string; title: string; body: s
 export interface AuditRow { id: number; ts: string; actor: string; action: string; before: string | null; after: string | null }
 export interface SourceState { status: "DISCONNECTED" | "CONNECTING" | "CONNECTED"; url: string | null; lastPriceTs: string | null; lastError: string | null; connectedSince: string | null; reconnectAttempt: number; manual: boolean }
 export interface PublishState { tradable: boolean; sourceConnected: boolean; manualHalt: boolean; haltReason: string | null; seq: number; lastTickTs: string | null; lastPrices: PriceLevel[] | null; subscribers: number }
+export interface Account { seq: number; vault: { in_vault_mg: number; placing_mg: number; shipping_mg: number }; current_account: { gold_mg: number; money: { ccy: string; cents: number }[] }; status: string }
+export interface LimitUsage { gold: { used_mg: number; limit_mg: number; pct: number }; money: { ccy: string; used_cents: number; limit_cents: number; pct: number }[]; max_pct: number }
+export interface Fill { px: string; qty_mg: number; amount_cents: number; ccy: string; trade_ts: string }
+export interface Order {
+  order_id: string; client_order_id: string; status: "RECEIVED" | "CANCEL_REQUESTED" | "FILLED" | "REJECTED" | "CANCELLED"; side: "BUY" | "SELL"; qty_mg: number; ccy: string;
+  quote_seq: number; limit_px: string; fill?: Fill; reject_reason?: string; allocation_certificate?: { doc_id: string; url: string }; account?: Account;
+  received_ts: string; decided_ts?: string; history?: { status: string; ts: string; note?: string }[];
+}
+export interface Movement { id: number; seq: number; type: string; gold_mg: number; ccy?: string; amount_cents?: number; ref?: string; related_id?: string; ts: string }
+export interface CurrentAccount { account: Account; limit: LimitUsage; movements: Movement[] }
+export interface Doc { meta: { doc_id: string; type: string; related_id: string; hash: string; signature: string; created_ts: string; sent_ts?: string }; content: Record<string, unknown> }
 export interface Overview {
   source: SourceState;
   publish: PublishState;
@@ -44,7 +65,9 @@ export interface Overview {
   unread: number;
   settings: Record<string, string>;
   ts: string;
-  account: { seq: number; vault: { in_vault_mg: number; placing_mg: number; shipping_mg: number }; current_account: { gold_mg: number; money: { ccy: string; cents: number }[] }; status: string };
+  account: Account;
+  limit: LimitUsage;
+  orders_today: { day: string; buy: { filled: number; mg: number; rejected: number }; sell: { filled: number; mg: number; rejected: number }; total: number };
 }
 
 export type BusEvent =
@@ -53,6 +76,9 @@ export type BusEvent =
   | { kind: "publish"; state: PublishState }
   | { kind: "subscribers"; count: number }
   | { kind: "notification"; id: number; type: string; title: string; body: string; created_ts: string }
+  | { kind: "order"; order: Order }
+  | { kind: "account"; account: Account }
+  | { kind: "event"; event: { event_id: string; type: string; ts: string; status: string; error?: string | null } }
   | { kind: "heartbeat"; ts: string };
 
 /** Canlı akış: overview'ı tutar, tick'leri biriktirir, bildirimleri sayar. */
@@ -60,6 +86,7 @@ export function useLive() {
   const [overview, setOverview] = useState<Overview | null>(null);
   const [ticks, setTicks] = useState<Tick[]>([]);
   const [lastEvent, setLastEvent] = useState<string>("");
+  const [lastOrder, setLastOrder] = useState<Order | null>(null);
   const [connected, setConnected] = useState(false);
   const refreshTimer = useRef<number | null>(null);
 
@@ -87,6 +114,12 @@ export function useLive() {
         scheduleRefresh();
       } else if (ev.kind === "publish") {
         setOverview((o) => (o ? { ...o, publish: ev.state } : o));
+      } else if (ev.kind === "account") {
+        setOverview((o) => (o ? { ...o, account: ev.account } : o));
+        scheduleRefresh();
+      } else if (ev.kind === "order") {
+        setLastOrder(ev.order);
+        scheduleRefresh();
       } else if (ev.kind === "subscribers" || ev.kind === "notification") {
         scheduleRefresh();
       }
@@ -98,10 +131,14 @@ export function useLive() {
     return () => es.close();
   }, []);
 
-  return { overview, ticks, lastEvent, connected, refresh };
+  return { overview, ticks, lastEvent, lastOrder, connected, refresh };
 }
 
 export const fmtG = (mg: number) => (mg / 1000).toLocaleString("tr-TR", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
 export const fmtMoney = (cents: number) => (cents / 100).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 export const fmtTime = (iso: string | null | undefined) => (iso ? new Date(iso).toLocaleTimeString("tr-TR", { hour12: false }) : "");
+export const fmtDT = (iso: string | null | undefined) => (iso ? new Date(iso).toLocaleString("tr-TR", { hour12: false }) : "");
+export const STATUS_TR: Record<string, string> = { RECEIVED: "alındı", CANCEL_REQUESTED: "iptal isteniyor", FILLED: "gerçekleşti", REJECTED: "reddedildi", CANCELLED: "iptal" };
+export const REJECT_TR: Record<string, string> = { PRICE_OUTSIDE_LIMIT: "fiyat limit dışı (slippage)", STALE_QUOTE: "bayat quote_seq", TRADING_HALTED: "yayın durdu", CURRENT_ACCOUNT_LIMIT: "cari hesap limiti", DUPLICATE_ORDER: "tekrar emir", INVALID_QTY: "geçersiz miktar", INSUFFICIENT_CURRENT_ACCOUNT: "cari hesap altını yetersiz", INSUFFICIENT_VAULT: "kasada yetersiz", QUOTE_EXPIRED: "teklif süresi doldu", INTERNAL_ERROR: "iç hata" };
+export const MOVE_TR: Record<string, string> = { OPENING: "açılış devri", FILL_BUY: "alış (fill)", FILL_SELL: "satış (fill)", VAULT_IN: "kasa girişi", VAULT_OUT: "kasa çıkışı", FEE_DELIVERY: "lojistik bedeli", FEE_REFINING: "rafinasyon bedeli", SETTLEMENT_PAYMENT: "mahsuplaşma ödemesi" };
 export const ageSec = (iso: string | null | undefined) => (iso ? Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 1000)) : null);

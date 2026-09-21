@@ -27,6 +27,13 @@ Bu repo Ahlatcı Metal Refinery (AMR) tarafındaki uygulamadır. Kanzasset taraf
 - Panel API'si `/admin/*`, Kanzasset API'si `/v1/*` (HMAC). İkisi karışmaz.
 - Statik web `apps/amr-web/dist` içinden `@fastify/static` ile (wildcard açık, SPA fallback `index.html`).
 
+## Defter (ledger.ts) ve emir motoru (orders.ts)
+
+- Bakiyeler hareket tablolarından türer (`current_account_movements`, `vault_movements`); bakiye tablosu yok, her okuma yeniden hesaplar. Her hareket demeti bir `account_seq` alır ve bakiye bilgisinde döner.
+- Emir kararı sırası: tekrar (client_order_id + gövde özeti) · miktar · yayın açık mı · quote_seq tazeliği · limit_px · cari hesap limiti. Fill fiyatı o anki rafineri fiyatıdır (alışta ask, satışta bid). Alışta Tahsis Belgesi (`documents`, sha256 + HMAC imza).
+- `debug.order_delay_ms` yalnız demo içindir (cevapsız emir / geç fill). Gecikme sırasında iptal gelirse CANCELLED, kesin cevap. Sunucu yeniden başlarsa açık emirler CANCELLED olur.
+- Olaylar `webhook_deliveries` tablosundan `EventDispatcher` ile gider; KZ tarafı `event_id` ile tekrarı ayıklar.
+
 ## Sprint durumu
 
-Sprint 1 tamam: sözleşme, mock merkez, kaynak bağlantısı (R2 Bağlan / Kes), yayın (tick, heartbeat, halt / resume), HMAC, bildirimler, ayarlar, R1 / R2 / R10 ekranları. Sonraki: Sprint 2 (emirler, cari hesap, R3 / R5). Plan `README.md` sonunda.
+Sprint 1 ve 2 tamam: sözleşme, mock merkez, kaynak bağlantısı, yayın, HMAC, bildirimler, ayarlar, defter, emirler, cari hesap ve limit, Tahsis Belgesi, olaylar; ekranlar R1, R2, R3, R5, R10. Sonraki: Sprint 3 (kasa talimatları + fişler, R4; büyük alış / satış). Plan `README.md` sonunda.

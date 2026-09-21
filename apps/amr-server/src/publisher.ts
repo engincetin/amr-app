@@ -101,6 +101,8 @@ export class Publisher {
     }
   }
   private lastBroadcastPrices: PriceLevel[] | null = null;
+  /** yayın açıldı / durdu geçişi (olay üretimi için) */
+  onTradableChange: ((tradable: boolean, reason?: string) => void) | null = null;
 
   // ----- merkez durumu -----
   setSourceConnected(connected: boolean, reason?: string) {
@@ -108,28 +110,32 @@ export class Publisher {
     this.state.sourceConnected = connected;
     const after = this.computeTradable();
     this.state.tradable = after;
-    if (before && !after) this.broadcast({ type: "halt", ts: new Date().toISOString(), reason: reason ?? "merkez bağlantısı kopuk" });
-    if (!before && after) this.resumeBroadcast();
+    if (before && !after) { this.broadcast({ type: "halt", ts: new Date().toISOString(), reason: reason ?? "merkez bağlantısı kopuk" }); this.onTradableChange?.(false, reason ?? "merkez bağlantısı kopuk"); }
+    if (!before && after) { this.resumeBroadcast(); this.onTradableChange?.(true); }
     bus.publish({ kind: "publish", state: this.snapshotState() });
   }
 
   // ----- elle durdur / başlat (R2) -----
   halt(reason: string) {
+    const before = this.computeTradable();
     this.state.manualHalt = true;
     this.state.haltReason = reason;
     setSetting(this.db, "publish.manual_halt", "1");
     setSetting(this.db, "publish.halt_reason", reason);
     this.state.tradable = false;
     this.broadcast({ type: "halt", ts: new Date().toISOString(), reason });
+    if (before) this.onTradableChange?.(false, reason);
     bus.publish({ kind: "publish", state: this.snapshotState() });
   }
   resume() {
+    const before = this.computeTradable();
     this.state.manualHalt = false;
     this.state.haltReason = null;
     setSetting(this.db, "publish.manual_halt", "0");
     setSetting(this.db, "publish.halt_reason", "");
     this.state.tradable = this.computeTradable();
     if (this.state.tradable) this.resumeBroadcast();
+    if (!before && this.state.tradable) this.onTradableChange?.(true);
     bus.publish({ kind: "publish", state: this.snapshotState() });
   }
   private resumeBroadcast() {

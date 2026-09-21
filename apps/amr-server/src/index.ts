@@ -14,8 +14,11 @@ import fastifyStatic from "@fastify/static";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { openDb, ensureApiClient, addNotification, audit as auditRow, getSetting, setSetting } from "./db.ts";
+import { ensureLedgerTables, openingBalance } from "./ledger.ts";
 import { Publisher } from "./publisher.ts";
 import { SourceConnection } from "./source.ts";
+import { OrderEngine } from "./orders.ts";
+import { EventDispatcher, enqueueEvent } from "./events.ts";
 import { kzRoutes } from "./routes/kz.ts";
 import { adminRoutes } from "./routes/admin.ts";
 import { bus } from "./bus.ts";
@@ -25,9 +28,10 @@ const PORT = Number(process.env.PORT ?? 4000);
 const DB_PATH = process.env.DB_PATH ?? resolve(import.meta.dirname, "../data/amr.db");
 const SOURCE_URL = process.env.SOURCE_URL ?? "ws://localhost:4100/prices";
 
-export async function buildApp(opts: { dbPath?: string; autoconnect?: boolean } = {}) {
+export async function buildApp(opts: { dbPath?: string; autoconnect?: boolean; dispatchEvents?: boolean } = {}) {
   const db = openDb(opts.dbPath ?? DB_PATH);
-  ensureApiClient(db, process.env.KZ_API_KEY ?? "kz-dev-key", "Kanzasset FZCO", process.env.KZ_API_SECRET ?? "kz-dev-secret", process.env.KZ_EVENT_URL);
+  ensureLedgerTables(db);
+  ensureApiClient(db, process.env.KZ_API_KEY ?? "kz-dev-key", "Kanzasset FZCO", process.env.KZ_API_SECRET ?? "kz-dev-secret", process.env.KZ_EVENT_URL ?? "http://localhost:5000/api/events");
   // varsayılan parametreler (R10)
   const defaults: Record<string, string> = {
     "source.url": SOURCE_URL,
@@ -39,25 +43,38 @@ export async function buildApp(opts: { dbPath?: string; autoconnect?: boolean } 
     "vault.placement_due_days": "3",
     "limit.current_account_gold_mg": String(15_000_000),
     "limit.current_account_usd_cents": String(250_000_000),
+    "limit.current_account_eur_cents": String(230_000_000),
+    "limit.current_account_aed_cents": String(920_000_000),
+    "limit.warn_pct": "80",
+    "order.quote_max_age_ms": "10000",
     "quote.delivery_valid_hours": "24",
     "quote.refining_valid_hours": "48",
+    "events.retry_schedule_ms": "5000,30000,120000,600000",
+    "debug.order_delay_ms": "0",
   };
   for (const [k, v] of Object.entries(defaults)) if (!getSetting(db, k, "")) setSetting(db, k, v);
+  // açılış devri (demo): kasada Kanzasset adına duran gram; yalnız defter boşken
+  openingBalance(db, Number(process.env.VAULT_OPENING_MG ?? 0));
 
   const publisher = new Publisher(db);
   const source = new SourceConnection();
 
-  const ctx: AppContext = {
+  const ctx = {
     db,
     publisher,
     source,
-    notify: (type, title, body = "", relatedId) => {
+    notify: (type: string, title: string, body = "", relatedId?: string) => {
       const id = addNotification(db, type, title, body, relatedId);
       bus.publish({ kind: "notification", id, type, title, body, created_ts: new Date().toISOString() });
       return id;
     },
-    audit: (actor, action, before, after) => auditRow(db, actor, action, before, after),
-  };
+    audit: (actor: string, action: string, before?: unknown, after?: unknown) => auditRow(db, actor, action, before, after),
+  } as AppContext;
+  ctx.orders = new OrderEngine(ctx);
+  const dispatcher = new EventDispatcher(ctx);
+  if (opts.dispatchEvents ?? true) dispatcher.start();
+  // yayın durdu / açıldı olayları KZ'ye (soketin yanında güvence)
+  publisher.onTradableChange = (tradable, reason) => enqueueEvent(ctx, tradable ? "price.resume" : "price.halt", { reason: reason ?? null, ts: new Date().toISOString() });
 
   source.onPrice = (prices, ts) => publisher.onPrice(prices, ts);
   source.onStatus = (state, prev) => {
@@ -91,7 +108,7 @@ export async function buildApp(opts: { dbPath?: string; autoconnect?: boolean } 
   const autoconnect = opts.autoconnect ?? (process.env.SOURCE_AUTOCONNECT ?? "1") === "1";
   if (autoconnect) source.connect(getSetting(db, "source.url", SOURCE_URL));
 
-  app.addHook("onClose", async () => { publisher.stop(); source.disconnect(); db.close(); });
+  app.addHook("onClose", async () => { dispatcher.stop(); publisher.stop(); source.disconnect(); db.close(); });
   return { app, ctx };
 }
 

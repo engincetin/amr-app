@@ -13,7 +13,7 @@ export function R1Overview({ live }: { live: Live }) {
     <div>
       <span className="tag">R1</span>
       <h1>Genel bakış</h1>
-      <p className="sub">Günün durumu tek bakışta. Sprint 1'de fiyat yayını ve bağlantılar canlı; emirler, kasa hesabı, cari hesap ve bekleyen işler sonraki sprintlerde dolar.</p>
+      <p className="sub">Günün durumu tek bakışta: fiyat yayını, iki hesap, bugünkü emirler, limit kullanımı, bekleyen işler ve Kanzasset bağlantısı.</p>
       <div className="grid c3">
         <Link to="/fiyat" className="card">
           <h2>Fiyat yayını</h2>
@@ -25,19 +25,20 @@ export function R1Overview({ live }: { live: Live }) {
           <h2>Kasa hesabı</h2>
           <div className="mono" style={{ fontSize: 18, fontWeight: 600 }}>{acc ? fmtG(acc.vault.in_vault_mg + acc.vault.placing_mg + acc.vault.shipping_mg) : "0,000"} g</div>
           <div className="small">kasada {acc ? fmtG(acc.vault.in_vault_mg) : 0} · kasaya konuluyor {acc ? fmtG(acc.vault.placing_mg) : 0} · sevkiyatta {acc ? fmtG(acc.vault.shipping_mg) : 0}</div>
-          <div className="small" style={{ marginTop: 6 }}>Sprint 3'te dolar.</div>
+          <div className="small" style={{ marginTop: 6 }}>Kasa talimatları Sprint 3'te.</div>
         </div>
-        <div className="card">
+        <Link to="/cari" className="card">
           <h2>Cari hesap</h2>
-          <div className="mono" style={{ fontSize: 18, fontWeight: 600 }}>{acc ? fmtG(acc.current_account.gold_mg) : "0,000"} g</div>
+          <div className="mono" style={{ fontSize: 18, fontWeight: 600 }}>{acc ? `${acc.current_account.gold_mg >= 0 ? "+" : ""}${fmtG(acc.current_account.gold_mg)}` : "0,000"} g</div>
           <div className="small">{acc?.current_account.money.map((m) => `${m.ccy} ${fmtMoney(m.cents)}`).join(" · ")}</div>
-          <div className="small" style={{ marginTop: 6 }}>Sprint 2'de dolar.</div>
-        </div>
-        <div className="card">
+          <div className="small" style={{ marginTop: 6 }}>limit kullanımı %{o?.limit ? (o.limit.max_pct * 100).toFixed(1) : "0,0"} · durum {acc?.status ?? ""}</div>
+        </Link>
+        <Link to="/emirler" className="card">
           <h2>Bugünkü emirler</h2>
-          <div className="mono" style={{ fontSize: 18, fontWeight: 600 }}>0</div>
-          <div className="small">alış 0 g · satış 0 g · Sprint 2'de dolar</div>
-        </div>
+          <div className="mono" style={{ fontSize: 18, fontWeight: 600 }}>{o?.orders_today?.total ?? 0}</div>
+          <div className="small">alış {o?.orders_today?.buy.filled ?? 0} emir · {fmtG(o?.orders_today?.buy.mg ?? 0)} g · satış {o?.orders_today?.sell.filled ?? 0} emir · {fmtG(o?.orders_today?.sell.mg ?? 0)} g</div>
+          <div className="small" style={{ marginTop: 6 }}>red {(o?.orders_today?.buy.rejected ?? 0) + (o?.orders_today?.sell.rejected ?? 0)}</div>
+        </Link>
         <div className="card">
           <h2>Bekleyen işler</h2>
           <div className="small">kasa talepleri 0 · teslimat adımları 0 · rafinasyon 0 · mahsuplaşma 0</div>

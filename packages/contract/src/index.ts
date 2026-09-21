@@ -121,11 +121,11 @@ export const RejectReason = Type.Union([
 export type RejectReason = Static<typeof RejectReason>;
 
 export const OrderRequest = Type.Object({
-  client_order_id: Type.String(),
+  client_order_id: Type.String({ description: "KZ tarafında tekil; aynı id ile tekrar gelen istek aynı cevabı alır" }),
   side: Side,
   qty_mg: Type.Integer({ minimum: 1 }),
   ccy: Ccy,
-  quote_seq: Type.Integer(),
+  quote_seq: Type.Integer({ description: "emrin dayandığı fiyat tick'i" }),
   limit_px: Decimal,
   tif: Type.Literal("FOK"),
   time_limit_ms: Type.Integer({ minimum: 100 }),
@@ -137,17 +137,98 @@ export const Fill = Type.Object({
   ccy: Ccy,
   trade_ts: IsoTs,
 });
+export const OrderStatus = Type.Union([
+  Type.Literal("RECEIVED"),
+  Type.Literal("CANCEL_REQUESTED"),
+  Type.Literal("FILLED"),
+  Type.Literal("REJECTED"),
+  Type.Literal("CANCELLED"),
+]);
+export type OrderStatus = Static<typeof OrderStatus>;
 export const OrderResponse = Type.Object({
   order_id: Type.String(),
   client_order_id: Type.String(),
-  status: Type.Union([Type.Literal("FILLED"), Type.Literal("REJECTED"), Type.Literal("CANCELLED")]),
+  status: OrderStatus,
+  side: Side,
+  qty_mg: Type.Integer(),
+  ccy: Ccy,
+  quote_seq: Type.Integer(),
+  limit_px: Decimal,
   fill: Type.Optional(Fill),
   reject_reason: Type.Optional(RejectReason),
   allocation_certificate: Type.Optional(Type.Object({ doc_id: Type.String(), url: Type.String() })),
   account: Type.Optional(Account),
+  received_ts: IsoTs,
+  decided_ts: Type.Optional(IsoTs),
+  history: Type.Optional(Type.Array(Type.Object({ status: OrderStatus, ts: IsoTs, note: Type.Optional(Type.String()) }))),
 });
 export type OrderRequest = Static<typeof OrderRequest>;
 export type OrderResponse = Static<typeof OrderResponse>;
+
+export const ORDER_RULES = {
+  quoteMaxAgeMs: 10_000, // quote_seq tick'i bundan eskiyse STALE_QUOTE
+  minQtyMg: 1, // 0,001 g
+} as const;
+
+// ---------- Cari hesap ekstresi (12, adım 1) ----------
+export const MovementType = Type.Union([
+  Type.Literal("OPENING"),
+  Type.Literal("FILL_BUY"),
+  Type.Literal("FILL_SELL"),
+  Type.Literal("VAULT_IN"),
+  Type.Literal("VAULT_OUT"),
+  Type.Literal("FEE_DELIVERY"),
+  Type.Literal("FEE_REFINING"),
+  Type.Literal("SETTLEMENT_PAYMENT"),
+]);
+export const Movement = Type.Object({
+  id: Type.Integer(),
+  seq: Type.Integer(),
+  type: MovementType,
+  gold_mg: Type.Integer({ description: "işaretli" }),
+  ccy: Type.Optional(Ccy),
+  amount_cents: Type.Optional(Type.Integer({ description: "işaretli: eksi Kanzasset borçlu" })),
+  ref: Type.Optional(Type.String()),
+  related_id: Type.Optional(Type.String()),
+  ts: IsoTs,
+});
+export type Movement = Static<typeof Movement>;
+export const CurrentAccountStatement = Type.Object({
+  window_from: IsoTs,
+  window_to: IsoTs,
+  movements: Type.Array(Movement),
+  gold_mg: Type.Integer(),
+  money: Type.Array(MoneyBalance),
+  fees: Type.Array(Type.Object({ type: Type.String(), ccy: Ccy, amount_cents: Type.Integer() })),
+  hash: Type.String(),
+  signature: Type.String(),
+});
+export type CurrentAccountStatement = Static<typeof CurrentAccountStatement>;
+
+// ---------- Belgeler ----------
+export const DocumentType = Type.Union([
+  Type.Literal("ALLOCATION_CERTIFICATE"),
+  Type.Literal("VAULT_IN_SLIP"),
+  Type.Literal("VAULT_OUT_SLIP"),
+  Type.Literal("LOGISTICS_QUOTE"),
+  Type.Literal("REFINING_QUOTE"),
+  Type.Literal("SHIPPING_SLIP"),
+  Type.Literal("DELIVERY_RECORD"),
+  Type.Literal("VAULT_STATEMENT"),
+  Type.Literal("CURRENT_ACCOUNT_STATEMENT"),
+  Type.Literal("SETTLEMENT_STATEMENT"),
+]);
+export const DocumentMeta = Type.Object({
+  doc_id: Type.String(),
+  type: DocumentType,
+  related_id: Type.String(),
+  hash: Type.String({ description: "sha256(content)" }),
+  signature: Type.String({ description: "HMAC-SHA256(rafineri belge anahtarı, hash)" }),
+  created_ts: IsoTs,
+  sent_ts: Type.Optional(IsoTs),
+});
+export const Document = Type.Object({ meta: DocumentMeta, content: Type.Record(Type.String(), Type.Unknown()) });
+export type Document = Static<typeof Document>;
 
 // ---------- Kasa talimatı (05, 06) ----------
 export const VaultRequestBody = Type.Object({
@@ -177,15 +258,29 @@ export const VaultRequest = Type.Object({
 export type VaultRequest = Static<typeof VaultRequest>;
 
 // ---------- Olay zarfı (06) ----------
+export const EVENT_TYPES = [
+  "order.filled", "order.rejected", "order.cancelled",
+  "vault.in_accepted", "vault.in_placing", "vault.in_placed", "vault.in_rejected",
+  "vault.out_accepted", "vault.out_rejected",
+  "delivery.quoted", "delivery.approved", "delivery.preparing", "delivery.ready", "delivery.shipped", "delivery.delivered", "delivery.cancelled", "delivery.failed",
+  "catalog.updated",
+  "refining.quoted", "refining.approved", "refining.in_production", "refining.ready", "refining.shipped", "refining.delivered", "refining.cancelled", "refining.failed",
+  "settlement.requested", "settlement.opened", "settlement.statement", "settlement.reconciled", "settlement.mismatch", "settlement.payment_notice", "settlement.settled",
+  "price.halt", "price.resume",
+  "account.reconcile",
+] as const;
+export type EventType = (typeof EVENT_TYPES)[number];
 export const EventEnvelope = Type.Object({
-  event_id: Type.String(),
+  event_id: Type.String({ description: "tekil; KZ tekrarı bununla ayıklar" }),
   type: Type.String(),
   ts: IsoTs,
-  seq: Type.Optional(Type.Integer()),
+  seq: Type.Optional(Type.Integer({ description: "hesap seq; metal hareketi varsa" })),
   data: Type.Unknown(),
   account: Type.Optional(Account),
 });
 export type EventEnvelope = Static<typeof EventEnvelope>;
+/** Olay teslimi: KZ olay adresine POST, imza başlıkları REST ile aynı (path = olay adresinin yolu). 2xx değilse üstel bekleme. */
+export const EVENT_DELIVERY = { path: "/api/events", retryScheduleMs: [60_000, 300_000, 1_800_000, 7_200_000], giveUpAfterMs: 86_400_000 } as const;
 
 // ---------- Yardımcılar ----------
 /** HMAC imza metni: ts + method + path + body */

@@ -5,6 +5,8 @@
 import type { FastifyInstance, FastifyReply } from "fastify";
 import type { AppContext } from "../context.ts";
 import { allSettings, getSetting, listAudit, listNotifications, markNotificationRead, recentTicks, setSetting, unreadCount } from "../db.ts";
+import { getDocument, limitUsage, listCurrentAccountMovements, listDocuments, listVaultMovements } from "../ledger.ts";
+import { enqueueEvent, listDeliveries } from "../events.ts";
 import { bus, type BusEvent } from "../bus.ts";
 
 const ACTOR = "admin"; // Sprint 1: tek kullanıcı
@@ -23,16 +25,39 @@ export async function adminRoutes(app: FastifyInstance, ctx: AppContext) {
     unread: unreadCount(ctx.db),
     settings: allSettings(ctx.db),
     ts: new Date().toISOString(),
-    // Sprint 1: kasa hesabı ve cari hesap henüz yok; üst şerit için sıfırlar
-    account: {
-      seq: 0,
-      vault: { in_vault_mg: 0, placing_mg: 0, shipping_mg: 0 },
-      current_account: { gold_mg: 0, money: [{ ccy: "USD", cents: 0 }, { ccy: "EUR", cents: 0 }, { ccy: "AED", cents: 0 }] },
-      status: "OK",
-    },
+    account: ctx.orders.account(),
+    limit: limitUsage(ctx.db),
+    orders_today: ctx.orders.todaySummary(),
   });
 
   app.get("/admin/overview", async () => overview());
+
+  // ----- R3: emirler -----
+  app.get<{ Querystring: { day?: string; side?: string; status?: string; limit?: string } }>("/admin/orders", async (req) =>
+    ctx.orders.list({ day: req.query.day, side: req.query.side, status: req.query.status, limit: Math.min(1000, Number(req.query.limit ?? 200)) }));
+  app.get<{ Params: { id: string } }>("/admin/orders/:id", async (req, reply) => ctx.orders.status(req.params.id) ?? reply.code(404).send({ error: "emir yok" }));
+
+  // ----- R5: cari hesap -----
+  app.get<{ Querystring: { limit?: string } }>("/admin/current-account", async (req) => ({
+    account: ctx.orders.account(),
+    limit: limitUsage(ctx.db),
+    movements: listCurrentAccountMovements(ctx.db, { limit: Math.min(1000, Number(req.query.limit ?? 200)) }),
+  }));
+  app.get("/admin/vault/movements", async () => listVaultMovements(ctx.db));
+  // R5: mahsuplaşma çağır (pencere mantığı Sprint 5; şimdilik karşı tarafa talep olayı + bildirim)
+  app.post<{ Body: { reason?: string } }>("/admin/settlement/request", async (req, reply) => {
+    const reason = req.body?.reason?.trim();
+    if (!reason) return reply.code(400).send({ error: "gerekçe zorunlu" });
+    const id = enqueueEvent(ctx, "settlement.requested", { requested_by: "AMR", trigger: "REQUEST_AMR", reason, ts: new Date().toISOString() });
+    ctx.audit(ACTOR, "settlement.request", undefined, { reason });
+    ctx.notify("settlement.requested", "Mahsuplaşma talep edildi (AMR)", reason, id);
+    return { ok: true, event_id: id };
+  });
+
+  // ----- R9 (ön): belgeler ve olay teslimleri -----
+  app.get("/admin/documents", async () => listDocuments(ctx.db));
+  app.get<{ Params: { id: string } }>("/admin/documents/:id", async (req, reply) => getDocument(ctx.db, req.params.id) ?? reply.code(404).send({ error: "belge yok" }));
+  app.get("/admin/events", async () => listDeliveries(ctx));
 
   // ----- R2: merkez bağlantısı -----
   app.post<{ Body: { url?: string } }>("/admin/source/connect", async (req, reply) => {
@@ -99,6 +124,7 @@ export async function adminRoutes(app: FastifyInstance, ctx: AppContext) {
     const write = (ev: BusEvent) => reply.raw.write(`data: ${JSON.stringify(ev)}\n\n`);
     write({ kind: "source", state: { ...ctx.source.state } });
     write({ kind: "publish", state: ctx.publisher.snapshotState() });
+    write({ kind: "account", account: ctx.orders.account() });
     const onEvent = (ev: BusEvent) => write(ev);
     bus.on("event", onEvent);
     const ping = setInterval(() => reply.raw.write(`: ping\n\n`), 15000);
