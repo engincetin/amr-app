@@ -15,7 +15,8 @@
     "build": "npm run build -w @amr/contract && npm run build -w @amr/web",
     "start": "npm run start -w @amr/server",
     "test": "npm test -w @amr/server",
-    "openapi:export": "npm run openapi:export -w @amr/contract"
+    "openapi:export": "npm run openapi:export -w @amr/contract",
+    "demo": "concurrently -n merkez,server -c yellow,green \"npm run dev -w @amr/mock-merkez\" \"VAULT_OPENING_MG=20000000 npm run start -w @amr/server\""
   },
   "devDependencies": {
     "concurrently": "^9.1.2",
