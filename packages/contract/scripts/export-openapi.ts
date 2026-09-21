@@ -1,7 +1,7 @@
 /**
- * OpenAPI dışa aktarımı (Sprint 4: oturum, fiyat soketi, emirler, bakiye bilgisi, cari hesap ekstresi,
- * kasa talimatları ve günlük kasa ekstresi, fiziksel teslimat, katalog ve rafinasyon, belgeler, olaylar).
- * Sonraki sprintte mahsuplaşma uçları eklenir. Çıktı: repo kökünde openapi.json.
+ * OpenAPI dışa aktarımı (Sprint 5: oturum, fiyat soketi, emirler, bakiye bilgisi, cari hesap ekstresi,
+ * kasa talimatları ve günlük kasa ekstresi, fiziksel teslimat, katalog ve rafinasyon, mahsuplaşma, belgeler, olaylar).
+ * mahsuplaşma ve belge PDF'i dahil bütün uçlar. Çıktı: repo kökünde openapi.json.
  */
 import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -79,7 +79,20 @@ const doc = {
     "/v1/refining/{id}": { get: { summary: "Rafinasyon durumu ve geçmişi", parameters: [...authParams, { name: "id", in: "path", required: true, schema: { type: "string" } }], responses: { "200": json(C.Refining), "404": { description: "talep yok" } } } },
     "/v1/refining/{id}/approve": { post: { summary: "Rafinasyon teklifini onayla (yalnız QUOTED iken); onayla ürün bedeli + lojistik cari hesaba kalem olur", parameters: [...authParams, idem, { name: "id", in: "path", required: true, schema: { type: "string" } }], requestBody: { content: { "application/json": { schema: { type: "object", properties: { quote_id: { type: "string" } } } } } }, responses: { "200": json(C.Refining), "409": { description: "durum ya da teklif süresi (QUOTE_EXPIRED)" } } } },
     "/v1/refining/{id}/cancel": { post: { summary: "Rafinasyon iptali (üretime girmeden)", parameters: [...authParams, idem, { name: "id", in: "path", required: true, schema: { type: "string" } }], responses: { "200": json(C.Refining), "409": { description: "durum uygun değil" } } } },
-    "/v1/documents/{id}": { get: { summary: "Belge: Tahsis Belgesi, Kasa Giriş / Çıkış Fişi, ekstreler (JSON içerik + sha256 + HMAC imza)", parameters: [...authParams, { name: "id", in: "path", required: true, schema: { type: "string" } }], responses: { "200": json(C.Document), "404": { description: "belge yok" } } } },
+    "/v1/settlements": {
+      post: {
+        summary: "Mahsuplaşma penceresi aç ya da açık pencereyi al (12). İki taraf da çağırabilir; kesim saatinde rafineri kendiliğinden açar.",
+        parameters: [...authParams, idem],
+        requestBody: { content: { "application/json": { schema: { type: "object", properties: { trigger: { type: "string", enum: ["CUTOFF", "REQUEST_KZ", "REQUEST_AMR", "LIMIT"] }, reason: { type: "string" } } } } } },
+        responses: { "200": json(C.Settlement, "OPEN ya da DRAFT; açık pencere varsa o döner") },
+      },
+    },
+    "/v1/settlements/{id}": { get: { summary: "Pencere durumu: ekstre, altın bacağı, kur bazında para bacağı", parameters: [...authParams, { name: "id", in: "path", required: true, schema: { type: "string" } }], responses: { "200": json(C.Settlement), "404": { description: "pencere yok" } } } },
+    "/v1/settlements/{id}/confirm": { post: { summary: "Mutabakat: KZ kendi ekstresinin özetini ve toplamlarını gönderir. Eşitse RECONCILED, değilse MISMATCH ve diffs.", parameters: [...authParams, idem, { name: "id", in: "path", required: true, schema: { type: "string" } }], requestBody: { required: true, content: { "application/json": { schema: { type: "object", required: ["statement_hash"], properties: { statement_hash: { type: "string" }, gold_mg: { type: "integer" }, money: { type: "array", items: { type: "object", properties: { ccy: { type: "string" }, cents: { type: "integer" } } } } } } } } }, responses: { "200": json(C.Settlement) } } },
+    "/v1/settlements/{id}/payment-notice": { post: { summary: "Ödeme bildirimi: ödeyen taraf banka referansıyla bildirir", parameters: [...authParams, idem, { name: "id", in: "path", required: true, schema: { type: "string" } }], requestBody: { required: true, content: { "application/json": { schema: { type: "object", required: ["ccy", "bank_ref"], properties: { ccy: { type: "string" }, amount_cents: { type: "integer" }, direction: { type: "string" }, bank_ref: { type: "string" } } } } } }, responses: { "200": json(C.Settlement, "PAYMENT_PENDING") } } },
+    "/v1/settlements/{id}/payment-received": { post: { summary: "Ödeme alındı: alan taraf onaylar; bütün kurlar ve altın bacağı kapanınca SETTLED ve limit sayaçları sıfırlanır", parameters: [...authParams, idem, { name: "id", in: "path", required: true, schema: { type: "string" } }], requestBody: { content: { "application/json": { schema: { type: "object", properties: { ccy: { type: "string" }, bank_ref: { type: "string" } } } } } }, responses: { "200": json(C.Settlement) } } },
+    "/v1/documents/{id}": { get: { summary: "Belge: Tahsis Belgesi, Kasa Giriş / Çıkış Fişi, teklifler, fişler, ekstreler (JSON içerik + sha256 + HMAC imza)", parameters: [...authParams, { name: "id", in: "path", required: true, schema: { type: "string" } }], responses: { "200": json(C.Document), "404": { description: "belge yok" } } } },
+    "/v1/documents/{id}/pdf": { get: { summary: "Aynı belgenin PDF hâli (A4, rafineri başlığı, belge no, imza özeti)", parameters: [...authParams, { name: "id", in: "path", required: true, schema: { type: "string" } }], responses: { "200": { description: "PDF", content: { "application/pdf": { schema: { type: "string", format: "binary" } } } }, "404": { description: "belge yok" } } } },
   },
   webhooks: {
     event: {
@@ -124,6 +137,11 @@ const doc = {
       Refining: C.Refining,
       RefiningStatus: C.RefiningStatus,
       RefiningQuote: C.RefiningQuote,
+      Settlement: C.Settlement,
+      SettlementStatus: C.SettlementStatus,
+      SettlementTrigger: C.SettlementTrigger,
+      SettlementGoldLeg: C.SettlementGoldLeg,
+      SettlementMoneyLeg: C.SettlementMoneyLeg,
       EventEnvelope: C.EventEnvelope,
     },
   },

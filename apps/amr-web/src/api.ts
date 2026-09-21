@@ -4,10 +4,14 @@ import { useEffect, useRef, useState } from "react";
 const token = new URLSearchParams(location.search).get("token") ?? localStorage.getItem("adminToken") ?? "";
 if (token) localStorage.setItem("adminToken", token);
 
+/** Demoda aktif kullanıcı üst şeritten seçilir ve her istekte X-User ile gider. */
+export const currentUser = { name: localStorage.getItem("amrUser") ?? "yonetici" };
+export function setCurrentUser(u: string) { currentUser.name = u; localStorage.setItem("amrUser", u); }
+
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, {
     ...init,
-    headers: { "content-type": "application/json", ...(token ? { "x-admin-token": token } : {}), ...(init?.headers ?? {}) },
+    headers: { "content-type": "application/json", "x-user": currentUser.name, ...(token ? { "x-admin-token": token } : {}), ...(init?.headers ?? {}) },
   });
   if (!res.ok) {
     let msg = res.statusText;
@@ -60,6 +64,22 @@ export const api = {
   rfnStep: (id: string, step: "production" | "ready" | "delivered") => req<Refining>(`/admin/refining/${id}/${step}`, { method: "POST", body: "{}" }),
   rfnShipped: (id: string, carrier: string, tracking_no: string) => req<Refining>(`/admin/refining/${id}/shipped`, { method: "POST", body: JSON.stringify({ carrier, tracking_no }) }),
   rfnCancel: (id: string, reason: string) => req<Refining>(`/admin/refining/${id}/cancel`, { method: "POST", body: JSON.stringify({ reason }) }),
+  // R8 mahsuplaşma
+  settlements: () => req<{ items: Settlement[]; open: Settlement | null }>("/admin/settlements"),
+  settlementOpen: (trigger: string, reason?: string) => req<Settlement>("/admin/settlements", { method: "POST", body: JSON.stringify({ trigger, reason }) }),
+  settlementDraft: (id: string) => req<Settlement>(`/admin/settlements/${id}/draft`, { method: "POST", body: "{}" }),
+  settlementNotice: (id: string, b: { ccy: string; amount_cents: number; direction: string; bank_ref: string; approval_id?: number; approver?: string }) =>
+    req<Settlement & { needs_approval?: boolean; approval_id?: number }>(`/admin/settlements/${id}/payment-notice`, { method: "POST", body: JSON.stringify(b) }),
+  settlementReceived: (id: string, ccy: string) => req<Settlement>(`/admin/settlements/${id}/payment-received`, { method: "POST", body: JSON.stringify({ ccy }) }),
+  // R10 kullanıcılar
+  users: () => req<UsersView>("/admin/users"),
+  userSave: (u: { username: string; display_name?: string; role?: string; active?: boolean }) => req<AppUser>("/admin/users", { method: "PUT", body: JSON.stringify(u) }),
+  approve: (id: number, approver: string) => req<{ ok: boolean }>(`/admin/approvals/${id}/approve`, { method: "POST", body: JSON.stringify({ approver }) }),
+  rejectApproval: (id: number) => req<{ ok: boolean }>(`/admin/approvals/${id}/reject`, { method: "POST", body: "{}" }),
+  clients: () => req<ApiClientRow[]>("/admin/clients"),
+  clientCreate: (b: { name: string; event_url?: string; approval_id?: number; approver?: string }) =>
+    req<{ api_key?: string; secret?: string; needs_approval?: boolean; approval_id?: number }>("/admin/clients", { method: "POST", body: JSON.stringify(b) }),
+  clientRevoke: (key: string) => req<{ ok: boolean }>(`/admin/clients/${encodeURIComponent(key)}/revoke`, { method: "POST", body: "{}" }),
   document: (id: string) => req<Doc>(`/admin/documents/${encodeURIComponent(id)}`),
   documents: () => req<{ doc_id: string; type: string; related_id: string; created_ts: string; sent_ts: string | null }[]>("/admin/documents"),
   events: () => req<{ event_id: string; type: string; status: string; attempts: number; next_ts: string; last_error: string | null; created_ts: string; sent_ts: string | null }[]>("/admin/events"),
@@ -116,6 +136,24 @@ export interface Refining {
 }
 export interface CatalogItem { item_id: string; name: string; weight_mg: number; fineness: string; unit_price_cents: number; ccy: string; lead_time_days: number; active: boolean }
 export interface Catalog { version: number; items: CatalogItem[]; updated_ts: string }
+export type SettlementStatus = "REQUESTED" | "OPEN" | "DRAFT" | "RECONCILED" | "MISMATCH" | "PAYMENT_PENDING" | "SETTLED";
+export interface Settlement {
+  settlement_id: string; trigger: string; status: SettlementStatus; window_from: string; window_to: string;
+  statement?: { movements: Movement[]; gold_mg: number; money: { ccy: string; cents: number }[]; fees: { type: string; ccy: string; amount_cents: number }[]; hash: string; signature: string };
+  statement_hash?: string; kz_statement_hash?: string;
+  diffs?: { field: string; amr: string; kz: string }[];
+  gold_leg?: { t_net_mg: number; direction: string; qty_mg: number; requests: string[]; done: boolean };
+  money_leg: { ccy: string; net_cents: number; direction: string; paid: boolean; bank_ref?: string; notice_ts?: string; received_ts?: string }[];
+  doc_id?: string; opened_ts: string; settled_ts?: string; history?: { status: string; ts: string; note?: string }[];
+}
+export interface AppUser { username: string; display_name: string; role: string; role_tr?: string; active: boolean; permissions?: string[] }
+export interface UsersView {
+  items: AppUser[];
+  roles: { code: string; name: string; permissions: string[] }[];
+  second_approval: string[];
+  pending_approvals: { id: number; action: string; payload: string; requested_by: string; requested_ts: string }[];
+}
+export interface ApiClientRow { api_key: string; name: string; event_url: string | null; active: number; created_ts: string }
 export interface Movement { id: number; seq: number; type: string; gold_mg: number; ccy?: string; amount_cents?: number; ref?: string; related_id?: string; ts: string }
 export interface CurrentAccount { account: Account; limit: LimitUsage; movements: Movement[] }
 export interface Doc { meta: { doc_id: string; type: string; related_id: string; hash: string; signature: string; created_ts: string; sent_ts?: string }; content: Record<string, unknown> }
@@ -146,6 +184,7 @@ export type BusEvent =
   | { kind: "delivery"; item: Delivery }
   | { kind: "refining"; item: Refining }
   | { kind: "catalog"; version: number }
+  | { kind: "settlement"; item: Settlement }
   | { kind: "account"; account: Account }
   | { kind: "event"; event: { event_id: string; type: string; ts: string; status: string; error?: string | null } }
   | { kind: "heartbeat"; ts: string };
@@ -189,7 +228,7 @@ export function useLive() {
       } else if (ev.kind === "order") {
         setLastOrder(ev.order);
         scheduleRefresh();
-      } else if (ev.kind === "vault" || ev.kind === "delivery" || ev.kind === "refining" || ev.kind === "catalog" || ev.kind === "subscribers" || ev.kind === "notification") {
+      } else if (ev.kind === "vault" || ev.kind === "delivery" || ev.kind === "refining" || ev.kind === "catalog" || ev.kind === "settlement" || ev.kind === "subscribers" || ev.kind === "notification") {
         scheduleRefresh();
       }
     };
@@ -211,6 +250,9 @@ export const STATUS_TR: Record<string, string> = { RECEIVED: "alındı", CANCEL_
 export const REJECT_TR: Record<string, string> = { PRICE_OUTSIDE_LIMIT: "fiyat limit dışı (slippage)", STALE_QUOTE: "bayat quote_seq", TRADING_HALTED: "yayın durdu", CURRENT_ACCOUNT_LIMIT: "cari hesap limiti", DUPLICATE_ORDER: "tekrar emir", INVALID_QTY: "geçersiz miktar", INSUFFICIENT_CURRENT_ACCOUNT: "cari hesap altını yetersiz", INSUFFICIENT_VAULT: "kasada yetersiz", QUOTE_EXPIRED: "teklif süresi doldu", INTERNAL_ERROR: "iç hata" };
 export const MOVE_TR: Record<string, string> = { OPENING: "açılış devri", FILL_BUY: "alış (fill)", FILL_SELL: "satış (fill)", VAULT_IN: "kasa girişi", VAULT_OUT: "kasa çıkışı", FEE_DELIVERY: "lojistik bedeli", FEE_REFINING: "rafinasyon bedeli", SETTLEMENT_PAYMENT: "mahsuplaşma ödemesi" };
 export const VAULT_STATUS_TR: Record<string, string> = { REQUESTED: "talep edildi", ACCEPTED: "kabul edildi", PLACING: "kasaya konuluyor", PLACED: "kasaya konuldu", OVERDUE: "vade geçti (T+3)", REJECTED: "reddedildi" };
+export const STL_STATUS_TR: Record<string, string> = { REQUESTED: "talep edildi", OPEN: "pencere açık", DRAFT: "ekstre taslağı", RECONCILED: "mutabakat sağlandı", MISMATCH: "fark var", PAYMENT_PENDING: "ödeme bekliyor", SETTLED: "kapandı" };
+export const STL_TRIGGER_TR: Record<string, string> = { CUTOFF: "kesim saati", REQUEST_KZ: "Kanzasset talebi", REQUEST_AMR: "rafineri talebi", LIMIT: "cari hesap limiti" };
+export const DOC_TYPE_TR: Record<string, string> = { ALLOCATION_CERTIFICATE: "Tahsis Belgesi", VAULT_IN_SLIP: "Kasa Giriş Fişi", VAULT_OUT_SLIP: "Kasa Çıkış Fişi", LOGISTICS_QUOTE: "Lojistik Teklifi", REFINING_QUOTE: "Rafinasyon Teklifi", SHIPPING_SLIP: "Sevkiyat Fişi", DELIVERY_RECORD: "Teslimat Kaydı", VAULT_STATEMENT: "Günlük Kasa Ekstresi", CURRENT_ACCOUNT_STATEMENT: "Cari Hesap Ekstresi", SETTLEMENT_STATEMENT: "Mahsuplaşma Ekstresi" };
 export const DLV_STATUS_TR: Record<string, string> = { REQUESTED: "talep edildi", QUOTED: "teklif verildi", APPROVED: "onaylandı", PREPARING: "hazırlanıyor", IN_PRODUCTION: "üretimde", READY: "hazır", SHIPPED: "taşıyıcıda", DELIVERED: "teslim edildi", CANCELLED: "iptal", FAILED: "teslim edilemedi" };
 export const VAULT_MOVE_TR: Record<string, string> = { OPENING: "açılış devri", IN_ACCEPTED: "giriş kabulü", PLACED: "kasaya konuldu", OUT_ACCEPTED: "çıkış kabulü", SHIP_READY: "sevkiyata çıktı", SHIP_RETURN: "kasaya döndü", DELIVERED: "teslim edildi" };
 /** Kalan süre: artı ise "x sonra", eksi ise "x gecikti". */

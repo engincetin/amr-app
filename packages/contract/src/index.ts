@@ -388,6 +388,62 @@ export type Refining = Static<typeof Refining>;
 /** Teklif geçerlilik süreleri (Parametreler): lojistik 24 sa, rafinasyon 48 sa. */
 export const QUOTE_RULES = { deliveryValidHours: 24, refiningValidHours: 48 } as const;
 
+// ---------- Mahsuplaşma (12) ----------
+export const SettlementTrigger = Type.Union([
+  Type.Literal("CUTOFF"), Type.Literal("REQUEST_KZ"), Type.Literal("REQUEST_AMR"), Type.Literal("LIMIT"),
+]);
+export type SettlementTrigger = Static<typeof SettlementTrigger>;
+
+export const SettlementStatus = Type.Union([
+  Type.Literal("REQUESTED"), Type.Literal("OPEN"), Type.Literal("DRAFT"), Type.Literal("RECONCILED"),
+  Type.Literal("MISMATCH"), Type.Literal("PAYMENT_PENDING"), Type.Literal("SETTLED"),
+]);
+export type SettlementStatus = Static<typeof SettlementStatus>;
+
+/** Altın bacağı: T > 0 ise kasa girişi, T < 0 ise kasa çıkışı; sonuç T = 0. */
+export const SettlementGoldLeg = Type.Object({
+  t_net_mg: Type.Integer({ description: "pencere kapanışındaki T" }),
+  direction: Type.Union([Type.Literal("VAULT_IN"), Type.Literal("VAULT_OUT"), Type.Literal("NONE")]),
+  qty_mg: Type.Integer(),
+  requests: Type.Array(Type.String({ description: "kasa talimatı referansları" })),
+  done: Type.Boolean(),
+});
+/** Para bacağı: kur bazında net; eksi = Kanzasset öder, artı = rafineri öder. */
+export const SettlementMoneyLeg = Type.Object({
+  ccy: Ccy,
+  net_cents: Type.Integer(),
+  direction: Type.Union([Type.Literal("KZ_TO_AMR"), Type.Literal("AMR_TO_KZ"), Type.Literal("NONE")]),
+  paid: Type.Boolean(),
+  bank_ref: Type.Optional(Type.String()),
+  notice_ts: Type.Optional(IsoTs),
+  received_ts: Type.Optional(IsoTs),
+});
+
+export const Settlement = Type.Object({
+  settlement_id: Type.String(),
+  trigger: SettlementTrigger,
+  status: SettlementStatus,
+  window_from: IsoTs,
+  window_to: IsoTs,
+  statement: Type.Optional(CurrentAccountStatement),
+  statement_hash: Type.Optional(Type.String()),
+  kz_statement_hash: Type.Optional(Type.String()),
+  diffs: Type.Optional(Type.Array(Type.Object({ field: Type.String(), amr: Type.String(), kz: Type.String() }))),
+  gold_leg: Type.Optional(SettlementGoldLeg),
+  money_leg: Type.Array(SettlementMoneyLeg),
+  doc_id: Type.Optional(Type.String({ description: "Mahsuplaşma Ekstresi" })),
+  opened_ts: IsoTs,
+  settled_ts: Type.Optional(IsoTs),
+  history: Type.Optional(Type.Array(Type.Object({ status: SettlementStatus, ts: IsoTs, note: Type.Optional(Type.String()) }))),
+});
+export type Settlement = Static<typeof Settlement>;
+
+export const SETTLEMENT_RULES = {
+  cutoffLocal: "17:00",
+  timezone: "Asia/Dubai",
+  windowsPerDay: 1,
+} as const;
+
 // ---------- Olay zarfı (06) ----------
 export const EVENT_TYPES = [
   "order.filled", "order.rejected", "order.cancelled",
@@ -396,7 +452,7 @@ export const EVENT_TYPES = [
   "delivery.quoted", "delivery.approved", "delivery.preparing", "delivery.ready", "delivery.shipped", "delivery.delivered", "delivery.cancelled", "delivery.failed",
   "catalog.updated",
   "refining.quoted", "refining.approved", "refining.in_production", "refining.ready", "refining.shipped", "refining.delivered", "refining.cancelled", "refining.failed",
-  "settlement.requested", "settlement.opened", "settlement.statement", "settlement.reconciled", "settlement.mismatch", "settlement.payment_notice", "settlement.settled",
+  "settlement.requested", "settlement.opened", "settlement.statement", "settlement.reconciled", "settlement.mismatch", "settlement.payment_notice", "settlement.payment_received", "settlement.settled",
   "price.halt", "price.resume",
   "account.reconcile",
 ] as const;

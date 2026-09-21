@@ -10,8 +10,8 @@
  *   POST /v1/deliveries · approve|cancel · GET       fiziksel teslimat (10)
  *   GET  /v1/catalog                                rafinasyon ürün kataloğu (11)
  *   POST /v1/refining · approve|cancel · GET        rafinasyon (11)
- *   GET  /v1/documents/:id                          Tahsis Belgesi ve fişler (JSON)
- * Sonraki sprintler: /v1/settlements
+ *   POST /v1/settlements · confirm · payment-notice · payment-received   mahsuplaşma (12)
+ *   GET  /v1/documents/:id                          Tahsis Belgesi ve fişler (JSON; /pdf ile PDF)
  */
 import type { FastifyInstance } from "fastify";
 import { DeliveryRequestBody, OrderRequest, RefiningRequestBody, VaultRequestBody, type Catalog, type CurrentAccountStatement, type SessionStatus, type VaultStatement, type WsAuth } from "@amr/contract";
@@ -20,6 +20,7 @@ import type { AppContext } from "../context.ts";
 import { verify } from "../auth.ts";
 import { currentAccountBalance, getDocument, listCurrentAccountMovements, markDocumentSent, signContent } from "../ledger.ts";
 import { FulfilmentError } from "../fulfilment.ts";
+import { documentPdf } from "../pdf.ts";
 
 export async function kzRoutes(app: FastifyInstance, ctx: AppContext) {
   // REST kimlik doğrulama kancası (yalnız /v1/*); gövde imzaya ham metin olarak girer (KZ gönderdiği metni imzalar)
@@ -140,12 +141,49 @@ export async function kzRoutes(app: FastifyInstance, ctx: AppContext) {
   app.post<{ Params: { id: string }; Body: { reason?: string } }>("/v1/refining/:id/cancel", async (req, reply) =>
     guard(reply, () => ctx.refining.cancel(req.params.id, req.body?.reason?.trim() || "Kanzasset iptal etti", "kanzasset")));
 
+  // ----- mahsuplaşma (12) -----
+  /** Pencere açar; açık pencere varsa onu döner. İki taraf da çağırabilir. */
+  app.post<{ Body: { trigger?: string; reason?: string } }>("/v1/settlements", async (req) => {
+    const trigger = (req.body?.trigger as any) ?? "REQUEST_KZ";
+    const s = ctx.settlement.open(trigger, req.body?.reason?.trim());
+    if (trigger === "REQUEST_KZ") ctx.notify("settlement.requested", "Kanzasset mahsuplaşma talep etti", req.body?.reason ?? "", s.settlement_id);
+    return s;
+  });
+  app.get<{ Params: { id: string } }>("/v1/settlements/:id", async (req, reply) =>
+    ctx.settlement.get(req.params.id) ?? reply.code(404).send({ error: "pencere yok" }));
+  /** Mutabakat: KZ kendi ekstresinin özetini gönderir. */
+  app.post<{ Params: { id: string }; Body: { statement_hash?: string; gold_mg?: number; money?: { ccy: string; cents: number }[] } }>("/v1/settlements/:id/confirm", async (req, reply) => {
+    const h = req.body?.statement_hash;
+    if (!h) return reply.code(400).send({ error: "statement_hash zorunlu" });
+    try { return ctx.settlement.confirm(req.params.id, h, { gold_mg: req.body?.gold_mg, money: req.body?.money }); }
+    catch (e) { return reply.code((e as any).code ?? 409).send({ error: (e as Error).message }); }
+  });
+  app.post<{ Params: { id: string }; Body: { ccy?: string; amount_cents?: number; direction?: string; bank_ref?: string } }>("/v1/settlements/:id/payment-notice", async (req, reply) => {
+    const b = req.body ?? {};
+    if (!b.ccy || !b.bank_ref) return reply.code(400).send({ error: "ccy ve bank_ref zorunlu" });
+    try { return ctx.settlement.paymentNotice(req.params.id, b.ccy, Number(b.amount_cents ?? 0), b.direction ?? "KZ_TO_AMR", b.bank_ref); }
+    catch (e) { return reply.code((e as any).code ?? 409).send({ error: (e as Error).message }); }
+  });
+  app.post<{ Params: { id: string }; Body: { ccy?: string; bank_ref?: string } }>("/v1/settlements/:id/payment-received", async (req, reply) => {
+    try { return ctx.settlement.paymentReceived(req.params.id, req.body?.ccy ?? "USD", req.body?.bank_ref); }
+    catch (e) { return reply.code((e as any).code ?? 409).send({ error: (e as Error).message }); }
+  });
+
   // ----- belgeler -----
   app.get<{ Params: { id: string } }>("/v1/documents/:id", async (req, reply) => {
     const d = getDocument(ctx.db, req.params.id);
     if (!d) return reply.code(404).send({ error: "belge yok" });
     markDocumentSent(ctx.db, req.params.id);
     return d;
+  });
+  /** Aynı belgenin PDF hâli (Kanzasset K4, K6, K7 ekranlarından indirir). */
+  app.get<{ Params: { id: string } }>("/v1/documents/:id/pdf", async (req, reply) => {
+    const d = getDocument(ctx.db, req.params.id);
+    if (!d) return reply.code(404).send({ error: "belge yok" });
+    markDocumentSent(ctx.db, req.params.id);
+    return reply.header("content-type", "application/pdf")
+      .header("content-disposition", `attachment; filename="${d.meta.doc_id}.pdf"`)
+      .send(documentPdf(d));
   });
 
   // WS fiyat yayını: ilk mesaj auth, 5 sn içinde gelmezse kapat

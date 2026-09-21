@@ -11,7 +11,7 @@ Ahlatcı Metal Refinery (AMR) tarafında çalışan uygulama. Kanzasset'e fiyat 
 - Kanzasset'ten gelen talepleri karşılar: emir (alış / satış), kasa talimatı (giriş / çıkış), fiziksel teslimat, rafinasyon, mahsuplaşma.
 - Her durum değişikliğinde iki tarafa bildirim üretir. Fişler ve ekstreler indirilebilir.
 
-Belgeler (Tahsis Belgesi, Kasa Giriş / Çıkış Fişi, ekstreler) şu an **imzalı JSON** olarak üretilir: içerik + `sha256` + HMAC imza, `GET /v1/documents/{id}` ile alınır ve ekranlarda görüntülenir. PDF çıktısı ve Ed25519 imzası teslim paketinde (Sprint 6) eklenecektir.
+Belgeler imzalı JSON olarak üretilir (içerik + `sha256` + HMAC imza) ve aynı içerikten **A4 PDF** türetilir: `GET /v1/documents/{id}` ve `GET /v1/documents/{id}/pdf`. İmza HMAC'tir; Ed25519 anahtar yönetimi rafineri kurulumuna bırakılmıştır (bkz. `docs/KARARLAR.md`).
 
 Rafineri tarafında token, mint, burn, cüzdan, müşteri adı yoktur. Talepler yalnız gram ve Kanzasset referansı taşır.
 
@@ -63,6 +63,7 @@ Test: `npm test`. OpenAPI: `npm run openapi:export` → `openapi.json` (repo kö
 - REST `/v1/*`: başlıklar `X-API-Key`, `X-Timestamp`, `X-Signature = HMAC-SHA256(secret, ts + METHOD + path + ham gövde)`, POST'ta `Idempotency-Key`. Zaman sapması en çok 5 dk.
 - Soket `/v1/prices`: ilk mesaj `auth {api_key, ts, sig}` (imza `ts + "GET" + "/v1/prices"`), sonra `subscribed`, `snapshot`, `tick` (yalnız değişince, saniyede en çok 1), `heartbeat` (5 sn), `halt {reason}`, `resume` (+snapshot).
 - Emirler: `POST /v1/orders` (FOK, `quote_seq`, `limit_px`, `time_limit_ms`) · `GET /v1/orders/{id}` · `POST /v1/orders/{id}/cancel` (kesin cevap). Fill cevabında bakiye bilgisi (`account`) ve alışta Tahsis Belgesi.
+- Mahsuplaşma: `POST /v1/settlements` · `GET /v1/settlements/{id}` · `confirm` · `payment-notice` · `payment-received`. Belge PDF'i: `GET /v1/documents/{id}/pdf`.
 - Teslimat ve rafinasyon: `POST /v1/deliveries` · `POST /v1/deliveries/{id}/approve|cancel` · `GET /v1/catalog` · `POST /v1/refining` · `POST /v1/refining/{id}/approve|cancel`. Her adımda `delivery.*` ve `refining.*` olayı gider.
 - Kasa talimatları: `POST /v1/vault/in` · `POST /v1/vault/out` (gövde `qty_mg` + `ref`; `ref` tekildir, aynı ref aynı talebi döner) · `GET /v1/vault/requests/{id}`. Kabulde Kasa Giriş / Çıkış Fişi ve bakiye bilgisi olayla gider.
 - Hesap: `GET /v1/account` (anlık fotoğraf) · `GET /v1/current-account/statement` · `GET /v1/vault/statement?date=` (günlük kasa ekstresi, rezerv kanıtı) · `GET /v1/documents/{id}`.
@@ -92,5 +93,5 @@ curl -X POST localhost:4110/control/jump -H 'content-type: application/json' -d 
 | 2 ✓ | emirler (fill / red / iptal, Tahsis Belgesi), bakiye bilgisi, cari hesap ve limit (K3), olaylar (webhook), cevapsız emir | R3, R5 |
 | 3 ✓ | kasa talimatları (kabul / red, kasaya konuluyor / konuldu, T+3), Kasa Giriş / Çıkış Fişi, günlük kasa ekstresi, büyük alış / satış karşılığı | R4 |
 | 4 ✓ | fiziksel teslimat (lojistik teklifi, Sevkiyat Fişi, takip no, teslimat kaydı), rafinasyon + katalog | R6, R7 |
-| 5 | mahsuplaşma (kesim saati otomatik, talep iki yönlü), belgeler, kullanıcılar | R8, R9 |
+| 5 ✓ | mahsuplaşma (kesim saati otomatik, talep iki yönlü, mutabakat, altın ve para bacağı), belgeler ve PDF, kullanıcılar ve roller, ikinci onay | R8, R9, R10 |
 | 6 | demo senaryoları S0..S9, kullanım kılavuzu, teslim paketi | |

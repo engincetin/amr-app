@@ -4,6 +4,8 @@ import type { SourceConnection } from "./source.ts";
 import type { OrderEngine } from "./orders.ts";
 import type { VaultDesk } from "./vault.ts";
 import type { CatalogDesk, DeliveryDesk, RefiningDesk } from "./fulfilment.ts";
+import type { SettlementDesk } from "./settlement.ts";
+import type { UserDesk } from "./users.ts";
 
 export interface AppContext {
   db: Db;
@@ -17,6 +19,10 @@ export interface AppContext {
   deliveries: DeliveryDesk;
   refining: RefiningDesk;
   catalog: CatalogDesk;
+  /** mahsuplaşma (Sprint 5, R8) */
+  settlement: SettlementDesk;
+  /** kullanıcılar, roller, ikinci onay (Sprint 5, R10) */
+  users: UserDesk;
   /** bildirim oluşturur ve canlı akışa düşürür */
   notify: (type: string, title: string, body?: string, relatedId?: string) => number;
   /** elle aksiyon günlüğü */

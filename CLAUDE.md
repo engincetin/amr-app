@@ -48,6 +48,15 @@ Bu repo Ahlatcı Metal Refinery (AMR) tarafındaki uygulamadır. Kanzasset taraf
 - Onaylanan bedel cari hesaba kalem olur: teslimatta `FEE_DELIVERY`, rafinasyonda `FEE_REFINING`.
 - Katalog rafineride tutulur; değişince sürüm artar ve `catalog.updated` gider.
 
+## Mahsuplaşma (settlement.ts), belgeler ve kullanıcılar (users.ts)
+
+- Aynı anda tek açık pencere olur; `open()` açık pencere varsa onu döner. Kesim saatini `CutoffWatcher` dakikada bir yoklar.
+- Altın bacağı canlı `T` ile ölçülür: kasa talimatı kabul edilince `onVaultAccepted` pencereyi ilerletir, `T = 0` olunca kapanır.
+- Para bacağı kur bazında ayrı kapanır; ödeme alındığında ters işaretli `SETTLEMENT_PAYMENT` kalemi cari hesabı kapatır.
+- Belgeler `pdf.ts` ile A4 PDF'e çevrilir; Türkçe harfler WinAnsi ile kodlanır (bağımlılık yok).
+- Roller `users.ts` içinde: her elle aksiyon bir yetkiye bağlı, Denetçi salt okunur. Aktör `X-User` başlığından gelir.
+- Kritik aksiyonlar (parametre, API anahtarı, ödeme talimatı) `approvals` tablosuyla ikinci onay ister; isteyen kendi isteğini onaylayamaz.
+
 ## Sprint durumu
 
-Sprint 1, 2, 3 ve 4 tamam: sözleşme, mock merkez, kaynak bağlantısı, yayın, HMAC, bildirimler, ayarlar, defter, emirler, cari hesap ve limit, Tahsis Belgesi, olaylar, kasa talimatları ve fişler, günlük kasa ekstresi, fiziksel teslimat, katalog ve rafinasyon; ekranlar R1, R2, R3, R4, R5, R6, R7, R10. Sonraki: Sprint 5 (mahsuplaşma R8, belgeler R9, kullanıcılar R10). Plan `README.md` sonunda.
+Sprint 1'den 5'e tamam: sözleşme, mock merkez, kaynak bağlantısı, yayın, HMAC, bildirimler, ayarlar, defter, emirler, cari hesap ve limit, Tahsis Belgesi, olaylar, kasa talimatları ve fişler, günlük kasa ekstresi, fiziksel teslimat, katalog ve rafinasyon, mahsuplaşma, belgeler ve PDF, kullanıcılar ve roller; ekranlar R1'den R10'a hepsi. Sonraki: Sprint 6 (demo senaryoları, kılavuz, teslim paketi). Plan `README.md` sonunda.

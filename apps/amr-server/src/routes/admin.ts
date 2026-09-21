@@ -6,13 +6,20 @@ import type { FastifyInstance, FastifyReply } from "fastify";
 import type { AppContext } from "../context.ts";
 import { allSettings, getSetting, listAudit, listNotifications, markNotificationRead, recentTicks, setSetting, unreadCount } from "../db.ts";
 import { getDocument, limitUsage, listCurrentAccountMovements, listDocuments, listVaultMovements } from "../ledger.ts";
+import { randomUUID } from "node:crypto";
 import { enqueueEvent, listDeliveries } from "../events.ts";
 import type { VaultError } from "../vault.ts";
 import type { FulfilmentError } from "../fulfilment.ts";
 import type { CatalogItem } from "@amr/contract";
+import type { SettlementError } from "../settlement.ts";
+import { ROLE_TR, SECOND_APPROVAL, type Permission, type Role } from "../users.ts";
+import { documentPdf } from "../pdf.ts";
 import { bus, type BusEvent } from "../bus.ts";
 
-const ACTOR = "admin"; // Sprint 1: tek kullanıcı
+const ACTOR = "admin"; // geriye dönük varsayılan; gerçek aktör X-User başlığından gelir
+
+/** Demoda kullanıcı üst şeritten seçilir ve X-User başlığıyla gelir. */
+const actorOf = (req: any): string => (req.headers["x-user"] as string) || (req.query?.user as string) || ACTOR;
 
 /** R7 teklif formu: tutarlar cent ya da ondalık dize olarak gelebilir. */
 interface RefiningQuoteBody {
@@ -73,19 +80,29 @@ export async function adminRoutes(app: FastifyInstance, ctx: AppContext) {
   app.get<{ Querystring: { date?: string } }>("/admin/vault/statement", async (req) => ctx.vault.statement(req.query.date));
 
   /** R4 aksiyonları: Kabul et / Reddet · Kasaya konuluyor · Kasaya konuldu. Hepsi denetim günlüğüne yazılır. */
-  const vaultAction = (fn: (id: string, body: any) => unknown) => async (req: any, reply: any) => {
-    try { return fn(req.params.id, req.body ?? {}); }
+  /** Yetki kapısı: rolünde bu aksiyon yoksa 403. Denetçi hiçbir elle aksiyon yapamaz. */
+  const allow = (req: any, reply: any, perm: Permission): string | null => {
+    const actor = actorOf(req);
+    if (!ctx.users.can(actor, perm)) { reply.code(403).send({ error: `${actor}: bu aksiyon için yetki yok (${perm})` }); return null; }
+    return actor;
+  };
+  const vaultAction = (perm: Permission, fn: (id: string, body: any, actor: string) => unknown) => async (req: any, reply: any) => {
+    const actor = allow(req, reply, perm);
+    if (!actor) return reply;
+    try { return fn(req.params.id, req.body ?? {}, actor); }
     catch (e) { return reply.code((e as VaultError).code ?? 409).send({ error: (e as Error).message }); }
   };
-  app.post<{ Params: { id: string } }>("/admin/vault/:id/accept", vaultAction((id) => ctx.vault.accept(id, ACTOR)));
+  app.post<{ Params: { id: string } }>("/admin/vault/:id/accept", vaultAction("vault.accept", (id, _b, actor) => ctx.vault.accept(id, actor)));
   app.post<{ Params: { id: string }; Body: { reason?: string } }>("/admin/vault/:id/reject", async (req, reply) => {
     const reason = req.body?.reason?.trim();
     if (!reason) return reply.code(400).send({ error: "gerekçe zorunlu" });
-    try { return ctx.vault.reject(req.params.id, reason, ACTOR); }
+    const actor = allow(req, reply, "vault.accept");
+    if (!actor) return reply;
+    try { return ctx.vault.reject(req.params.id, reason, actor); }
     catch (e) { return reply.code((e as VaultError).code ?? 409).send({ error: (e as Error).message }); }
   });
-  app.post<{ Params: { id: string } }>("/admin/vault/:id/placing", vaultAction((id) => ctx.vault.placing(id, ACTOR)));
-  app.post<{ Params: { id: string } }>("/admin/vault/:id/placed", vaultAction((id) => ctx.vault.placed(id, ACTOR)));
+  app.post<{ Params: { id: string } }>("/admin/vault/:id/placing", vaultAction("vault.place", (id, _b, actor) => ctx.vault.placing(id, actor)));
+  app.post<{ Params: { id: string } }>("/admin/vault/:id/placed", vaultAction("vault.place", (id, _b, actor) => ctx.vault.placed(id, actor)));
   // R5: mahsuplaşma çağır (pencere mantığı Sprint 5; şimdilik karşı tarafa talep olayı + bildirim)
   app.post<{ Body: { reason?: string } }>("/admin/settlement/request", async (req, reply) => {
     const reason = req.body?.reason?.trim();
@@ -98,8 +115,10 @@ export async function adminRoutes(app: FastifyInstance, ctx: AppContext) {
 
   // ----- R6: fiziksel teslimat (10) -----
   /** R6 ve R7 aksiyonları; motor hatası durum koduyla döner. */
-  const step = (fn: (id: string, body: any) => unknown) => async (req: any, reply: any) => {
-    try { return fn(req.params.id, req.body ?? {}); }
+  const step = (perm: Permission, fn: (id: string, body: any, actor: string) => unknown) => async (req: any, reply: any) => {
+    const actor = allow(req, reply, perm);
+    if (!actor) return reply;
+    try { return fn(req.params.id, req.body ?? {}, actor); }
     catch (e) { return reply.code((e as FulfilmentError).code ?? 409).send({ error: (e as Error).message }); }
   };
 
@@ -110,22 +129,26 @@ export async function adminRoutes(app: FastifyInstance, ctx: AppContext) {
     const cents = b.amount_cents ?? Math.round(Number(String(b.amount ?? "").replace(",", ".")) * 100);
     if (!b.carrier?.trim()) return reply.code(400).send({ error: "taşıyıcı zorunlu" });
     if (!Number.isFinite(cents) || cents < 0) return reply.code(400).send({ error: "tutar geçersiz" });
-    try { return ctx.deliveries.quote(req.params.id, { carrier: b.carrier.trim(), amount_cents: cents, ccy: b.ccy ?? "USD", valid_hours: b.valid_hours }, ACTOR); }
+    const actor = allow(req, reply, "delivery.steps");
+    if (!actor) return reply;
+    try { return ctx.deliveries.quote(req.params.id, { carrier: b.carrier.trim(), amount_cents: cents, ccy: b.ccy ?? "USD", valid_hours: b.valid_hours }, actor); }
     catch (e) { return reply.code((e as FulfilmentError).code ?? 409).send({ error: (e as Error).message }); }
   });
-  app.post<{ Params: { id: string } }>("/admin/deliveries/:id/preparing", step((id) => ctx.deliveries.preparing(id, ACTOR)));
-  app.post<{ Params: { id: string } }>("/admin/deliveries/:id/ready", step((id) => ctx.deliveries.ready(id, ACTOR)));
-  app.post<{ Params: { id: string }; Body: { carrier?: string; tracking_no?: string } }>("/admin/deliveries/:id/shipped", step((id, b) => ctx.deliveries.shipped(id, (b.carrier ?? "").trim(), (b.tracking_no ?? "").trim(), ACTOR)));
-  app.post<{ Params: { id: string } }>("/admin/deliveries/:id/delivered", step((id) => ctx.deliveries.delivered(id, ACTOR)));
-  app.post<{ Params: { id: string }; Body: { reason?: string } }>("/admin/deliveries/:id/cancel", step((id, b) => ctx.deliveries.cancel(id, (b.reason ?? "").trim() || "rafineri iptal etti", ACTOR)));
-  app.post<{ Params: { id: string }; Body: { reason?: string } }>("/admin/deliveries/:id/failed", step((id, b) => ctx.deliveries.failed(id, (b.reason ?? "").trim() || "teslim edilemedi", ACTOR)));
+  app.post<{ Params: { id: string } }>("/admin/deliveries/:id/preparing", step("delivery.steps", (id, _b, actor) => ctx.deliveries.preparing(id, actor)));
+  app.post<{ Params: { id: string } }>("/admin/deliveries/:id/ready", step("delivery.steps", (id, _b, actor) => ctx.deliveries.ready(id, actor)));
+  app.post<{ Params: { id: string }; Body: { carrier?: string; tracking_no?: string } }>("/admin/deliveries/:id/shipped", step("delivery.steps", (id, b, actor) => ctx.deliveries.shipped(id, (b.carrier ?? "").trim(), (b.tracking_no ?? "").trim(), actor)));
+  app.post<{ Params: { id: string } }>("/admin/deliveries/:id/delivered", step("delivery.steps", (id, _b, actor) => ctx.deliveries.delivered(id, actor)));
+  app.post<{ Params: { id: string }; Body: { reason?: string } }>("/admin/deliveries/:id/cancel", step("delivery.steps", (id, b, actor) => ctx.deliveries.cancel(id, (b.reason ?? "").trim() || "rafineri iptal etti", actor)));
+  app.post<{ Params: { id: string }; Body: { reason?: string } }>("/admin/deliveries/:id/failed", step("delivery.steps", (id, b, actor) => ctx.deliveries.failed(id, (b.reason ?? "").trim() || "teslim edilemedi", actor)));
 
   // ----- R7: katalog ve rafinasyon (11) -----
   app.get("/admin/catalog", async () => ctx.catalog.get());
   app.put<{ Body: Partial<CatalogItem> & { item_id?: string } }>("/admin/catalog", async (req, reply) => {
     const b = (req.body ?? {}) as Partial<CatalogItem> & { item_id?: string };
     if (!b.item_id) return reply.code(400).send({ error: "item_id zorunlu" });
-    try { return ctx.catalog.upsert(b as Partial<CatalogItem> & { item_id: string }, ACTOR); }
+    const actor = allow(req, reply, "catalog.edit");
+    if (!actor) return reply;
+    try { return ctx.catalog.upsert(b as Partial<CatalogItem> & { item_id: string }, actor); }
     catch (e) { return reply.code((e as FulfilmentError).code ?? 409).send({ error: (e as Error).message }); }
   });
   app.get("/admin/refining", async () => ({ items: ctx.refining.list(300), open: ctx.refining.open().length }));
@@ -135,15 +158,110 @@ export async function adminRoutes(app: FastifyInstance, ctx: AppContext) {
     const product = b.product_cents ?? Math.round(Number(String(b.product ?? "").replace(",", ".")) * 100);
     const logistics = b.logistics_cents ?? Math.round(Number(String(b.logistics ?? "").replace(",", ".")) * 100);
     if (!Number.isFinite(product) || product < 0 || !Number.isFinite(logistics) || logistics < 0) return reply.code(400).send({ error: "tutarlar geçersiz" });
-    try { return ctx.refining.quote(req.params.id, { product_cents: product, logistics_cents: logistics, ccy: b.ccy ?? "USD", lead_time_days: Number(b.lead_time_days ?? 3), carrier: b.carrier, valid_hours: b.valid_hours }, ACTOR); }
+    const actor = allow(req, reply, "refining.steps");
+    if (!actor) return reply;
+    try { return ctx.refining.quote(req.params.id, { product_cents: product, logistics_cents: logistics, ccy: b.ccy ?? "USD", lead_time_days: Number(b.lead_time_days ?? 3), carrier: b.carrier, valid_hours: b.valid_hours }, actor); }
     catch (e) { return reply.code((e as FulfilmentError).code ?? 409).send({ error: (e as Error).message }); }
   });
-  app.post<{ Params: { id: string } }>("/admin/refining/:id/production", step((id) => ctx.refining.inProduction(id, ACTOR)));
-  app.post<{ Params: { id: string } }>("/admin/refining/:id/ready", step((id) => ctx.refining.ready(id, ACTOR)));
-  app.post<{ Params: { id: string }; Body: { carrier?: string; tracking_no?: string } }>("/admin/refining/:id/shipped", step((id, b) => ctx.refining.shipped(id, (b.carrier ?? "").trim(), (b.tracking_no ?? "").trim(), ACTOR)));
-  app.post<{ Params: { id: string } }>("/admin/refining/:id/delivered", step((id) => ctx.refining.delivered(id, ACTOR)));
-  app.post<{ Params: { id: string }; Body: { reason?: string } }>("/admin/refining/:id/cancel", step((id, b) => ctx.refining.cancel(id, (b.reason ?? "").trim() || "rafineri iptal etti", ACTOR)));
-  app.post<{ Params: { id: string }; Body: { reason?: string } }>("/admin/refining/:id/failed", step((id, b) => ctx.refining.failed(id, (b.reason ?? "").trim() || "teslim edilemedi", ACTOR)));
+  app.post<{ Params: { id: string } }>("/admin/refining/:id/production", step("refining.steps", (id, _b, actor) => ctx.refining.inProduction(id, actor)));
+  app.post<{ Params: { id: string } }>("/admin/refining/:id/ready", step("refining.steps", (id, _b, actor) => ctx.refining.ready(id, actor)));
+  app.post<{ Params: { id: string }; Body: { carrier?: string; tracking_no?: string } }>("/admin/refining/:id/shipped", step("refining.steps", (id, b, actor) => ctx.refining.shipped(id, (b.carrier ?? "").trim(), (b.tracking_no ?? "").trim(), actor)));
+  app.post<{ Params: { id: string } }>("/admin/refining/:id/delivered", step("refining.steps", (id, _b, actor) => ctx.refining.delivered(id, actor)));
+  app.post<{ Params: { id: string }; Body: { reason?: string } }>("/admin/refining/:id/cancel", step("refining.steps", (id, b, actor) => ctx.refining.cancel(id, (b.reason ?? "").trim() || "rafineri iptal etti", actor)));
+  app.post<{ Params: { id: string }; Body: { reason?: string } }>("/admin/refining/:id/failed", step("refining.steps", (id, b, actor) => ctx.refining.failed(id, (b.reason ?? "").trim() || "teslim edilemedi", actor)));
+
+  // ----- R8: mahsuplaşma (12) -----
+  app.get("/admin/settlements", async () => ({ items: ctx.settlement.list(), open: ctx.settlement.openWindow() ?? null }));
+  app.get<{ Params: { id: string } }>("/admin/settlements/:id", async (req, reply) => ctx.settlement.get(req.params.id) ?? reply.code(404).send({ error: "pencere yok" }));
+  /** Mahsuplaşma talep et (R8) ya da kesimi elle tetikle (demo). */
+  app.post<{ Body: { reason?: string; trigger?: string } }>("/admin/settlements", async (req, reply) => {
+    const actor = actorOf(req);
+    if (!ctx.users.can(actor, "settlement.request")) return reply.code(403).send({ error: `${actor}: bu aksiyon için yetki yok (mahsuplaşma talebi)` });
+    const trigger = (req.body?.trigger as any) ?? "REQUEST_AMR";
+    const s = ctx.settlement.open(trigger, req.body?.reason?.trim());
+    ctx.audit(actor, "settlement.open", undefined, { settlement_id: s.settlement_id, trigger });
+    if (trigger === "REQUEST_AMR") enqueueEvent(ctx, "settlement.requested", { settlement_id: s.settlement_id, requested_by: "AMR", trigger, reason: req.body?.reason ?? null });
+    return s;
+  });
+  app.post<{ Params: { id: string } }>("/admin/settlements/:id/draft", async (req, reply) => {
+    try { return ctx.settlement.draft(req.params.id); }
+    catch (e) { return reply.code((e as SettlementError).code ?? 409).send({ error: (e as Error).message }); }
+  });
+  /** AMR ödeyen taraf ise ödeme bildirimi; ikinci onay ister. */
+  app.post<{ Params: { id: string }; Body: { ccy?: string; amount_cents?: number; direction?: string; bank_ref?: string; approval_id?: number; approver?: string } }>("/admin/settlements/:id/payment-notice", async (req, reply) => {
+    const actor = actorOf(req);
+    if (!ctx.users.can(actor, "settlement.payment")) return reply.code(403).send({ error: `${actor}: ödeme talimatı yetkisi yok` });
+    const b = req.body ?? {};
+    if (!b.ccy || !b.bank_ref?.trim()) return reply.code(400).send({ error: "kur ve banka referansı zorunlu" });
+    if (!b.approval_id) {
+      const id = ctx.users.requestApproval("settlement.payment", { settlement_id: req.params.id, ...b }, actor);
+      return reply.code(202).send({ needs_approval: true, approval_id: id, message: "ödeme talimatı ikinci onay bekliyor" });
+    }
+    try {
+      ctx.users.approve(Number(b.approval_id), b.approver ?? actor);
+      return ctx.settlement.paymentNotice(req.params.id, b.ccy, Number(b.amount_cents ?? 0), b.direction ?? "AMR_TO_KZ", b.bank_ref.trim());
+    } catch (e) { return reply.code(409).send({ error: (e as Error).message }); }
+  });
+  app.post<{ Params: { id: string }; Body: { ccy?: string; bank_ref?: string } }>("/admin/settlements/:id/payment-received", async (req, reply) => {
+    const actor = actorOf(req);
+    if (!ctx.users.can(actor, "settlement.payment")) return reply.code(403).send({ error: `${actor}: ödeme onayı yetkisi yok` });
+    try { return ctx.settlement.paymentReceived(req.params.id, req.body?.ccy ?? "USD", req.body?.bank_ref); }
+    catch (e) { return reply.code((e as SettlementError).code ?? 409).send({ error: (e as Error).message }); }
+  });
+
+  // ----- R9: belgeler -----
+  app.get<{ Params: { id: string } }>("/admin/documents/:id/pdf", async (req, reply) => {
+    const d = getDocument(ctx.db, req.params.id);
+    if (!d) return reply.code(404).send({ error: "belge yok" });
+    return reply.header("content-type", "application/pdf")
+      .header("content-disposition", `attachment; filename="${d.meta.doc_id}.pdf"`)
+      .send(documentPdf(d));
+  });
+
+  // ----- R10: kullanıcılar, roller, ikinci onay -----
+  app.get("/admin/users", async () => ({
+    items: ctx.users.list().map((u) => ({ ...u, role_tr: ROLE_TR[u.role], permissions: ctx.users.permissions(u.role) })),
+    roles: Object.entries(ROLE_TR).map(([code, name]) => ({ code, name, permissions: ctx.users.permissions(code as Role) })),
+    second_approval: SECOND_APPROVAL,
+    pending_approvals: ctx.users.pendingApprovals(),
+  }));
+  app.put<{ Body: { username?: string; display_name?: string; role?: Role; active?: boolean } }>("/admin/users", async (req, reply) => {
+    const actor = actorOf(req);
+    if (!ctx.users.can(actor, "users.write")) return reply.code(403).send({ error: `${actor}: kullanıcı yönetimi yetkisi yok` });
+    if (!req.body?.username) return reply.code(400).send({ error: "username zorunlu" });
+    return ctx.users.upsert(req.body as any, actor);
+  });
+  app.post<{ Params: { id: string }; Body: { approver?: string } }>("/admin/approvals/:id/approve", async (req, reply) => {
+    const actor = req.body?.approver ?? actorOf(req);
+    try { return { ok: true, ...ctx.users.approve(Number(req.params.id), actor) }; }
+    catch (e) { return reply.code(409).send({ error: (e as Error).message }); }
+  });
+  app.post<{ Params: { id: string } }>("/admin/approvals/:id/reject", async (req) => { ctx.users.reject(Number(req.params.id), actorOf(req)); return { ok: true }; });
+  /** API istemcisi: anahtar üret / iptal (ikinci onay ister). */
+  app.get("/admin/clients", async () => ctx.db.prepare("SELECT api_key, name, event_url, active, created_ts FROM api_clients").all());
+  app.post<{ Body: { name?: string; event_url?: string; approval_id?: number; approver?: string } }>("/admin/clients", async (req, reply) => {
+    const actor = actorOf(req);
+    if (!ctx.users.can(actor, "clients.write")) return reply.code(403).send({ error: `${actor}: istemci yönetimi yetkisi yok` });
+    const b = req.body ?? {};
+    if (!b.approval_id) {
+      const id = ctx.users.requestApproval("clients.create", b, actor);
+      return reply.code(202).send({ needs_approval: true, approval_id: id, message: "anahtar üretimi ikinci onay bekliyor" });
+    }
+    try { ctx.users.approve(Number(b.approval_id), b.approver ?? actor); } catch (e) { return reply.code(409).send({ error: (e as Error).message }); }
+    const key = `kz-${randomUUID().slice(0, 8)}`;
+    const secret = randomUUID().replace(/-/g, "");
+    ctx.db.prepare("INSERT INTO api_clients(api_key, name, secret, event_url, active, created_ts) VALUES (?, ?, ?, ?, 1, ?)")
+      .run(key, b.name ?? "Kanzasset", secret, b.event_url ?? null, new Date().toISOString());
+    ctx.audit(actor, "clients.create", undefined, { api_key: key });
+    return { api_key: key, secret, name: b.name ?? "Kanzasset" };
+  });
+  app.post<{ Params: { key: string } }>("/admin/clients/:key/revoke", async (req, reply) => {
+    const actor = actorOf(req);
+    if (!ctx.users.can(actor, "clients.write")) return reply.code(403).send({ error: `${actor}: istemci yönetimi yetkisi yok` });
+    ctx.db.prepare("UPDATE api_clients SET active = 0 WHERE api_key = ?").run(req.params.key);
+    ctx.audit(actor, "clients.revoke", undefined, { api_key: req.params.key });
+    return { ok: true };
+  });
 
   // ----- R9 (ön): belgeler ve olay teslimleri -----
   app.get("/admin/documents", async () => listDocuments(ctx.db));
@@ -196,10 +314,21 @@ export async function adminRoutes(app: FastifyInstance, ctx: AppContext) {
 
   // ----- ayarlar ve denetim günlüğü (R10, Sprint 1: parametre listesi) -----
   app.get("/admin/settings", async () => allSettings(ctx.db));
-  app.put<{ Body: Record<string, string> }>("/admin/settings", async (req) => {
+  /** Parametre değişikliği kritiktir: ikinci onay ister (Sistem 09). */
+  app.put<{ Body: Record<string, string> & { approval_id?: string; approver?: string } }>("/admin/settings", async (req, reply) => {
+    const actor = actorOf(req);
+    if (!ctx.users.can(actor, "settings.write")) return reply.code(403).send({ error: `${actor}: parametre değiştirme yetkisi yok (Yönetici gerekir)` });
+    const { approval_id, approver, ...values } = (req.body ?? {}) as Record<string, string>;
+    if (!approval_id) {
+      const id = ctx.users.requestApproval("settings.update", values, actor);
+      return reply.code(202).send({ needs_approval: true, approval_id: id, message: "parametre değişikliği ikinci onay bekliyor", values });
+    }
+    let payload: Record<string, string>;
+    try { payload = ctx.users.approve(Number(approval_id), approver ?? actor).payload as Record<string, string>; }
+    catch (e) { return reply.code(409).send({ error: (e as Error).message }); }
     const before = allSettings(ctx.db);
-    for (const [k, v] of Object.entries(req.body ?? {})) if (typeof v === "string") setSetting(ctx.db, k, v);
-    ctx.audit(ACTOR, "settings.update", before, allSettings(ctx.db));
+    for (const [k, v] of Object.entries(payload)) if (typeof v === "string") setSetting(ctx.db, k, v);
+    ctx.audit(actor, "settings.update", before, allSettings(ctx.db));
     return allSettings(ctx.db);
   });
   app.get("/admin/audit", async () => listAudit(ctx.db, 100));

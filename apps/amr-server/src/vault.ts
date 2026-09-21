@@ -154,7 +154,10 @@ export class VaultDesk {
       .run(doc_id, actor, ts, due_ts, this.push(row, "ACCEPTED", ts, `kabul: ${actor}`), row.request_id);
 
     this.ctx.audit(actor, `vault.${row.type === "IN" ? "in" : "out"}.accept`, { status: "REQUESTED" }, { request_id: row.request_id, qty_mg: row.qty_mg, doc_id, seq });
-    return this.emit(row.request_id, row.type === "IN" ? "vault.in_accepted" : "vault.out_accepted", true);
+    const resp = this.emit(row.request_id, row.type === "IN" ? "vault.in_accepted" : "vault.out_accepted", true);
+    // mahsuplaşmanın altın bacağı kasa talimatıyla kapanır (12)
+    this.ctx.settlement?.onVaultAccepted(row.ref);
+    return resp;
   }
 
   /** Reddet (gerekçeyle): gram cari hesapta / kasada kalır, KZ bildirim alır. */

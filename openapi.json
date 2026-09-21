@@ -4933,9 +4933,2719 @@
         }
       }
     },
+    "/v1/settlements": {
+      "post": {
+        "summary": "Mahsuplaşma penceresi aç ya da açık pencereyi al (12). İki taraf da çağırabilir; kesim saatinde rafineri kendiliğinden açar.",
+        "parameters": [
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Timestamp",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "X-Signature",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "HMAC-SHA256(secret, ts + METHOD + path + body) hex"
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "trigger": {
+                    "type": "string",
+                    "enum": [
+                      "CUTOFF",
+                      "REQUEST_KZ",
+                      "REQUEST_AMR",
+                      "LIMIT"
+                    ]
+                  },
+                  "reason": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OPEN ya da DRAFT; açık pencere varsa o döner",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "settlement_id",
+                    "trigger",
+                    "status",
+                    "window_from",
+                    "window_to",
+                    "money_leg",
+                    "opened_ts"
+                  ],
+                  "properties": {
+                    "settlement_id": {
+                      "type": "string"
+                    },
+                    "trigger": {
+                      "anyOf": [
+                        {
+                          "const": "CUTOFF",
+                          "type": "string"
+                        },
+                        {
+                          "const": "REQUEST_KZ",
+                          "type": "string"
+                        },
+                        {
+                          "const": "REQUEST_AMR",
+                          "type": "string"
+                        },
+                        {
+                          "const": "LIMIT",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "status": {
+                      "anyOf": [
+                        {
+                          "const": "REQUESTED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "OPEN",
+                          "type": "string"
+                        },
+                        {
+                          "const": "DRAFT",
+                          "type": "string"
+                        },
+                        {
+                          "const": "RECONCILED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "MISMATCH",
+                          "type": "string"
+                        },
+                        {
+                          "const": "PAYMENT_PENDING",
+                          "type": "string"
+                        },
+                        {
+                          "const": "SETTLED",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "window_from": {
+                      "description": "ISO 8601 UTC",
+                      "type": "string"
+                    },
+                    "window_to": {
+                      "description": "ISO 8601 UTC",
+                      "type": "string"
+                    },
+                    "statement": {
+                      "type": "object",
+                      "required": [
+                        "window_from",
+                        "window_to",
+                        "movements",
+                        "gold_mg",
+                        "money",
+                        "fees",
+                        "hash",
+                        "signature"
+                      ],
+                      "properties": {
+                        "window_from": {
+                          "description": "ISO 8601 UTC",
+                          "type": "string"
+                        },
+                        "window_to": {
+                          "description": "ISO 8601 UTC",
+                          "type": "string"
+                        },
+                        "movements": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "id",
+                              "seq",
+                              "type",
+                              "gold_mg",
+                              "ts"
+                            ],
+                            "properties": {
+                              "id": {
+                                "type": "integer"
+                              },
+                              "seq": {
+                                "type": "integer"
+                              },
+                              "type": {
+                                "anyOf": [
+                                  {
+                                    "const": "OPENING",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "FILL_BUY",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "FILL_SELL",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "VAULT_IN",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "VAULT_OUT",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "FEE_DELIVERY",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "FEE_REFINING",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "SETTLEMENT_PAYMENT",
+                                    "type": "string"
+                                  }
+                                ]
+                              },
+                              "gold_mg": {
+                                "description": "işaretli",
+                                "type": "integer"
+                              },
+                              "ccy": {
+                                "anyOf": [
+                                  {
+                                    "const": "USD",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "EUR",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "AED",
+                                    "type": "string"
+                                  }
+                                ]
+                              },
+                              "amount_cents": {
+                                "description": "işaretli: eksi Kanzasset borçlu",
+                                "type": "integer"
+                              },
+                              "ref": {
+                                "type": "string"
+                              },
+                              "related_id": {
+                                "type": "string"
+                              },
+                              "ts": {
+                                "description": "ISO 8601 UTC",
+                                "type": "string"
+                              }
+                            }
+                          }
+                        },
+                        "gold_mg": {
+                          "type": "integer"
+                        },
+                        "money": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "ccy",
+                              "cents"
+                            ],
+                            "properties": {
+                              "ccy": {
+                                "anyOf": [
+                                  {
+                                    "const": "USD",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "EUR",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "AED",
+                                    "type": "string"
+                                  }
+                                ]
+                              },
+                              "cents": {
+                                "description": "eksi = Kanzasset borçlu, artı = rafineri borçlu",
+                                "type": "integer"
+                              }
+                            }
+                          }
+                        },
+                        "fees": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "type",
+                              "ccy",
+                              "amount_cents"
+                            ],
+                            "properties": {
+                              "type": {
+                                "type": "string"
+                              },
+                              "ccy": {
+                                "anyOf": [
+                                  {
+                                    "const": "USD",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "EUR",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "AED",
+                                    "type": "string"
+                                  }
+                                ]
+                              },
+                              "amount_cents": {
+                                "type": "integer"
+                              }
+                            }
+                          }
+                        },
+                        "hash": {
+                          "type": "string"
+                        },
+                        "signature": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "statement_hash": {
+                      "type": "string"
+                    },
+                    "kz_statement_hash": {
+                      "type": "string"
+                    },
+                    "diffs": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "field",
+                          "amr",
+                          "kz"
+                        ],
+                        "properties": {
+                          "field": {
+                            "type": "string"
+                          },
+                          "amr": {
+                            "type": "string"
+                          },
+                          "kz": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "gold_leg": {
+                      "type": "object",
+                      "required": [
+                        "t_net_mg",
+                        "direction",
+                        "qty_mg",
+                        "requests",
+                        "done"
+                      ],
+                      "properties": {
+                        "t_net_mg": {
+                          "description": "pencere kapanışındaki T",
+                          "type": "integer"
+                        },
+                        "direction": {
+                          "anyOf": [
+                            {
+                              "const": "VAULT_IN",
+                              "type": "string"
+                            },
+                            {
+                              "const": "VAULT_OUT",
+                              "type": "string"
+                            },
+                            {
+                              "const": "NONE",
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "qty_mg": {
+                          "type": "integer"
+                        },
+                        "requests": {
+                          "type": "array",
+                          "items": {
+                            "description": "kasa talimatı referansları",
+                            "type": "string"
+                          }
+                        },
+                        "done": {
+                          "type": "boolean"
+                        }
+                      }
+                    },
+                    "money_leg": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "ccy",
+                          "net_cents",
+                          "direction",
+                          "paid"
+                        ],
+                        "properties": {
+                          "ccy": {
+                            "anyOf": [
+                              {
+                                "const": "USD",
+                                "type": "string"
+                              },
+                              {
+                                "const": "EUR",
+                                "type": "string"
+                              },
+                              {
+                                "const": "AED",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "net_cents": {
+                            "type": "integer"
+                          },
+                          "direction": {
+                            "anyOf": [
+                              {
+                                "const": "KZ_TO_AMR",
+                                "type": "string"
+                              },
+                              {
+                                "const": "AMR_TO_KZ",
+                                "type": "string"
+                              },
+                              {
+                                "const": "NONE",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "paid": {
+                            "type": "boolean"
+                          },
+                          "bank_ref": {
+                            "type": "string"
+                          },
+                          "notice_ts": {
+                            "description": "ISO 8601 UTC",
+                            "type": "string"
+                          },
+                          "received_ts": {
+                            "description": "ISO 8601 UTC",
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "doc_id": {
+                      "description": "Mahsuplaşma Ekstresi",
+                      "type": "string"
+                    },
+                    "opened_ts": {
+                      "description": "ISO 8601 UTC",
+                      "type": "string"
+                    },
+                    "settled_ts": {
+                      "description": "ISO 8601 UTC",
+                      "type": "string"
+                    },
+                    "history": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "status",
+                          "ts"
+                        ],
+                        "properties": {
+                          "status": {
+                            "anyOf": [
+                              {
+                                "const": "REQUESTED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "OPEN",
+                                "type": "string"
+                              },
+                              {
+                                "const": "DRAFT",
+                                "type": "string"
+                              },
+                              {
+                                "const": "RECONCILED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "MISMATCH",
+                                "type": "string"
+                              },
+                              {
+                                "const": "PAYMENT_PENDING",
+                                "type": "string"
+                              },
+                              {
+                                "const": "SETTLED",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "ts": {
+                            "description": "ISO 8601 UTC",
+                            "type": "string"
+                          },
+                          "note": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/settlements/{id}": {
+      "get": {
+        "summary": "Pencere durumu: ekstre, altın bacağı, kur bazında para bacağı",
+        "parameters": [
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Timestamp",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "X-Signature",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "HMAC-SHA256(secret, ts + METHOD + path + body) hex"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "settlement_id",
+                    "trigger",
+                    "status",
+                    "window_from",
+                    "window_to",
+                    "money_leg",
+                    "opened_ts"
+                  ],
+                  "properties": {
+                    "settlement_id": {
+                      "type": "string"
+                    },
+                    "trigger": {
+                      "anyOf": [
+                        {
+                          "const": "CUTOFF",
+                          "type": "string"
+                        },
+                        {
+                          "const": "REQUEST_KZ",
+                          "type": "string"
+                        },
+                        {
+                          "const": "REQUEST_AMR",
+                          "type": "string"
+                        },
+                        {
+                          "const": "LIMIT",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "status": {
+                      "anyOf": [
+                        {
+                          "const": "REQUESTED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "OPEN",
+                          "type": "string"
+                        },
+                        {
+                          "const": "DRAFT",
+                          "type": "string"
+                        },
+                        {
+                          "const": "RECONCILED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "MISMATCH",
+                          "type": "string"
+                        },
+                        {
+                          "const": "PAYMENT_PENDING",
+                          "type": "string"
+                        },
+                        {
+                          "const": "SETTLED",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "window_from": {
+                      "description": "ISO 8601 UTC",
+                      "type": "string"
+                    },
+                    "window_to": {
+                      "description": "ISO 8601 UTC",
+                      "type": "string"
+                    },
+                    "statement": {
+                      "type": "object",
+                      "required": [
+                        "window_from",
+                        "window_to",
+                        "movements",
+                        "gold_mg",
+                        "money",
+                        "fees",
+                        "hash",
+                        "signature"
+                      ],
+                      "properties": {
+                        "window_from": {
+                          "description": "ISO 8601 UTC",
+                          "type": "string"
+                        },
+                        "window_to": {
+                          "description": "ISO 8601 UTC",
+                          "type": "string"
+                        },
+                        "movements": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "id",
+                              "seq",
+                              "type",
+                              "gold_mg",
+                              "ts"
+                            ],
+                            "properties": {
+                              "id": {
+                                "type": "integer"
+                              },
+                              "seq": {
+                                "type": "integer"
+                              },
+                              "type": {
+                                "anyOf": [
+                                  {
+                                    "const": "OPENING",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "FILL_BUY",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "FILL_SELL",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "VAULT_IN",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "VAULT_OUT",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "FEE_DELIVERY",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "FEE_REFINING",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "SETTLEMENT_PAYMENT",
+                                    "type": "string"
+                                  }
+                                ]
+                              },
+                              "gold_mg": {
+                                "description": "işaretli",
+                                "type": "integer"
+                              },
+                              "ccy": {
+                                "anyOf": [
+                                  {
+                                    "const": "USD",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "EUR",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "AED",
+                                    "type": "string"
+                                  }
+                                ]
+                              },
+                              "amount_cents": {
+                                "description": "işaretli: eksi Kanzasset borçlu",
+                                "type": "integer"
+                              },
+                              "ref": {
+                                "type": "string"
+                              },
+                              "related_id": {
+                                "type": "string"
+                              },
+                              "ts": {
+                                "description": "ISO 8601 UTC",
+                                "type": "string"
+                              }
+                            }
+                          }
+                        },
+                        "gold_mg": {
+                          "type": "integer"
+                        },
+                        "money": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "ccy",
+                              "cents"
+                            ],
+                            "properties": {
+                              "ccy": {
+                                "anyOf": [
+                                  {
+                                    "const": "USD",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "EUR",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "AED",
+                                    "type": "string"
+                                  }
+                                ]
+                              },
+                              "cents": {
+                                "description": "eksi = Kanzasset borçlu, artı = rafineri borçlu",
+                                "type": "integer"
+                              }
+                            }
+                          }
+                        },
+                        "fees": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "type",
+                              "ccy",
+                              "amount_cents"
+                            ],
+                            "properties": {
+                              "type": {
+                                "type": "string"
+                              },
+                              "ccy": {
+                                "anyOf": [
+                                  {
+                                    "const": "USD",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "EUR",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "AED",
+                                    "type": "string"
+                                  }
+                                ]
+                              },
+                              "amount_cents": {
+                                "type": "integer"
+                              }
+                            }
+                          }
+                        },
+                        "hash": {
+                          "type": "string"
+                        },
+                        "signature": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "statement_hash": {
+                      "type": "string"
+                    },
+                    "kz_statement_hash": {
+                      "type": "string"
+                    },
+                    "diffs": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "field",
+                          "amr",
+                          "kz"
+                        ],
+                        "properties": {
+                          "field": {
+                            "type": "string"
+                          },
+                          "amr": {
+                            "type": "string"
+                          },
+                          "kz": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "gold_leg": {
+                      "type": "object",
+                      "required": [
+                        "t_net_mg",
+                        "direction",
+                        "qty_mg",
+                        "requests",
+                        "done"
+                      ],
+                      "properties": {
+                        "t_net_mg": {
+                          "description": "pencere kapanışındaki T",
+                          "type": "integer"
+                        },
+                        "direction": {
+                          "anyOf": [
+                            {
+                              "const": "VAULT_IN",
+                              "type": "string"
+                            },
+                            {
+                              "const": "VAULT_OUT",
+                              "type": "string"
+                            },
+                            {
+                              "const": "NONE",
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "qty_mg": {
+                          "type": "integer"
+                        },
+                        "requests": {
+                          "type": "array",
+                          "items": {
+                            "description": "kasa talimatı referansları",
+                            "type": "string"
+                          }
+                        },
+                        "done": {
+                          "type": "boolean"
+                        }
+                      }
+                    },
+                    "money_leg": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "ccy",
+                          "net_cents",
+                          "direction",
+                          "paid"
+                        ],
+                        "properties": {
+                          "ccy": {
+                            "anyOf": [
+                              {
+                                "const": "USD",
+                                "type": "string"
+                              },
+                              {
+                                "const": "EUR",
+                                "type": "string"
+                              },
+                              {
+                                "const": "AED",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "net_cents": {
+                            "type": "integer"
+                          },
+                          "direction": {
+                            "anyOf": [
+                              {
+                                "const": "KZ_TO_AMR",
+                                "type": "string"
+                              },
+                              {
+                                "const": "AMR_TO_KZ",
+                                "type": "string"
+                              },
+                              {
+                                "const": "NONE",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "paid": {
+                            "type": "boolean"
+                          },
+                          "bank_ref": {
+                            "type": "string"
+                          },
+                          "notice_ts": {
+                            "description": "ISO 8601 UTC",
+                            "type": "string"
+                          },
+                          "received_ts": {
+                            "description": "ISO 8601 UTC",
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "doc_id": {
+                      "description": "Mahsuplaşma Ekstresi",
+                      "type": "string"
+                    },
+                    "opened_ts": {
+                      "description": "ISO 8601 UTC",
+                      "type": "string"
+                    },
+                    "settled_ts": {
+                      "description": "ISO 8601 UTC",
+                      "type": "string"
+                    },
+                    "history": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "status",
+                          "ts"
+                        ],
+                        "properties": {
+                          "status": {
+                            "anyOf": [
+                              {
+                                "const": "REQUESTED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "OPEN",
+                                "type": "string"
+                              },
+                              {
+                                "const": "DRAFT",
+                                "type": "string"
+                              },
+                              {
+                                "const": "RECONCILED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "MISMATCH",
+                                "type": "string"
+                              },
+                              {
+                                "const": "PAYMENT_PENDING",
+                                "type": "string"
+                              },
+                              {
+                                "const": "SETTLED",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "ts": {
+                            "description": "ISO 8601 UTC",
+                            "type": "string"
+                          },
+                          "note": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "pencere yok"
+          }
+        }
+      }
+    },
+    "/v1/settlements/{id}/confirm": {
+      "post": {
+        "summary": "Mutabakat: KZ kendi ekstresinin özetini ve toplamlarını gönderir. Eşitse RECONCILED, değilse MISMATCH ve diffs.",
+        "parameters": [
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Timestamp",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "X-Signature",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "HMAC-SHA256(secret, ts + METHOD + path + body) hex"
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "statement_hash"
+                ],
+                "properties": {
+                  "statement_hash": {
+                    "type": "string"
+                  },
+                  "gold_mg": {
+                    "type": "integer"
+                  },
+                  "money": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "ccy": {
+                          "type": "string"
+                        },
+                        "cents": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "settlement_id",
+                    "trigger",
+                    "status",
+                    "window_from",
+                    "window_to",
+                    "money_leg",
+                    "opened_ts"
+                  ],
+                  "properties": {
+                    "settlement_id": {
+                      "type": "string"
+                    },
+                    "trigger": {
+                      "anyOf": [
+                        {
+                          "const": "CUTOFF",
+                          "type": "string"
+                        },
+                        {
+                          "const": "REQUEST_KZ",
+                          "type": "string"
+                        },
+                        {
+                          "const": "REQUEST_AMR",
+                          "type": "string"
+                        },
+                        {
+                          "const": "LIMIT",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "status": {
+                      "anyOf": [
+                        {
+                          "const": "REQUESTED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "OPEN",
+                          "type": "string"
+                        },
+                        {
+                          "const": "DRAFT",
+                          "type": "string"
+                        },
+                        {
+                          "const": "RECONCILED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "MISMATCH",
+                          "type": "string"
+                        },
+                        {
+                          "const": "PAYMENT_PENDING",
+                          "type": "string"
+                        },
+                        {
+                          "const": "SETTLED",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "window_from": {
+                      "description": "ISO 8601 UTC",
+                      "type": "string"
+                    },
+                    "window_to": {
+                      "description": "ISO 8601 UTC",
+                      "type": "string"
+                    },
+                    "statement": {
+                      "type": "object",
+                      "required": [
+                        "window_from",
+                        "window_to",
+                        "movements",
+                        "gold_mg",
+                        "money",
+                        "fees",
+                        "hash",
+                        "signature"
+                      ],
+                      "properties": {
+                        "window_from": {
+                          "description": "ISO 8601 UTC",
+                          "type": "string"
+                        },
+                        "window_to": {
+                          "description": "ISO 8601 UTC",
+                          "type": "string"
+                        },
+                        "movements": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "id",
+                              "seq",
+                              "type",
+                              "gold_mg",
+                              "ts"
+                            ],
+                            "properties": {
+                              "id": {
+                                "type": "integer"
+                              },
+                              "seq": {
+                                "type": "integer"
+                              },
+                              "type": {
+                                "anyOf": [
+                                  {
+                                    "const": "OPENING",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "FILL_BUY",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "FILL_SELL",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "VAULT_IN",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "VAULT_OUT",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "FEE_DELIVERY",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "FEE_REFINING",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "SETTLEMENT_PAYMENT",
+                                    "type": "string"
+                                  }
+                                ]
+                              },
+                              "gold_mg": {
+                                "description": "işaretli",
+                                "type": "integer"
+                              },
+                              "ccy": {
+                                "anyOf": [
+                                  {
+                                    "const": "USD",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "EUR",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "AED",
+                                    "type": "string"
+                                  }
+                                ]
+                              },
+                              "amount_cents": {
+                                "description": "işaretli: eksi Kanzasset borçlu",
+                                "type": "integer"
+                              },
+                              "ref": {
+                                "type": "string"
+                              },
+                              "related_id": {
+                                "type": "string"
+                              },
+                              "ts": {
+                                "description": "ISO 8601 UTC",
+                                "type": "string"
+                              }
+                            }
+                          }
+                        },
+                        "gold_mg": {
+                          "type": "integer"
+                        },
+                        "money": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "ccy",
+                              "cents"
+                            ],
+                            "properties": {
+                              "ccy": {
+                                "anyOf": [
+                                  {
+                                    "const": "USD",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "EUR",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "AED",
+                                    "type": "string"
+                                  }
+                                ]
+                              },
+                              "cents": {
+                                "description": "eksi = Kanzasset borçlu, artı = rafineri borçlu",
+                                "type": "integer"
+                              }
+                            }
+                          }
+                        },
+                        "fees": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "type",
+                              "ccy",
+                              "amount_cents"
+                            ],
+                            "properties": {
+                              "type": {
+                                "type": "string"
+                              },
+                              "ccy": {
+                                "anyOf": [
+                                  {
+                                    "const": "USD",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "EUR",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "AED",
+                                    "type": "string"
+                                  }
+                                ]
+                              },
+                              "amount_cents": {
+                                "type": "integer"
+                              }
+                            }
+                          }
+                        },
+                        "hash": {
+                          "type": "string"
+                        },
+                        "signature": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "statement_hash": {
+                      "type": "string"
+                    },
+                    "kz_statement_hash": {
+                      "type": "string"
+                    },
+                    "diffs": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "field",
+                          "amr",
+                          "kz"
+                        ],
+                        "properties": {
+                          "field": {
+                            "type": "string"
+                          },
+                          "amr": {
+                            "type": "string"
+                          },
+                          "kz": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "gold_leg": {
+                      "type": "object",
+                      "required": [
+                        "t_net_mg",
+                        "direction",
+                        "qty_mg",
+                        "requests",
+                        "done"
+                      ],
+                      "properties": {
+                        "t_net_mg": {
+                          "description": "pencere kapanışındaki T",
+                          "type": "integer"
+                        },
+                        "direction": {
+                          "anyOf": [
+                            {
+                              "const": "VAULT_IN",
+                              "type": "string"
+                            },
+                            {
+                              "const": "VAULT_OUT",
+                              "type": "string"
+                            },
+                            {
+                              "const": "NONE",
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "qty_mg": {
+                          "type": "integer"
+                        },
+                        "requests": {
+                          "type": "array",
+                          "items": {
+                            "description": "kasa talimatı referansları",
+                            "type": "string"
+                          }
+                        },
+                        "done": {
+                          "type": "boolean"
+                        }
+                      }
+                    },
+                    "money_leg": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "ccy",
+                          "net_cents",
+                          "direction",
+                          "paid"
+                        ],
+                        "properties": {
+                          "ccy": {
+                            "anyOf": [
+                              {
+                                "const": "USD",
+                                "type": "string"
+                              },
+                              {
+                                "const": "EUR",
+                                "type": "string"
+                              },
+                              {
+                                "const": "AED",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "net_cents": {
+                            "type": "integer"
+                          },
+                          "direction": {
+                            "anyOf": [
+                              {
+                                "const": "KZ_TO_AMR",
+                                "type": "string"
+                              },
+                              {
+                                "const": "AMR_TO_KZ",
+                                "type": "string"
+                              },
+                              {
+                                "const": "NONE",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "paid": {
+                            "type": "boolean"
+                          },
+                          "bank_ref": {
+                            "type": "string"
+                          },
+                          "notice_ts": {
+                            "description": "ISO 8601 UTC",
+                            "type": "string"
+                          },
+                          "received_ts": {
+                            "description": "ISO 8601 UTC",
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "doc_id": {
+                      "description": "Mahsuplaşma Ekstresi",
+                      "type": "string"
+                    },
+                    "opened_ts": {
+                      "description": "ISO 8601 UTC",
+                      "type": "string"
+                    },
+                    "settled_ts": {
+                      "description": "ISO 8601 UTC",
+                      "type": "string"
+                    },
+                    "history": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "status",
+                          "ts"
+                        ],
+                        "properties": {
+                          "status": {
+                            "anyOf": [
+                              {
+                                "const": "REQUESTED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "OPEN",
+                                "type": "string"
+                              },
+                              {
+                                "const": "DRAFT",
+                                "type": "string"
+                              },
+                              {
+                                "const": "RECONCILED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "MISMATCH",
+                                "type": "string"
+                              },
+                              {
+                                "const": "PAYMENT_PENDING",
+                                "type": "string"
+                              },
+                              {
+                                "const": "SETTLED",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "ts": {
+                            "description": "ISO 8601 UTC",
+                            "type": "string"
+                          },
+                          "note": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/settlements/{id}/payment-notice": {
+      "post": {
+        "summary": "Ödeme bildirimi: ödeyen taraf banka referansıyla bildirir",
+        "parameters": [
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Timestamp",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "X-Signature",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "HMAC-SHA256(secret, ts + METHOD + path + body) hex"
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "ccy",
+                  "bank_ref"
+                ],
+                "properties": {
+                  "ccy": {
+                    "type": "string"
+                  },
+                  "amount_cents": {
+                    "type": "integer"
+                  },
+                  "direction": {
+                    "type": "string"
+                  },
+                  "bank_ref": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "PAYMENT_PENDING",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "settlement_id",
+                    "trigger",
+                    "status",
+                    "window_from",
+                    "window_to",
+                    "money_leg",
+                    "opened_ts"
+                  ],
+                  "properties": {
+                    "settlement_id": {
+                      "type": "string"
+                    },
+                    "trigger": {
+                      "anyOf": [
+                        {
+                          "const": "CUTOFF",
+                          "type": "string"
+                        },
+                        {
+                          "const": "REQUEST_KZ",
+                          "type": "string"
+                        },
+                        {
+                          "const": "REQUEST_AMR",
+                          "type": "string"
+                        },
+                        {
+                          "const": "LIMIT",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "status": {
+                      "anyOf": [
+                        {
+                          "const": "REQUESTED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "OPEN",
+                          "type": "string"
+                        },
+                        {
+                          "const": "DRAFT",
+                          "type": "string"
+                        },
+                        {
+                          "const": "RECONCILED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "MISMATCH",
+                          "type": "string"
+                        },
+                        {
+                          "const": "PAYMENT_PENDING",
+                          "type": "string"
+                        },
+                        {
+                          "const": "SETTLED",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "window_from": {
+                      "description": "ISO 8601 UTC",
+                      "type": "string"
+                    },
+                    "window_to": {
+                      "description": "ISO 8601 UTC",
+                      "type": "string"
+                    },
+                    "statement": {
+                      "type": "object",
+                      "required": [
+                        "window_from",
+                        "window_to",
+                        "movements",
+                        "gold_mg",
+                        "money",
+                        "fees",
+                        "hash",
+                        "signature"
+                      ],
+                      "properties": {
+                        "window_from": {
+                          "description": "ISO 8601 UTC",
+                          "type": "string"
+                        },
+                        "window_to": {
+                          "description": "ISO 8601 UTC",
+                          "type": "string"
+                        },
+                        "movements": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "id",
+                              "seq",
+                              "type",
+                              "gold_mg",
+                              "ts"
+                            ],
+                            "properties": {
+                              "id": {
+                                "type": "integer"
+                              },
+                              "seq": {
+                                "type": "integer"
+                              },
+                              "type": {
+                                "anyOf": [
+                                  {
+                                    "const": "OPENING",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "FILL_BUY",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "FILL_SELL",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "VAULT_IN",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "VAULT_OUT",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "FEE_DELIVERY",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "FEE_REFINING",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "SETTLEMENT_PAYMENT",
+                                    "type": "string"
+                                  }
+                                ]
+                              },
+                              "gold_mg": {
+                                "description": "işaretli",
+                                "type": "integer"
+                              },
+                              "ccy": {
+                                "anyOf": [
+                                  {
+                                    "const": "USD",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "EUR",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "AED",
+                                    "type": "string"
+                                  }
+                                ]
+                              },
+                              "amount_cents": {
+                                "description": "işaretli: eksi Kanzasset borçlu",
+                                "type": "integer"
+                              },
+                              "ref": {
+                                "type": "string"
+                              },
+                              "related_id": {
+                                "type": "string"
+                              },
+                              "ts": {
+                                "description": "ISO 8601 UTC",
+                                "type": "string"
+                              }
+                            }
+                          }
+                        },
+                        "gold_mg": {
+                          "type": "integer"
+                        },
+                        "money": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "ccy",
+                              "cents"
+                            ],
+                            "properties": {
+                              "ccy": {
+                                "anyOf": [
+                                  {
+                                    "const": "USD",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "EUR",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "AED",
+                                    "type": "string"
+                                  }
+                                ]
+                              },
+                              "cents": {
+                                "description": "eksi = Kanzasset borçlu, artı = rafineri borçlu",
+                                "type": "integer"
+                              }
+                            }
+                          }
+                        },
+                        "fees": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "type",
+                              "ccy",
+                              "amount_cents"
+                            ],
+                            "properties": {
+                              "type": {
+                                "type": "string"
+                              },
+                              "ccy": {
+                                "anyOf": [
+                                  {
+                                    "const": "USD",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "EUR",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "AED",
+                                    "type": "string"
+                                  }
+                                ]
+                              },
+                              "amount_cents": {
+                                "type": "integer"
+                              }
+                            }
+                          }
+                        },
+                        "hash": {
+                          "type": "string"
+                        },
+                        "signature": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "statement_hash": {
+                      "type": "string"
+                    },
+                    "kz_statement_hash": {
+                      "type": "string"
+                    },
+                    "diffs": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "field",
+                          "amr",
+                          "kz"
+                        ],
+                        "properties": {
+                          "field": {
+                            "type": "string"
+                          },
+                          "amr": {
+                            "type": "string"
+                          },
+                          "kz": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "gold_leg": {
+                      "type": "object",
+                      "required": [
+                        "t_net_mg",
+                        "direction",
+                        "qty_mg",
+                        "requests",
+                        "done"
+                      ],
+                      "properties": {
+                        "t_net_mg": {
+                          "description": "pencere kapanışındaki T",
+                          "type": "integer"
+                        },
+                        "direction": {
+                          "anyOf": [
+                            {
+                              "const": "VAULT_IN",
+                              "type": "string"
+                            },
+                            {
+                              "const": "VAULT_OUT",
+                              "type": "string"
+                            },
+                            {
+                              "const": "NONE",
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "qty_mg": {
+                          "type": "integer"
+                        },
+                        "requests": {
+                          "type": "array",
+                          "items": {
+                            "description": "kasa talimatı referansları",
+                            "type": "string"
+                          }
+                        },
+                        "done": {
+                          "type": "boolean"
+                        }
+                      }
+                    },
+                    "money_leg": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "ccy",
+                          "net_cents",
+                          "direction",
+                          "paid"
+                        ],
+                        "properties": {
+                          "ccy": {
+                            "anyOf": [
+                              {
+                                "const": "USD",
+                                "type": "string"
+                              },
+                              {
+                                "const": "EUR",
+                                "type": "string"
+                              },
+                              {
+                                "const": "AED",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "net_cents": {
+                            "type": "integer"
+                          },
+                          "direction": {
+                            "anyOf": [
+                              {
+                                "const": "KZ_TO_AMR",
+                                "type": "string"
+                              },
+                              {
+                                "const": "AMR_TO_KZ",
+                                "type": "string"
+                              },
+                              {
+                                "const": "NONE",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "paid": {
+                            "type": "boolean"
+                          },
+                          "bank_ref": {
+                            "type": "string"
+                          },
+                          "notice_ts": {
+                            "description": "ISO 8601 UTC",
+                            "type": "string"
+                          },
+                          "received_ts": {
+                            "description": "ISO 8601 UTC",
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "doc_id": {
+                      "description": "Mahsuplaşma Ekstresi",
+                      "type": "string"
+                    },
+                    "opened_ts": {
+                      "description": "ISO 8601 UTC",
+                      "type": "string"
+                    },
+                    "settled_ts": {
+                      "description": "ISO 8601 UTC",
+                      "type": "string"
+                    },
+                    "history": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "status",
+                          "ts"
+                        ],
+                        "properties": {
+                          "status": {
+                            "anyOf": [
+                              {
+                                "const": "REQUESTED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "OPEN",
+                                "type": "string"
+                              },
+                              {
+                                "const": "DRAFT",
+                                "type": "string"
+                              },
+                              {
+                                "const": "RECONCILED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "MISMATCH",
+                                "type": "string"
+                              },
+                              {
+                                "const": "PAYMENT_PENDING",
+                                "type": "string"
+                              },
+                              {
+                                "const": "SETTLED",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "ts": {
+                            "description": "ISO 8601 UTC",
+                            "type": "string"
+                          },
+                          "note": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/settlements/{id}/payment-received": {
+      "post": {
+        "summary": "Ödeme alındı: alan taraf onaylar; bütün kurlar ve altın bacağı kapanınca SETTLED ve limit sayaçları sıfırlanır",
+        "parameters": [
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Timestamp",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "X-Signature",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "HMAC-SHA256(secret, ts + METHOD + path + body) hex"
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "ccy": {
+                    "type": "string"
+                  },
+                  "bank_ref": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "settlement_id",
+                    "trigger",
+                    "status",
+                    "window_from",
+                    "window_to",
+                    "money_leg",
+                    "opened_ts"
+                  ],
+                  "properties": {
+                    "settlement_id": {
+                      "type": "string"
+                    },
+                    "trigger": {
+                      "anyOf": [
+                        {
+                          "const": "CUTOFF",
+                          "type": "string"
+                        },
+                        {
+                          "const": "REQUEST_KZ",
+                          "type": "string"
+                        },
+                        {
+                          "const": "REQUEST_AMR",
+                          "type": "string"
+                        },
+                        {
+                          "const": "LIMIT",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "status": {
+                      "anyOf": [
+                        {
+                          "const": "REQUESTED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "OPEN",
+                          "type": "string"
+                        },
+                        {
+                          "const": "DRAFT",
+                          "type": "string"
+                        },
+                        {
+                          "const": "RECONCILED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "MISMATCH",
+                          "type": "string"
+                        },
+                        {
+                          "const": "PAYMENT_PENDING",
+                          "type": "string"
+                        },
+                        {
+                          "const": "SETTLED",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "window_from": {
+                      "description": "ISO 8601 UTC",
+                      "type": "string"
+                    },
+                    "window_to": {
+                      "description": "ISO 8601 UTC",
+                      "type": "string"
+                    },
+                    "statement": {
+                      "type": "object",
+                      "required": [
+                        "window_from",
+                        "window_to",
+                        "movements",
+                        "gold_mg",
+                        "money",
+                        "fees",
+                        "hash",
+                        "signature"
+                      ],
+                      "properties": {
+                        "window_from": {
+                          "description": "ISO 8601 UTC",
+                          "type": "string"
+                        },
+                        "window_to": {
+                          "description": "ISO 8601 UTC",
+                          "type": "string"
+                        },
+                        "movements": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "id",
+                              "seq",
+                              "type",
+                              "gold_mg",
+                              "ts"
+                            ],
+                            "properties": {
+                              "id": {
+                                "type": "integer"
+                              },
+                              "seq": {
+                                "type": "integer"
+                              },
+                              "type": {
+                                "anyOf": [
+                                  {
+                                    "const": "OPENING",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "FILL_BUY",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "FILL_SELL",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "VAULT_IN",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "VAULT_OUT",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "FEE_DELIVERY",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "FEE_REFINING",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "SETTLEMENT_PAYMENT",
+                                    "type": "string"
+                                  }
+                                ]
+                              },
+                              "gold_mg": {
+                                "description": "işaretli",
+                                "type": "integer"
+                              },
+                              "ccy": {
+                                "anyOf": [
+                                  {
+                                    "const": "USD",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "EUR",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "AED",
+                                    "type": "string"
+                                  }
+                                ]
+                              },
+                              "amount_cents": {
+                                "description": "işaretli: eksi Kanzasset borçlu",
+                                "type": "integer"
+                              },
+                              "ref": {
+                                "type": "string"
+                              },
+                              "related_id": {
+                                "type": "string"
+                              },
+                              "ts": {
+                                "description": "ISO 8601 UTC",
+                                "type": "string"
+                              }
+                            }
+                          }
+                        },
+                        "gold_mg": {
+                          "type": "integer"
+                        },
+                        "money": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "ccy",
+                              "cents"
+                            ],
+                            "properties": {
+                              "ccy": {
+                                "anyOf": [
+                                  {
+                                    "const": "USD",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "EUR",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "AED",
+                                    "type": "string"
+                                  }
+                                ]
+                              },
+                              "cents": {
+                                "description": "eksi = Kanzasset borçlu, artı = rafineri borçlu",
+                                "type": "integer"
+                              }
+                            }
+                          }
+                        },
+                        "fees": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "type",
+                              "ccy",
+                              "amount_cents"
+                            ],
+                            "properties": {
+                              "type": {
+                                "type": "string"
+                              },
+                              "ccy": {
+                                "anyOf": [
+                                  {
+                                    "const": "USD",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "EUR",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "AED",
+                                    "type": "string"
+                                  }
+                                ]
+                              },
+                              "amount_cents": {
+                                "type": "integer"
+                              }
+                            }
+                          }
+                        },
+                        "hash": {
+                          "type": "string"
+                        },
+                        "signature": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "statement_hash": {
+                      "type": "string"
+                    },
+                    "kz_statement_hash": {
+                      "type": "string"
+                    },
+                    "diffs": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "field",
+                          "amr",
+                          "kz"
+                        ],
+                        "properties": {
+                          "field": {
+                            "type": "string"
+                          },
+                          "amr": {
+                            "type": "string"
+                          },
+                          "kz": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "gold_leg": {
+                      "type": "object",
+                      "required": [
+                        "t_net_mg",
+                        "direction",
+                        "qty_mg",
+                        "requests",
+                        "done"
+                      ],
+                      "properties": {
+                        "t_net_mg": {
+                          "description": "pencere kapanışındaki T",
+                          "type": "integer"
+                        },
+                        "direction": {
+                          "anyOf": [
+                            {
+                              "const": "VAULT_IN",
+                              "type": "string"
+                            },
+                            {
+                              "const": "VAULT_OUT",
+                              "type": "string"
+                            },
+                            {
+                              "const": "NONE",
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "qty_mg": {
+                          "type": "integer"
+                        },
+                        "requests": {
+                          "type": "array",
+                          "items": {
+                            "description": "kasa talimatı referansları",
+                            "type": "string"
+                          }
+                        },
+                        "done": {
+                          "type": "boolean"
+                        }
+                      }
+                    },
+                    "money_leg": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "ccy",
+                          "net_cents",
+                          "direction",
+                          "paid"
+                        ],
+                        "properties": {
+                          "ccy": {
+                            "anyOf": [
+                              {
+                                "const": "USD",
+                                "type": "string"
+                              },
+                              {
+                                "const": "EUR",
+                                "type": "string"
+                              },
+                              {
+                                "const": "AED",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "net_cents": {
+                            "type": "integer"
+                          },
+                          "direction": {
+                            "anyOf": [
+                              {
+                                "const": "KZ_TO_AMR",
+                                "type": "string"
+                              },
+                              {
+                                "const": "AMR_TO_KZ",
+                                "type": "string"
+                              },
+                              {
+                                "const": "NONE",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "paid": {
+                            "type": "boolean"
+                          },
+                          "bank_ref": {
+                            "type": "string"
+                          },
+                          "notice_ts": {
+                            "description": "ISO 8601 UTC",
+                            "type": "string"
+                          },
+                          "received_ts": {
+                            "description": "ISO 8601 UTC",
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "doc_id": {
+                      "description": "Mahsuplaşma Ekstresi",
+                      "type": "string"
+                    },
+                    "opened_ts": {
+                      "description": "ISO 8601 UTC",
+                      "type": "string"
+                    },
+                    "settled_ts": {
+                      "description": "ISO 8601 UTC",
+                      "type": "string"
+                    },
+                    "history": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "status",
+                          "ts"
+                        ],
+                        "properties": {
+                          "status": {
+                            "anyOf": [
+                              {
+                                "const": "REQUESTED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "OPEN",
+                                "type": "string"
+                              },
+                              {
+                                "const": "DRAFT",
+                                "type": "string"
+                              },
+                              {
+                                "const": "RECONCILED",
+                                "type": "string"
+                              },
+                              {
+                                "const": "MISMATCH",
+                                "type": "string"
+                              },
+                              {
+                                "const": "PAYMENT_PENDING",
+                                "type": "string"
+                              },
+                              {
+                                "const": "SETTLED",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "ts": {
+                            "description": "ISO 8601 UTC",
+                            "type": "string"
+                          },
+                          "note": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/documents/{id}": {
       "get": {
-        "summary": "Belge: Tahsis Belgesi, Kasa Giriş / Çıkış Fişi, ekstreler (JSON içerik + sha256 + HMAC imza)",
+        "summary": "Belge: Tahsis Belgesi, Kasa Giriş / Çıkış Fişi, teklifler, fişler, ekstreler (JSON içerik + sha256 + HMAC imza)",
         "parameters": [
           {
             "name": "X-API-Key",
@@ -5070,6 +7780,63 @@
                       }
                     }
                   }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "belge yok"
+          }
+        }
+      }
+    },
+    "/v1/documents/{id}/pdf": {
+      "get": {
+        "summary": "Aynı belgenin PDF hâli (A4, rafineri başlığı, belge no, imza özeti)",
+        "parameters": [
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Timestamp",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "X-Signature",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "HMAC-SHA256(secret, ts + METHOD + path + body) hex"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "PDF",
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
                 }
               }
             }
@@ -5222,7 +7989,7 @@
             "description": "alındı"
           }
         },
-        "description": "Olay türleri: order.filled, order.rejected, order.cancelled, vault.in_accepted, vault.in_placing, vault.in_placed, vault.in_overdue, vault.in_rejected, vault.out_accepted, vault.out_rejected, delivery.quoted, delivery.approved, delivery.preparing, delivery.ready, delivery.shipped, delivery.delivered, delivery.cancelled, delivery.failed, catalog.updated, refining.quoted, refining.approved, refining.in_production, refining.ready, refining.shipped, refining.delivered, refining.cancelled, refining.failed, settlement.requested, settlement.opened, settlement.statement, settlement.reconciled, settlement.mismatch, settlement.payment_notice, settlement.settled, price.halt, price.resume, account.reconcile"
+        "description": "Olay türleri: order.filled, order.rejected, order.cancelled, vault.in_accepted, vault.in_placing, vault.in_placed, vault.in_overdue, vault.in_rejected, vault.out_accepted, vault.out_rejected, delivery.quoted, delivery.approved, delivery.preparing, delivery.ready, delivery.shipped, delivery.delivered, delivery.cancelled, delivery.failed, catalog.updated, refining.quoted, refining.approved, refining.in_production, refining.ready, refining.shipped, refining.delivered, refining.cancelled, refining.failed, settlement.requested, settlement.opened, settlement.statement, settlement.reconciled, settlement.mismatch, settlement.payment_notice, settlement.payment_received, settlement.settled, price.halt, price.resume, account.reconcile"
       }
     }
   },
@@ -7667,6 +10434,629 @@
             "type": "string"
           },
           "doc_id": {
+            "type": "string"
+          }
+        }
+      },
+      "Settlement": {
+        "type": "object",
+        "required": [
+          "settlement_id",
+          "trigger",
+          "status",
+          "window_from",
+          "window_to",
+          "money_leg",
+          "opened_ts"
+        ],
+        "properties": {
+          "settlement_id": {
+            "type": "string"
+          },
+          "trigger": {
+            "anyOf": [
+              {
+                "const": "CUTOFF",
+                "type": "string"
+              },
+              {
+                "const": "REQUEST_KZ",
+                "type": "string"
+              },
+              {
+                "const": "REQUEST_AMR",
+                "type": "string"
+              },
+              {
+                "const": "LIMIT",
+                "type": "string"
+              }
+            ]
+          },
+          "status": {
+            "anyOf": [
+              {
+                "const": "REQUESTED",
+                "type": "string"
+              },
+              {
+                "const": "OPEN",
+                "type": "string"
+              },
+              {
+                "const": "DRAFT",
+                "type": "string"
+              },
+              {
+                "const": "RECONCILED",
+                "type": "string"
+              },
+              {
+                "const": "MISMATCH",
+                "type": "string"
+              },
+              {
+                "const": "PAYMENT_PENDING",
+                "type": "string"
+              },
+              {
+                "const": "SETTLED",
+                "type": "string"
+              }
+            ]
+          },
+          "window_from": {
+            "description": "ISO 8601 UTC",
+            "type": "string"
+          },
+          "window_to": {
+            "description": "ISO 8601 UTC",
+            "type": "string"
+          },
+          "statement": {
+            "type": "object",
+            "required": [
+              "window_from",
+              "window_to",
+              "movements",
+              "gold_mg",
+              "money",
+              "fees",
+              "hash",
+              "signature"
+            ],
+            "properties": {
+              "window_from": {
+                "description": "ISO 8601 UTC",
+                "type": "string"
+              },
+              "window_to": {
+                "description": "ISO 8601 UTC",
+                "type": "string"
+              },
+              "movements": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "seq",
+                    "type",
+                    "gold_mg",
+                    "ts"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "integer"
+                    },
+                    "seq": {
+                      "type": "integer"
+                    },
+                    "type": {
+                      "anyOf": [
+                        {
+                          "const": "OPENING",
+                          "type": "string"
+                        },
+                        {
+                          "const": "FILL_BUY",
+                          "type": "string"
+                        },
+                        {
+                          "const": "FILL_SELL",
+                          "type": "string"
+                        },
+                        {
+                          "const": "VAULT_IN",
+                          "type": "string"
+                        },
+                        {
+                          "const": "VAULT_OUT",
+                          "type": "string"
+                        },
+                        {
+                          "const": "FEE_DELIVERY",
+                          "type": "string"
+                        },
+                        {
+                          "const": "FEE_REFINING",
+                          "type": "string"
+                        },
+                        {
+                          "const": "SETTLEMENT_PAYMENT",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "gold_mg": {
+                      "description": "işaretli",
+                      "type": "integer"
+                    },
+                    "ccy": {
+                      "anyOf": [
+                        {
+                          "const": "USD",
+                          "type": "string"
+                        },
+                        {
+                          "const": "EUR",
+                          "type": "string"
+                        },
+                        {
+                          "const": "AED",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "amount_cents": {
+                      "description": "işaretli: eksi Kanzasset borçlu",
+                      "type": "integer"
+                    },
+                    "ref": {
+                      "type": "string"
+                    },
+                    "related_id": {
+                      "type": "string"
+                    },
+                    "ts": {
+                      "description": "ISO 8601 UTC",
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "gold_mg": {
+                "type": "integer"
+              },
+              "money": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "ccy",
+                    "cents"
+                  ],
+                  "properties": {
+                    "ccy": {
+                      "anyOf": [
+                        {
+                          "const": "USD",
+                          "type": "string"
+                        },
+                        {
+                          "const": "EUR",
+                          "type": "string"
+                        },
+                        {
+                          "const": "AED",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "cents": {
+                      "description": "eksi = Kanzasset borçlu, artı = rafineri borçlu",
+                      "type": "integer"
+                    }
+                  }
+                }
+              },
+              "fees": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "type",
+                    "ccy",
+                    "amount_cents"
+                  ],
+                  "properties": {
+                    "type": {
+                      "type": "string"
+                    },
+                    "ccy": {
+                      "anyOf": [
+                        {
+                          "const": "USD",
+                          "type": "string"
+                        },
+                        {
+                          "const": "EUR",
+                          "type": "string"
+                        },
+                        {
+                          "const": "AED",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "amount_cents": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              },
+              "hash": {
+                "type": "string"
+              },
+              "signature": {
+                "type": "string"
+              }
+            }
+          },
+          "statement_hash": {
+            "type": "string"
+          },
+          "kz_statement_hash": {
+            "type": "string"
+          },
+          "diffs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "field",
+                "amr",
+                "kz"
+              ],
+              "properties": {
+                "field": {
+                  "type": "string"
+                },
+                "amr": {
+                  "type": "string"
+                },
+                "kz": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "gold_leg": {
+            "type": "object",
+            "required": [
+              "t_net_mg",
+              "direction",
+              "qty_mg",
+              "requests",
+              "done"
+            ],
+            "properties": {
+              "t_net_mg": {
+                "description": "pencere kapanışındaki T",
+                "type": "integer"
+              },
+              "direction": {
+                "anyOf": [
+                  {
+                    "const": "VAULT_IN",
+                    "type": "string"
+                  },
+                  {
+                    "const": "VAULT_OUT",
+                    "type": "string"
+                  },
+                  {
+                    "const": "NONE",
+                    "type": "string"
+                  }
+                ]
+              },
+              "qty_mg": {
+                "type": "integer"
+              },
+              "requests": {
+                "type": "array",
+                "items": {
+                  "description": "kasa talimatı referansları",
+                  "type": "string"
+                }
+              },
+              "done": {
+                "type": "boolean"
+              }
+            }
+          },
+          "money_leg": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "ccy",
+                "net_cents",
+                "direction",
+                "paid"
+              ],
+              "properties": {
+                "ccy": {
+                  "anyOf": [
+                    {
+                      "const": "USD",
+                      "type": "string"
+                    },
+                    {
+                      "const": "EUR",
+                      "type": "string"
+                    },
+                    {
+                      "const": "AED",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "net_cents": {
+                  "type": "integer"
+                },
+                "direction": {
+                  "anyOf": [
+                    {
+                      "const": "KZ_TO_AMR",
+                      "type": "string"
+                    },
+                    {
+                      "const": "AMR_TO_KZ",
+                      "type": "string"
+                    },
+                    {
+                      "const": "NONE",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "paid": {
+                  "type": "boolean"
+                },
+                "bank_ref": {
+                  "type": "string"
+                },
+                "notice_ts": {
+                  "description": "ISO 8601 UTC",
+                  "type": "string"
+                },
+                "received_ts": {
+                  "description": "ISO 8601 UTC",
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "doc_id": {
+            "description": "Mahsuplaşma Ekstresi",
+            "type": "string"
+          },
+          "opened_ts": {
+            "description": "ISO 8601 UTC",
+            "type": "string"
+          },
+          "settled_ts": {
+            "description": "ISO 8601 UTC",
+            "type": "string"
+          },
+          "history": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "status",
+                "ts"
+              ],
+              "properties": {
+                "status": {
+                  "anyOf": [
+                    {
+                      "const": "REQUESTED",
+                      "type": "string"
+                    },
+                    {
+                      "const": "OPEN",
+                      "type": "string"
+                    },
+                    {
+                      "const": "DRAFT",
+                      "type": "string"
+                    },
+                    {
+                      "const": "RECONCILED",
+                      "type": "string"
+                    },
+                    {
+                      "const": "MISMATCH",
+                      "type": "string"
+                    },
+                    {
+                      "const": "PAYMENT_PENDING",
+                      "type": "string"
+                    },
+                    {
+                      "const": "SETTLED",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "ts": {
+                  "description": "ISO 8601 UTC",
+                  "type": "string"
+                },
+                "note": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "SettlementStatus": {
+        "anyOf": [
+          {
+            "const": "REQUESTED",
+            "type": "string"
+          },
+          {
+            "const": "OPEN",
+            "type": "string"
+          },
+          {
+            "const": "DRAFT",
+            "type": "string"
+          },
+          {
+            "const": "RECONCILED",
+            "type": "string"
+          },
+          {
+            "const": "MISMATCH",
+            "type": "string"
+          },
+          {
+            "const": "PAYMENT_PENDING",
+            "type": "string"
+          },
+          {
+            "const": "SETTLED",
+            "type": "string"
+          }
+        ]
+      },
+      "SettlementTrigger": {
+        "anyOf": [
+          {
+            "const": "CUTOFF",
+            "type": "string"
+          },
+          {
+            "const": "REQUEST_KZ",
+            "type": "string"
+          },
+          {
+            "const": "REQUEST_AMR",
+            "type": "string"
+          },
+          {
+            "const": "LIMIT",
+            "type": "string"
+          }
+        ]
+      },
+      "SettlementGoldLeg": {
+        "type": "object",
+        "required": [
+          "t_net_mg",
+          "direction",
+          "qty_mg",
+          "requests",
+          "done"
+        ],
+        "properties": {
+          "t_net_mg": {
+            "description": "pencere kapanışındaki T",
+            "type": "integer"
+          },
+          "direction": {
+            "anyOf": [
+              {
+                "const": "VAULT_IN",
+                "type": "string"
+              },
+              {
+                "const": "VAULT_OUT",
+                "type": "string"
+              },
+              {
+                "const": "NONE",
+                "type": "string"
+              }
+            ]
+          },
+          "qty_mg": {
+            "type": "integer"
+          },
+          "requests": {
+            "type": "array",
+            "items": {
+              "description": "kasa talimatı referansları",
+              "type": "string"
+            }
+          },
+          "done": {
+            "type": "boolean"
+          }
+        }
+      },
+      "SettlementMoneyLeg": {
+        "type": "object",
+        "required": [
+          "ccy",
+          "net_cents",
+          "direction",
+          "paid"
+        ],
+        "properties": {
+          "ccy": {
+            "anyOf": [
+              {
+                "const": "USD",
+                "type": "string"
+              },
+              {
+                "const": "EUR",
+                "type": "string"
+              },
+              {
+                "const": "AED",
+                "type": "string"
+              }
+            ]
+          },
+          "net_cents": {
+            "type": "integer"
+          },
+          "direction": {
+            "anyOf": [
+              {
+                "const": "KZ_TO_AMR",
+                "type": "string"
+              },
+              {
+                "const": "AMR_TO_KZ",
+                "type": "string"
+              },
+              {
+                "const": "NONE",
+                "type": "string"
+              }
+            ]
+          },
+          "paid": {
+            "type": "boolean"
+          },
+          "bank_ref": {
+            "type": "string"
+          },
+          "notice_ts": {
+            "description": "ISO 8601 UTC",
+            "type": "string"
+          },
+          "received_ts": {
+            "description": "ISO 8601 UTC",
             "type": "string"
           }
         }
