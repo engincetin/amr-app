@@ -1,0 +1,18 @@
+{
+  "name": "@amr/mock-merkez",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Rafinerinin merkezi uygulamasının simülatörü: soketle gram başına altın fiyatı yayınlar (USD / EUR / AED). Kesinti ve duraklatma komutları vardır.",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.5.13",
+    "tsx": "^4.19.3"
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "name": "amr-app",
+  "version": "2.0.0",
+  "private": true,
+  "description": "AMR uygulaması: Ahlatcı Metal Refinery tarafında çalışan, Kanzasset'e API ve fiyat soketi veren uygulama (rafineri ekranları + API + mock merkez)",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n merkez,server,web -c yellow,green,cyan \"npm run dev -w @amr/mock-merkez\" \"npm run dev -w @amr/server\" \"npm run dev -w @amr/web\"",
+    "dev:merkez": "npm run dev -w @amr/mock-merkez",
+    "dev:server": "npm run dev -w @amr/server",
+    "dev:web": "npm run dev -w @amr/web",
+    "build": "npm run build -w @amr/contract && npm run build -w @amr/web",
+    "start": "npm run start -w @amr/server",
+    "test": "npm test -w @amr/server",
+    "openapi:export": "npm run openapi:export -w @amr/contract"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "tsx": "^4.19.3",
+    "typescript": "^5.7.3"
+  },
+  "engines": {
+    "node": ">=22.12"
+  }
+}

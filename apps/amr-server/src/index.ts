@@ -1,0 +1,102 @@
+/**
+ * AMR uygulaması sunucusu.
+ *   PORT=4000          REST + WS (/v1/prices) + yönetim uçları (/admin/*) + rafineri ekranları (dist varsa /)
+ *   SOURCE_URL         merkez fiyat soketi (varsayılan mock merkez: ws://localhost:4100/prices)
+ *   SOURCE_AUTOCONNECT 1 ise açılışta merkeze bağlanır (varsayılan 1)
+ *   KZ_API_KEY / KZ_API_SECRET  Kanzasset istemcisi (varsayılan kz-dev-key / kz-dev-secret)
+ *   DB_PATH            SQLite dosyası (varsayılan data/amr.db)
+ *   ADMIN_TOKEN        verilirse /admin/* için X-Admin-Token
+ */
+import Fastify from "fastify";
+import cors from "@fastify/cors";
+import websocket from "@fastify/websocket";
+import fastifyStatic from "@fastify/static";
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
+import { openDb, ensureApiClient, addNotification, audit as auditRow, getSetting, setSetting } from "./db.ts";
+import { Publisher } from "./publisher.ts";
+import { SourceConnection } from "./source.ts";
+import { kzRoutes } from "./routes/kz.ts";
+import { adminRoutes } from "./routes/admin.ts";
+import { bus } from "./bus.ts";
+import type { AppContext } from "./context.ts";
+
+const PORT = Number(process.env.PORT ?? 4000);
+const DB_PATH = process.env.DB_PATH ?? resolve(import.meta.dirname, "../data/amr.db");
+const SOURCE_URL = process.env.SOURCE_URL ?? "ws://localhost:4100/prices";
+
+export async function buildApp(opts: { dbPath?: string; autoconnect?: boolean } = {}) {
+  const db = openDb(opts.dbPath ?? DB_PATH);
+  ensureApiClient(db, process.env.KZ_API_KEY ?? "kz-dev-key", "Kanzasset FZCO", process.env.KZ_API_SECRET ?? "kz-dev-secret", process.env.KZ_EVENT_URL);
+  // varsayılan parametreler (R10)
+  const defaults: Record<string, string> = {
+    "source.url": SOURCE_URL,
+    "settlement.cutoff_local": "17:00",
+    "settlement.timezone": "Asia/Dubai",
+    "settlement.windows_per_day": "1",
+    "vault.accept_mode": "MANUAL", // MANUAL | AUTO
+    "vault.accept_target_minutes": "15",
+    "vault.placement_due_days": "3",
+    "limit.current_account_gold_mg": String(15_000_000),
+    "limit.current_account_usd_cents": String(250_000_000),
+    "quote.delivery_valid_hours": "24",
+    "quote.refining_valid_hours": "48",
+  };
+  for (const [k, v] of Object.entries(defaults)) if (!getSetting(db, k, "")) setSetting(db, k, v);
+
+  const publisher = new Publisher(db);
+  const source = new SourceConnection();
+
+  const ctx: AppContext = {
+    db,
+    publisher,
+    source,
+    notify: (type, title, body = "", relatedId) => {
+      const id = addNotification(db, type, title, body, relatedId);
+      bus.publish({ kind: "notification", id, type, title, body, created_ts: new Date().toISOString() });
+      return id;
+    },
+    audit: (actor, action, before, after) => auditRow(db, actor, action, before, after),
+  };
+
+  source.onPrice = (prices, ts) => publisher.onPrice(prices, ts);
+  source.onStatus = (state, prev) => {
+    if (state.status === "CONNECTED") {
+      publisher.setSourceConnected(true);
+      ctx.notify("source.connected", "Merkez bağlantısı kuruldu", state.url ?? "");
+    } else if (prev === "CONNECTED") {
+      publisher.setSourceConnected(false, "merkez bağlantısı kopuk");
+      ctx.notify("source.disconnected", "Merkez bağlantısı koptu", state.lastError ?? "", undefined);
+    }
+  };
+
+  const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? "info" } });
+  await app.register(cors, { origin: true });
+  await app.register(websocket);
+  await app.register(async (inst) => kzRoutes(inst, ctx));
+  await app.register(async (inst) => adminRoutes(inst, ctx));
+
+  // Rafineri ekranları (üretim: apps/amr-web/dist)
+  const webDist = resolve(import.meta.dirname, "../../amr-web/dist");
+  if (existsSync(webDist)) {
+    await app.register(fastifyStatic, { root: webDist, prefix: "/" });
+    app.setNotFoundHandler((req, reply) => {
+      if (req.url.startsWith("/v1") || req.url.startsWith("/admin")) return reply.code(404).send({ error: "not found" });
+      return reply.sendFile("index.html");
+    });
+  }
+
+  app.get("/health", async () => ({ ok: true, ts: new Date().toISOString() }));
+
+  const autoconnect = opts.autoconnect ?? (process.env.SOURCE_AUTOCONNECT ?? "1") === "1";
+  if (autoconnect) source.connect(getSetting(db, "source.url", SOURCE_URL));
+
+  app.addHook("onClose", async () => { publisher.stop(); source.disconnect(); db.close(); });
+  return { app, ctx };
+}
+
+if (process.argv[1] && import.meta.url.endsWith(process.argv[1].split("/").pop() ?? "")) {
+  const { app } = await buildApp();
+  await app.listen({ port: PORT, host: "0.0.0.0" });
+  app.log.info(`AMR uygulaması: http://localhost:${PORT}  · fiyat soketi ws://localhost:${PORT}/v1/prices · yönetim /admin/overview`);
+}
