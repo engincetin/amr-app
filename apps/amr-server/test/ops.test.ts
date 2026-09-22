@@ -32,3 +32,29 @@ test("GET /openapi.json sözleşme belgesini döner", async () => {
   assert.ok(spec.paths["/v1/orders"], "emir ucu belgede");
   await s.close();
 });
+
+test("GET /health alt sistemleri ayrı ayrı bildirir", async () => {
+  const s = await setup();
+  const res = await s.app.inject({ method: "GET", url: "/health" });
+  assert.equal(res.statusCode, 200);
+  const h = res.json() as { status: string; checks: Record<string, { status: string; detail: string }>; uptime_s: number };
+  assert.deepEqual(Object.keys(h.checks).sort(), ["database", "events", "publish", "settlement", "source", "vault"]);
+  assert.equal(h.checks.database.status, "ok");
+  assert.ok(typeof h.uptime_s === "number");
+  // merkeze bağlı değiliz ve yayın kapalı: genel durum degraded, HTTP yine 200 (konteyner sağlıklı)
+  assert.equal(h.checks.source.status, "degraded");
+  assert.equal(h.status, "degraded");
+  for (const c of Object.values(h.checks)) assert.ok(c.detail.length > 0, "her kontrol tek cümleyle anlatılır");
+  await s.close();
+});
+
+test("GET /health yayın açıkken ok döner", async () => {
+  const s = await setup();
+  s.ctx.publisher.setSourceConnected(true);
+  s.ctx.source.state.status = "CONNECTED";
+  s.ctx.publisher.onPrice([{ ccy: "USD", bid: "141.80", ask: "142.00" }], new Date().toISOString());
+  const h = (await s.app.inject({ method: "GET", url: "/health" })).json() as { status: string; checks: Record<string, { status: string }> };
+  assert.equal(h.checks.publish.status, "ok");
+  assert.equal(h.status, "ok");
+  await s.close();
+});

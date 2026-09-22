@@ -8,6 +8,9 @@
 # İki repo yan yana durmalı (amr-app ve kz-treasury aynı klasörün altında);
 # Kanzasset servisi ../kz-treasury dizininden derlenir.
 # Açılış devirleri iki tarafta aynıdır (20 kg): eşit olmazsa S + T = K kontrolü tutmaz.
+#
+# Her servisin sağlık denetimi /health ucuna bakar ve bir sonraki servis ancak önceki
+# sağlıklı olunca kalkar: merkez → AMR → Kanzasset. Durum: docker compose ps.
 
 services:
   merkez:
@@ -23,6 +26,12 @@ services:
     ports:
       - "4100:4100"
       - "4110:4110"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:4110/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   amr:
     build:
@@ -30,7 +39,8 @@ services:
       dockerfile: Dockerfile
     container_name: amr-app
     depends_on:
-      - merkez
+      merkez:
+        condition: service_healthy
     environment:
       PORT: "4000"
       SOURCE_URL: "ws://merkez:4100/prices"
@@ -46,6 +56,12 @@ services:
       - "4000:4000"
     volumes:
       - amr-data:/data
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:4000/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   kz:
     build:
@@ -53,7 +69,8 @@ services:
       dockerfile: Dockerfile
     container_name: kz-treasury
     depends_on:
-      - amr
+      amr:
+        condition: service_healthy
     environment:
       PORT: "5000"
       AMR_WS_URL: "ws://amr:4000/v1/prices"
@@ -68,6 +85,12 @@ services:
       - "5000:5000"
     volumes:
       - kz-data:/data
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:5000/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
 volumes:
   amr-data:

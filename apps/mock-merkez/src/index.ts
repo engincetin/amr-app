@@ -76,6 +76,8 @@ const http = createServer((req, res) => {
     res.end(JSON.stringify(body));
   };
   const url = req.url ?? "/";
+  // sağlık: konteyner denetimi buradan bakar (diğer servisler merkez hazır olunca kalkar)
+  if (req.method === "GET" && url === "/health") return send(200, { status: "ok", subscribers: wss.clients.size, sent: state.sent, paused: state.paused, ts: new Date().toISOString() });
   if (req.method === "GET" && url === "/control/state") return send(200, { ...state, prices: prices() });
   if (req.method === "POST" && url === "/control/pause") { state.paused = true; return send(200, { ok: true, paused: true }); }
   if (req.method === "POST" && url === "/control/resume") { state.paused = false; return send(200, { ok: true, paused: false }); }

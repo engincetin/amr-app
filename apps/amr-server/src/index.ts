@@ -26,6 +26,7 @@ import { EventDispatcher, enqueueEvent } from "./events.ts";
 import { kzRoutes } from "./routes/kz.ts";
 import { adminRoutes } from "./routes/admin.ts";
 import { docsRoutes } from "./docs.ts";
+import { healthRoutes } from "./health.ts";
 import { bus } from "./bus.ts";
 import type { AppContext } from "./context.ts";
 
@@ -116,18 +117,17 @@ export async function buildApp(opts: { dbPath?: string; autoconnect?: boolean; d
   await app.register(async (inst) => kzRoutes(inst, ctx));
   await app.register(async (inst) => adminRoutes(inst, ctx));
   await app.register(async (inst) => docsRoutes(inst, ctx));
+  await app.register(async (inst) => healthRoutes(inst, ctx));
 
   // Rafineri ekranları (üretim: apps/amr-web/dist)
   const webDist = resolve(import.meta.dirname, "../../amr-web/dist");
   if (existsSync(webDist)) {
     await app.register(fastifyStatic, { root: webDist, prefix: "/" });
     app.setNotFoundHandler((req, reply) => {
-      if (req.url.startsWith("/v1") || req.url.startsWith("/admin") || req.url.startsWith("/docs") || req.url.endsWith(".json")) return reply.code(404).send({ error: "not found" });
+      if (req.url.startsWith("/v1") || req.url.startsWith("/admin") || req.url.startsWith("/docs") || req.url.startsWith("/health") || req.url.endsWith(".json")) return reply.code(404).send({ error: "not found" });
       return reply.sendFile("index.html");
     });
   }
-
-  app.get("/health", async () => ({ ok: true, ts: new Date().toISOString() }));
 
   const autoconnect = opts.autoconnect ?? (process.env.SOURCE_AUTOCONNECT ?? "1") === "1";
   if (autoconnect) source.connect(getSetting(db, "source.url", SOURCE_URL));

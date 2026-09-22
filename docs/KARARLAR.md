@@ -16,3 +16,6 @@ Tasarım dokümanlarında (`KZ_AMR_Akislar.md`, `KZ_AMR_Sistemi.md`) karşılı�
 - **Mahsuplaşmada para bacağı kur bazında ayrı kapanır:** her kurun net tutarı ayrı ödeme bildirimi ve onayı ister; hepsi kapanınca pencere `SETTLED` olur.
 - **Demo kullanıcıları sabittir** (Masa, Kasa operasyonu, Üretim, Yönetici, Denetçi): oturum açma yerine üst şeritten kullanıcı seçilir; yetki kontrolü aynı kurallarla çalışır.
 - **İkinci onay aynı oturumda farklı kullanıcı seçilerek verilir:** demo için; gerçek kurulumda iki ayrı oturum olacaktır.
+- **API dokümanı sunucudan servis edilir (`GET /docs`):** görüntüleyici bağımlılıksızdır ve dışarıdan dosya çekmez; rafineri ağı kapalı olduğunda da açılır.
+- **`/health` alt sistemleri ayrı ayrı bildirir:** `ok`, `degraded`, `down`. HTTP 503 yalnız `down` durumunda döner; merkez soketi koptuğunda servis `degraded` olur ama 200 döner, çünkü konteyneri yeniden başlatmak soketi geri getirmez. Kanzasset tarafında bozuk kontrol (K1, K2) `down` sayılır: bu durumda işlem yapılmamalıdır.
+- **Docker servisleri sağlık denetimine göre sıralanır:** merkez sağlıklı olunca AMR, AMR sağlıklı olunca Kanzasset kalkar; açılışta soket kopuk diye senaryo yarıda başlamaz.

@@ -86,6 +86,10 @@ Docker olmadan, sunum için üç komut: `docs/DEMO.md` → "Sabah başlatma".
 
 Sözleşme `packages/contract/src/index.ts` içindedir. Değişiklik yalnız burada yapılır, sonra `kz-treasury` içinde `npm run contract:sync` çalıştırılır. OpenAPI: `openapi.json` (repo kökü).
 
+## Sağlık ve izleme
+
+`GET /health`: alt sistemler ayrı ayrı (veritabanı, merkez bağlantısı, Kanzasset yayını, olay kuyruğu, kasa talimatları, açık mahsuplaşma penceresi). Her kontrolün `status` alanı `ok`, `degraded` ya da `down`, yanında tek cümlelik açıklama. Genel durum en kötü kontroldür. HTTP 503 yalnız `down` durumunda döner: merkez soketi koptuğunda servis `degraded` olur ama 200 döner, çünkü konteyner sağlıklıdır. Docker'da üç servis de bu uca bakar ve sıra ile kalkar (merkez, AMR, Kanzasset); durum `docker compose ps` ile görülür.
+
 ## API dokümanı
 
 Sunucu ayaktayken `http://localhost:4000/docs`: tek sayfalık görüntüleyici, iki sekme (Kanzasset sözleşmesi `/v1` ve panel API'si `/admin`). Uçlar, parametreler, istek gövdeleri, cevaplar ve şemalar buradan gezilir. Ham belgeler: `GET /openapi.json` ve `GET /admin-api.json`. Görüntüleyici bağımlılıksızdır ve dışarıdan dosya çekmez, kapalı ağda da açılır. Rafineri ekranlarında sol menünün altındaki "API dokümanı" bağlantısı aynı sayfayı açar.
