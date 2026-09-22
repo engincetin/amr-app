@@ -35,7 +35,7 @@ const PORT = Number(process.env.PORT ?? 4000);
 const DB_PATH = process.env.DB_PATH ?? resolve(import.meta.dirname, "../data/amr.db");
 const SOURCE_URL = process.env.SOURCE_URL ?? "ws://localhost:4100/prices";
 
-export async function buildApp(opts: { dbPath?: string; autoconnect?: boolean; dispatchEvents?: boolean; sweepOverdue?: boolean; watchCutoff?: boolean; pruneRequests?: boolean } = {}) {
+export async function buildApp(opts: { dbPath?: string; autoconnect?: boolean; dispatchEvents?: boolean; sweepOverdue?: boolean; watchCutoff?: boolean; pruneRequests?: boolean; onRoute?: (r: { method: string | string[]; url: string }) => void } = {}) {
   const db = openDb(opts.dbPath ?? DB_PATH);
   ensureLedgerTables(db);
   ensureVaultTables(db);
@@ -115,6 +115,8 @@ export async function buildApp(opts: { dbPath?: string; autoconnect?: boolean; d
   };
 
   const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? "info" } });
+  // yol tablosu: panel API belgesi (admin-api.json) buradan üretilir, elle liste tutulmaz
+  if (opts.onRoute) app.addHook("onRoute", (r) => opts.onRoute!({ method: r.method, url: r.url }));
   // istek günlüğü: Kanzasset'in her isteği ve panelin her değişikliği yazılır (VARA kanıtı)
   requestLogPlugin(app, ctx);
   const pruner = new RequestLogPruner(ctx);

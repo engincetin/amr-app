@@ -1,0 +1,1934 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "AMR paneli API'si",
+    "version": "2.0.0",
+    "description": "Rafineri ekranlarının (R1..R10) kullandığı iç uçlar. Kanzasset bu uçları kullanmaz; Kanzasset sözleşmesi /v1 altındadır ve openapi.json ile belgelenir. Aktör X-User başlığıyla gelir ve yetkisi rolüne göre denetlenir. ADMIN_TOKEN verilmişse ayrıca X-Admin-Token istenir. Miktarlar tam sayı (gram için mg, para için cent), fiyatlar ondalık dizedir."
+  },
+  "paths": {
+    "/admin/overview": {
+      "get": {
+        "summary": "R1 genel bakış: yayın, kaynak, hesaplar, kontroller, son olaylar",
+        "responses": {
+          "200": {
+            "description": "{ publish, source, account, checks, notifications }",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/orders": {
+      "get": {
+        "summary": "R3 emir günlüğü",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/orders/{id}": {
+      "get": {
+        "summary": "R3 emir ayrıntısı",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/current-account": {
+      "get": {
+        "summary": "R5 cari hesap hareketleri ve limit sayaçları",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "name": "to",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/vault/movements": {
+      "get": {
+        "summary": "R4 kasa hesabı hareketleri",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/vault": {
+      "get": {
+        "summary": "R4 kasa talimatları ve kasa hesabı hareketleri",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/vault/statement": {
+      "get": {
+        "summary": "R4 günlük kasa ekstresi (rezerv kanıtı)",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "name": "date",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/vault/{id}/accept": {
+      "post": {
+        "summary": "R4 kasa talimatını kabul et (fiş üretilir, defter işlenir)",
+        "description": "Yetki: vault.accept.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "yetki yok"
+          }
+        }
+      }
+    },
+    "/admin/vault/{id}/reject": {
+      "post": {
+        "summary": "R4 kasa talimatını reddet (gerekçeli)",
+        "description": "Yetki: vault.accept.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "description": "red gerekçesi"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "yetki yok"
+          }
+        }
+      }
+    },
+    "/admin/vault/{id}/placing": {
+      "post": {
+        "summary": "R4 kasaya konuluyor (kabul sonrası ilk adım)",
+        "description": "Yetki: vault.place.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "yetki yok"
+          }
+        }
+      }
+    },
+    "/admin/vault/{id}/placed": {
+      "post": {
+        "summary": "R4 kasaya konuldu (giriş kapanır, T+3 vadesi biter)",
+        "description": "Yetki: vault.place.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "yetki yok"
+          }
+        }
+      }
+    },
+    "/admin/settlement/request": {
+      "post": {
+        "summary": "R8 Kanzasset adına pencere talebi (demo yardımcısı)",
+        "description": "Yetki: settlement.request.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "yetki yok"
+          }
+        }
+      }
+    },
+    "/admin/deliveries": {
+      "get": {
+        "summary": "R6 teslimat listesi",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/deliveries/{id}": {
+      "get": {
+        "summary": "R6 teslimat ayrıntısı ve geçmişi",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/deliveries/{id}/quote": {
+      "post": {
+        "summary": "R6 lojistik teklifi gir",
+        "description": "Yetki: delivery.steps.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "fee_cents": {
+                    "type": "string",
+                    "description": "lojistik bedeli (cent)"
+                  },
+                  "valid_hours": {
+                    "type": "string",
+                    "description": "geçerlilik"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "yetki yok"
+          }
+        }
+      }
+    },
+    "/admin/deliveries/{id}/preparing": {
+      "post": {
+        "summary": "R6 hazırlanıyor adımına al",
+        "description": "Yetki: delivery.steps.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "yetki yok"
+          }
+        }
+      }
+    },
+    "/admin/deliveries/{id}/ready": {
+      "post": {
+        "summary": "R6 külçe hazır (kasadan sevkiyata)",
+        "description": "Yetki: delivery.steps.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "yetki yok"
+          }
+        }
+      }
+    },
+    "/admin/deliveries/{id}/shipped": {
+      "post": {
+        "summary": "R6 taşıyıcıya verildi (takip no)",
+        "description": "Yetki: delivery.steps.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tracking_no": {
+                    "type": "string",
+                    "description": "takip numarası"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "yetki yok"
+          }
+        }
+      }
+    },
+    "/admin/deliveries/{id}/delivered": {
+      "post": {
+        "summary": "R6 teslim edildi (sevkiyattan düşer)",
+        "description": "Yetki: delivery.steps.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "yetki yok"
+          }
+        }
+      }
+    },
+    "/admin/deliveries/{id}/cancel": {
+      "post": {
+        "summary": "R6 teslimatı iptal et (külçe kasaya döner)",
+        "description": "Yetki: delivery.steps.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "description": "iptal gerekçesi"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "yetki yok"
+          }
+        }
+      }
+    },
+    "/admin/deliveries/{id}/failed": {
+      "post": {
+        "summary": "R6 teslimat başarısız (gerekçeli)",
+        "description": "Yetki: delivery.steps.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "description": "gerekçe"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "yetki yok"
+          }
+        }
+      }
+    },
+    "/admin/catalog": {
+      "get": {
+        "summary": "R7 külçe kataloğu",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "R7 katalog kalemini ekle ya da güncelle (sürüm artar, catalog.updated gider)",
+        "description": "Yetki: catalog.edit.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "yetki yok"
+          }
+        }
+      }
+    },
+    "/admin/refining": {
+      "get": {
+        "summary": "R7 rafinasyon listesi",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/refining/{id}": {
+      "get": {
+        "summary": "R7 rafinasyon ayrıntısı ve geçmişi",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/refining/{id}/quote": {
+      "post": {
+        "summary": "R7 rafinasyon teklifi gir",
+        "description": "Yetki: refining.steps.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "fee_cents": {
+                    "type": "string",
+                    "description": "bedel (cent)"
+                  },
+                  "valid_hours": {
+                    "type": "string",
+                    "description": "geçerlilik"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "yetki yok"
+          }
+        }
+      }
+    },
+    "/admin/refining/{id}/production": {
+      "post": {
+        "summary": "R7 üretime al",
+        "description": "Yetki: refining.steps.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "yetki yok"
+          }
+        }
+      }
+    },
+    "/admin/refining/{id}/ready": {
+      "post": {
+        "summary": "R7 külçe hazır",
+        "description": "Yetki: refining.steps.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "yetki yok"
+          }
+        }
+      }
+    },
+    "/admin/refining/{id}/shipped": {
+      "post": {
+        "summary": "R7 taşıyıcıya verildi",
+        "description": "Yetki: refining.steps.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tracking_no": {
+                    "type": "string",
+                    "description": "takip numarası"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "yetki yok"
+          }
+        }
+      }
+    },
+    "/admin/refining/{id}/delivered": {
+      "post": {
+        "summary": "R7 teslim edildi",
+        "description": "Yetki: refining.steps.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "yetki yok"
+          }
+        }
+      }
+    },
+    "/admin/refining/{id}/cancel": {
+      "post": {
+        "summary": "R7 rafinasyonu iptal et (yalnız üretime kadar)",
+        "description": "Yetki: refining.steps.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "description": "iptal gerekçesi"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "yetki yok"
+          }
+        }
+      }
+    },
+    "/admin/refining/{id}/failed": {
+      "post": {
+        "summary": "R7 rafinasyon başarısız (gerekçeli)",
+        "description": "Yetki: refining.steps.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "description": "gerekçe"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "yetki yok"
+          }
+        }
+      }
+    },
+    "/admin/settlements": {
+      "get": {
+        "summary": "R8 mahsuplaşma pencereleri",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "R8 mahsuplaşma penceresi aç",
+        "description": "trigger: CUTOFF (kesim saati, kendiliğinden de açılır), REQUEST_AMR ya da REQUEST_KZ. Açık pencere varsa o döner. Yetki: settlement.request.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "trigger": {
+                    "type": "string",
+                    "description": "tetikleyici"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "description": "gerekçe"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "yetki yok"
+          }
+        }
+      }
+    },
+    "/admin/settlements/{id}": {
+      "get": {
+        "summary": "R8 mahsuplaşma penceresi ayrıntısı ve geçmişi",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/settlements/{id}/draft": {
+      "post": {
+        "summary": "R8 ekstre taslağı üret (mutabakat adımı)",
+        "description": "rafineri ekstresi imzalanır ve Kanzasset'e gider; Kanzasset karşılaştırıp onaylar ya da MISMATCH der.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/settlements/{id}/payment-notice": {
+      "post": {
+        "summary": "R8 ödeme bildirimi (banka referansı)",
+        "description": "Yetki: settlement.payment. Kritik aksiyon: onay numarası olmadan gelirse 202 ve onay numarası döner; değişiklik ancak farklı bir kullanıcının onayıyla uygulanır (gövdeye approval_id ve approver eklenir).",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "ccy": {
+                    "type": "string",
+                    "description": "kur"
+                  },
+                  "bank_ref": {
+                    "type": "string",
+                    "description": "banka referansı"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "ikinci onay bekleniyor (onay numarası döner)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "yetki yok"
+          }
+        }
+      }
+    },
+    "/admin/settlements/{id}/payment-received": {
+      "post": {
+        "summary": "R8 ödeme alındı (cari hesabı kapatır)",
+        "description": "Yetki: settlement.payment.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "ccy": {
+                    "type": "string",
+                    "description": "kur"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "yetki yok"
+          }
+        }
+      }
+    },
+    "/admin/documents/{id}/pdf": {
+      "get": {
+        "summary": "R9 belge PDF'i (A4)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/users": {
+      "get": {
+        "summary": "R10 kullanıcılar, roller ve yetki matrisi",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "R10 kullanıcı ekle ya da güncelle",
+        "description": "Yetki: users.write.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "yetki yok"
+          }
+        }
+      }
+    },
+    "/admin/approvals/{id}/approve": {
+      "post": {
+        "summary": "R10 onayla (isteyen kendi isteğini onaylayamaz)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "approver": {
+                    "type": "string",
+                    "description": "onaylayan kullanıcı"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/approvals/{id}/reject": {
+      "post": {
+        "summary": "R10 onay isteğini reddet",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/clients": {
+      "get": {
+        "summary": "R10 API istemcileri (Kanzasset anahtarları)",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "R10 API anahtarı ver",
+        "description": "Yetki: clients.write. Kritik aksiyon: onay numarası olmadan gelirse 202 ve onay numarası döner; değişiklik ancak farklı bir kullanıcının onayıyla uygulanır (gövdeye approval_id ve approver eklenir).",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "ikinci onay bekleniyor (onay numarası döner)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "yetki yok"
+          }
+        }
+      }
+    },
+    "/admin/clients/{key}/revoke": {
+      "post": {
+        "summary": "R10 API anahtarını iptal et",
+        "description": "Yetki: clients.write. Kritik aksiyon: onay numarası olmadan gelirse 202 ve onay numarası döner; değişiklik ancak farklı bir kullanıcının onayıyla uygulanır (gövdeye approval_id ve approver eklenir).",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "ikinci onay bekleniyor (onay numarası döner)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "yetki yok"
+          }
+        }
+      }
+    },
+    "/admin/documents": {
+      "get": {
+        "summary": "R9 belgeler listesi",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/documents/{id}": {
+      "get": {
+        "summary": "R9 belge içeriği (imzalı JSON)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/events": {
+      "get": {
+        "summary": "R9 olay teslimleri (webhook kuyruğu)",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/source/connect": {
+      "post": {
+        "summary": "Merkeze bağlan (adres verilebilir)",
+        "description": "Yetki: source.control.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "url": {
+                    "type": "string",
+                    "description": "merkez soket adresi"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "yetki yok"
+          }
+        }
+      }
+    },
+    "/admin/source/disconnect": {
+      "post": {
+        "summary": "Merkez bağlantısını kes",
+        "description": "Yetki: source.control.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "yetki yok"
+          }
+        }
+      }
+    },
+    "/admin/publish/halt": {
+      "post": {
+        "summary": "R2 yayını durdur (gerekçeli)",
+        "description": "Yetki: publish.control.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "description": "durdurma gerekçesi"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "yetki yok"
+          }
+        }
+      }
+    },
+    "/admin/publish/resume": {
+      "post": {
+        "summary": "R2 yayını başlat",
+        "description": "Yetki: publish.control.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "yetki yok"
+          }
+        }
+      }
+    },
+    "/admin/ticks": {
+      "get": {
+        "summary": "R2 tick geçmişi",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/subscribers": {
+      "get": {
+        "summary": "R2 fiyat soketine bağlı aboneler",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/notifications": {
+      "get": {
+        "summary": "Bildirimler",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/notifications/{id}/read": {
+      "post": {
+        "summary": "Bildirimi okundu işaretle",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/settings": {
+      "get": {
+        "summary": "R10 parametreler",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "R10 parametre değişikliği",
+        "description": "Yetki: settings.write. Kritik aksiyon: onay numarası olmadan gelirse 202 ve onay numarası döner; değişiklik ancak farklı bir kullanıcının onayıyla uygulanır (gövdeye approval_id ve approver eklenir).",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "ikinci onay bekleniyor (onay numarası döner)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "yetki yok"
+          }
+        }
+      }
+    },
+    "/admin/audit": {
+      "get": {
+        "summary": "R10 denetim günlüğü",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/requests": {
+      "get": {
+        "summary": "R9 istek günlüğü (VARA kanıtı)",
+        "description": "Kanzasset'in istekleri ve panelin değişiklikleri; gövdenin kendisi değil sha256 özeti saklanır.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "name": "channel",
+            "in": "query",
+            "description": "KANZASSET ya da PANEL"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "name": "path",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "name": "errors",
+            "in": "query",
+            "description": "1 ise yalnız hatalar"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/stream": {
+      "get": {
+        "summary": "Canlı akış (SSE): tick, bildirim, durum değişikliği",
+        "description": "ekranlar bu akışla tazelenir; istek günlüğüne yazılmaz",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/openapi.json": {
+      "get": {
+        "summary": "Kanzasset sözleşmesi belgesi",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin-api.json": {
+      "get": {
+        "summary": "Bu belge",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/docs": {
+      "get": {
+        "summary": "API dokümanı (tek sayfalık görüntüleyici)",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Sağlık durumu: alt sistemler ayrı ayrı",
+        "description": "veritabanı, merkez bağlantısı, Kanzasset yayını, olay kuyruğu, kasa talimatları, açık mahsuplaşma penceresi. HTTP 503 yalnız iş göremez durumda.",
+        "responses": {
+          "200": {
+            "description": "{ status, uptime_s, balances, checks }",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -99,7 +99,7 @@ Okuma: R9 Belgeler ekranının altındaki "İstek günlüğü" bölümü ya da `
 
 ## API dokümanı
 
-Sunucu ayaktayken `http://localhost:4000/docs`: tek sayfalık görüntüleyici, iki sekme (Kanzasset sözleşmesi `/v1` ve panel API'si `/admin`). Uçlar, parametreler, istek gövdeleri, cevaplar ve şemalar buradan gezilir. Ham belgeler: `GET /openapi.json` ve `GET /admin-api.json`. Görüntüleyici bağımlılıksızdır ve dışarıdan dosya çekmez, kapalı ağda da açılır. Rafineri ekranlarında sol menünün altındaki "API dokümanı" bağlantısı aynı sayfayı açar.
+Sunucu ayaktayken `http://localhost:4000/docs`: tek sayfalık görüntüleyici, iki sekme (Kanzasset sözleşmesi `/v1` ve panel API'si `/admin`). Uçlar, parametreler, istek gövdeleri, cevaplar ve şemalar buradan gezilir. Ham belgeler: `GET /openapi.json` (`npm run openapi:export`) ve `GET /admin-api.json` (`npm run adminapi:export`). Panel belgesi çalışan sunucunun yol tablosundan üretilir: açıklaması olmayan uç kalırsa betik hata verir, böylece belge ile kod arasındaki fark büyümeden görülür. Görüntüleyici bağımlılıksızdır ve dışarıdan dosya çekmez, kapalı ağda da açılır. Rafineri ekranlarında sol menünün altındaki "API dokümanı" bağlantısı aynı sayfayı açar.
 
 ## Demo ayarları (R10 → parametreler)
 
