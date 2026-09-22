@@ -1,10 +1,24 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ageSec, fmtG, fmtMoney, fmtTime, type useLive } from "../api.ts";
+import { ageSec, api, fmtG, fmtMoney, fmtTime, STL_STATUS_TR, type Settlement, type useLive } from "../api.ts";
+import { nextAction, steps } from "../settlementFlow.ts";
 
 type Live = ReturnType<typeof useLive>;
 
 export function R1Overview({ live }: { live: Live }) {
   const o = live.overview;
+  /** Mahsuplaşma ve teslimat sayıları genel bakışta da görünsün (ayrı uçlardan gelir). */
+  const [stl, setStl] = useState<Settlement | null>(null);
+  const [work, setWork] = useState({ deliveries: 0, refining: 0 });
+  useEffect(() => {
+    api.settlements().then((r) => setStl(r.open)).catch(() => {});
+    Promise.all([api.deliveries(), api.refining()])
+      .then(([d, r]) => setWork({ deliveries: d.open, refining: r.open }))
+      .catch(() => {});
+  }, [live.overview?.account.seq]);
+  const stlNext = nextAction(stl);
+  const stlSteps = steps(stl);
+  const stlDone = stlSteps.filter((x) => x.state === "done").length;
   const pub = o?.publish;
   const src = o?.source;
   const acc = o?.account;
@@ -25,7 +39,7 @@ export function R1Overview({ live }: { live: Live }) {
           <h2>Kasa hesabı</h2>
           <div className="mono" style={{ fontSize: 18, fontWeight: 600 }}>{acc ? fmtG(acc.vault.in_vault_mg + acc.vault.placing_mg + acc.vault.shipping_mg) : "0,000"} g</div>
           <div className="small">kasada {acc ? fmtG(acc.vault.in_vault_mg) : 0} · kasaya konuluyor {acc ? fmtG(acc.vault.placing_mg) : 0} · sevkiyatta {acc ? fmtG(acc.vault.shipping_mg) : 0}</div>
-          <div className="small" style={{ marginTop: 6 }}>Kasa talimatları Sprint 3'te.</div>
+          
         </div>
         <Link to="/cari" className="card">
           <h2>Cari hesap</h2>
@@ -42,10 +56,25 @@ export function R1Overview({ live }: { live: Live }) {
         <Link className="card" to="/kasa">
           <h2>Bekleyen işler</h2>
           <div className="mono" style={{ fontSize: 18, fontWeight: 600 }}>{o?.vault_pending ?? 0}</div>
-          <div className="small">kasa talepleri {o?.vault_pending ?? 0} · teslimat adımları 0 · rafinasyon 0 · mahsuplaşma 0</div>
+          <div className="small">kasa talepleri {o?.vault_pending ?? 0} · teslimat {work.deliveries} · rafinasyon {work.refining} · mahsuplaşma {stl ? 1 : 0}</div>
           <div className="small" style={{ marginTop: 6, color: (o?.vault_overdue ?? 0) > 0 ? "var(--bad)" : undefined }}>
             {(o?.vault_overdue ?? 0) > 0 ? `${o?.vault_overdue} kasa girişinde T+3 vadesi geçti` : "T+3 vadesi geçen kasa girişi yok"}
           </div>
+        </Link>
+        <Link to="/mahsuplasma" className="card">
+          <h2>Mahsuplaşma</h2>
+          {stl ? (
+            <>
+              <div className="status"><span className={`dot ${stl.status === "MISMATCH" ? "bad" : stl.status === "SETTLED" ? "ok" : "warn"}`} />{STL_STATUS_TR[stl.status] ?? stl.status}</div>
+              <div className="small" style={{ marginTop: 6 }}>adım {stlDone}/5 · {stlNext.title}</div>
+              <div className="small">kesim {o?.settings["settlement.cutoff_local"] ?? "17:00"} {o?.settings["settlement.timezone"] ?? "Asia/Dubai"}</div>
+            </>
+          ) : (
+            <>
+              <div className="status"><span className="dot" />Açık pencere yok</div>
+              <div className="small" style={{ marginTop: 6 }}>Kesim saatinde kendiliğinden açılır: {o?.settings["settlement.cutoff_local"] ?? "17:00"} {o?.settings["settlement.timezone"] ?? "Asia/Dubai"}</div>
+            </>
+          )}
         </Link>
         <div className="card">
           <h2>Kanzasset bağlantısı</h2>

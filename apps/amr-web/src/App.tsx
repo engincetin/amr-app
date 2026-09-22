@@ -31,7 +31,13 @@ export function App() {
   const o = live.overview;
   return (
     <div className="layout">
-      <div className="brand"><span>AMR uygulaması</span><b>·</b><span className="small" style={{ color: "#c9ced6" }}>Kanzasset FZCO</span></div>
+      <div className="brand">
+        <img src="/amr-logo.svg" alt="AMR" />
+        <div>
+          <div className="bt">AHLATCI METAL<br />REFINERY FZCO</div>
+          <div className="bs">Kanzasset FZCO</div>
+        </div>
+      </div>
       <nav className="nav">
         {SCREENS.map((s) => (
           <NavLink key={s.code} to={s.path} end={s.path === "/"}>
@@ -99,6 +105,7 @@ function TopBar({ o, sseConnected, refresh }: { o: Overview | null; sseConnected
 
   return (
     <header className="topbar">
+      <div className="chips">
       <div className="chip">
         <span className="l">Fiyat yayını</span>
         <span className="v"><span className={`dot ${priceDot}`} />{priceText}</span>
@@ -123,6 +130,7 @@ function TopBar({ o, sseConnected, refresh }: { o: Overview | null; sseConnected
         <span className="l">Kanzasset bağlantısı</span>
         <span className="v"><span className={`dot ${(pub?.subscribers ?? 0) > 0 ? "ok" : "bad"}`} />{(pub?.subscribers ?? 0) > 0 ? "Bağlı" : "Bağlı değil"}</span>
         <span className="s">{pub?.subscribers ?? 0} abone · canlı akış {sseConnected ? "açık" : "kapalı"}</span>
+      </div>
       </div>
       <UserPicker />
       <button className="bell" onClick={() => setOpen((v) => !v)} title="Bildirimler">
