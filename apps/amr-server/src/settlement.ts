@@ -14,7 +14,7 @@
  * Aynı anda tek açık pencere olur: açık pencere varken yeni talep o pencereyi döner.
  */
 import { randomUUID } from "node:crypto";
-import type { Account, CurrentAccountStatement, Settlement, SettlementStatus, SettlementTrigger } from "@amr/contract";
+import type { Account, CurrentAccountStatement, Settlement, SettlementLeg, SettlementStatus, SettlementTrigger } from "@amr/contract";
 import { CCYS } from "@amr/contract";
 import type { AppContext } from "./context.ts";
 import { getSetting, now, setSetting } from "./db.ts";
@@ -39,9 +39,21 @@ export function ensureSettlementTables(db: AppContext["db"]) {
       doc_id TEXT,
       opened_ts TEXT NOT NULL,
       settled_ts TEXT,
-      history TEXT NOT NULL DEFAULT '[]'
+      history TEXT NOT NULL DEFAULT '[]',
+      scope TEXT NOT NULL DEFAULT ''
     );
   `);
+  // eski veritabanları: kapsam sütunu sonradan eklendi (boş = bütün bacaklar)
+  const cols = (db.prepare("PRAGMA table_info(settlements)").all() as { name: string }[]).map((c) => c.name);
+  if (!cols.includes("scope")) db.exec("ALTER TABLE settlements ADD COLUMN scope TEXT NOT NULL DEFAULT ''");
+}
+
+/** Kapsam boşsa bütün bacaklar. Sıra sabittir: önce altın, sonra kurlar. */
+export const ALL_LEGS: SettlementLeg[] = ["GOLD", ...CCYS] as SettlementLeg[];
+export function parseScope(raw?: string | string[] | null): SettlementLeg[] {
+  const list = (Array.isArray(raw) ? raw : String(raw ?? "").split(",")).map((x) => String(x).trim().toUpperCase()).filter(Boolean);
+  const picked = ALL_LEGS.filter((l) => list.includes(l));
+  return picked.length ? picked : [...ALL_LEGS];
 }
 
 const g = (mg: number) => (mg / 1000).toLocaleString("tr-TR", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
@@ -71,7 +83,7 @@ export class SettlementDesk {
    * Pencere açar ve ekstre taslağını üretir. Açık pencere varsa onu döner (iki taraf da çağırabilir).
    * Tetik: CUTOFF (kesim saati) · REQUEST_KZ · REQUEST_AMR · LIMIT.
    */
-  open(trigger: SettlementTrigger, note?: string): Settlement {
+  open(trigger: SettlementTrigger, note?: string, scope?: SettlementLeg[]): Settlement {
     const existing = this.openWindow();
     if (existing) return existing;
 
@@ -80,11 +92,12 @@ export class SettlementDesk {
     const to = now();
     const from = getSetting(db, "settlement.last_window_to", `${to.slice(0, 10)}T00:00:00.000Z`);
     const ts = to;
-    db.prepare("INSERT INTO settlements(settlement_id, trigger, status, window_from, window_to, opened_ts, history) VALUES (?, ?, 'OPEN', ?, ?, ?, ?)")
-      .run(id, trigger, from, to, ts, JSON.stringify([{ status: "OPEN", ts, note: note ?? `tetik: ${trigger}` }]));
+    const legs = scope?.length ? scope : [...ALL_LEGS];
+    db.prepare("INSERT INTO settlements(settlement_id, trigger, status, window_from, window_to, opened_ts, history, scope) VALUES (?, ?, 'OPEN', ?, ?, ?, ?, ?)")
+      .run(id, trigger, from, to, ts, JSON.stringify([{ status: "OPEN", ts, note: note ?? `tetik: ${trigger}` }]), legs.join(","));
 
-    this.ctx.notify("settlement.opened", "Mahsuplaşma penceresi açıldı", `${this.triggerText(trigger)}${note ? ` · ${note}` : ""}`, id);
-    enqueueEvent(this.ctx, "settlement.opened", { settlement_id: id, trigger, window_from: from, window_to: to });
+    this.ctx.notify("settlement.opened", "Mahsuplaşma penceresi açıldı", `${this.triggerText(trigger)} · kapsam ${this.scopeText(legs)}${note ? ` · ${note}` : ""}`, id);
+    enqueueEvent(this.ctx, "settlement.opened", { settlement_id: id, trigger, window_from: from, window_to: to, scope: legs });
     return this.draft(id);
   }
 
@@ -100,14 +113,17 @@ export class SettlementDesk {
     const { hash, signature } = signContent(db, base);
     const statement: CurrentAccountStatement = { ...base, hash, signature };
 
+    // kapsam: yalnız seçilen bacaklar bu pencerede kapatılır, kalanı bir sonraki pencereye kalır
+    const legs = parseScope(row.scope);
+    const goldIn = legs.includes("GOLD");
     const goldLeg = {
-      t_net_mg: bal.gold_mg,
-      direction: bal.gold_mg > 0 ? "VAULT_IN" : bal.gold_mg < 0 ? "VAULT_OUT" : "NONE",
-      qty_mg: Math.abs(bal.gold_mg),
+      t_net_mg: goldIn ? bal.gold_mg : 0,
+      direction: goldIn ? (bal.gold_mg > 0 ? "VAULT_IN" : bal.gold_mg < 0 ? "VAULT_OUT" : "NONE") : "NONE",
+      qty_mg: goldIn ? Math.abs(bal.gold_mg) : 0,
       requests: [] as string[],
-      done: bal.gold_mg === 0,
+      done: !goldIn || bal.gold_mg === 0,
     };
-    const moneyLeg = CCYS.map((ccy) => {
+    const moneyLeg = CCYS.filter((ccy) => legs.includes(ccy as SettlementLeg)).map((ccy) => {
       const cents = bal.money.find((m) => m.ccy === ccy)?.cents ?? 0;
       return {
         ccy,
@@ -133,11 +149,15 @@ export class SettlementDesk {
     if (kzHash === row.statement_hash) {
       this.ctx.db.prepare("UPDATE settlements SET status = 'RECONCILED', kz_statement_hash = ?, diffs = NULL, history = ? WHERE settlement_id = ?")
         .run(kzHash, this.push(row, "RECONCILED", "özetler eşit: mutabakat tamam"), row.settlement_id);
-      const out = this.get(row.settlement_id)!;
+      // rafineri gram borçluysa "kasaya koyalım mı" teklifi mutabakatla aynı anda gider:
+      // olay gövdesi teklifi de taşısın diye önce teklif işlenir, sonra reconciled olayı çıkar
+      let out = this.get(row.settlement_id)!;
+      if (out.gold_leg?.direction === "VAULT_IN" && !out.gold_leg.proposed_ts) out = this.proposeGold(row.settlement_id);
       this.ctx.notify("settlement.reconciled", "Mutabakat sağlandı", `${row.settlement_id} · altın ve para bacağı açılabilir`, row.settlement_id);
       enqueueEvent(this.ctx, "settlement.reconciled", out);
       bus.publish({ kind: "settlement", item: out });
-      return out;
+      // kapsamdaki bacakların hepsi zaten sıfırsa yapacak iş yoktur: pencere burada kapanır
+      return this.maybeSettle(row.settlement_id);
     }
     // fark satırları: KZ toplamları verdiyse alan alan karşılaştır
     const diffs: { field: string; amr: string; kz: string }[] = [];
@@ -154,6 +174,42 @@ export class SettlementDesk {
     const out = this.get(row.settlement_id)!;
     this.ctx.notify("settlement.mismatch", "Mutabakatta fark var", `${row.settlement_id} · ${diffs.length} satır; düzeltilip yeniden ekstre çıkarılmalı`, row.settlement_id);
     enqueueEvent(this.ctx, "settlement.mismatch", out);
+    bus.publish({ kind: "settlement", item: out });
+    return out;
+  }
+
+  /**
+   * Altın bacağı teklifi: rafineri bize gram borçluyken (T > 0) "kasaya koyalım mı" diye sorar.
+   * Kanzasset onaylamadan kasa girişi talebi gelmez, fiş kesilmez, mint olmaz.
+   */
+  proposeGold(id: string): Settlement {
+    const row = this.requireRow(id, "RECONCILED", "PAYMENT_PENDING");
+    const leg = JSON.parse(row.gold_leg ?? "null");
+    if (!leg || leg.direction !== "VAULT_IN") throw new SettlementError("altın bacağı kasa girişi değil: teklif yok");
+    if (leg.proposed_ts) return this.get(id)!;
+    leg.proposed_ts = now();
+    this.ctx.db.prepare("UPDATE settlements SET gold_leg = ?, history = ? WHERE settlement_id = ?")
+      .run(JSON.stringify(leg), this.push(row, row.status as SettlementStatus, `altın teklifi: ${g(leg.qty_mg)} g kasaya konsun mu`), id);
+    this.ctx.notify("settlement.gold_proposed", "Altın bacağı teklifi gönderildi", `${g(leg.qty_mg)} g kasaya konsun mu · Kanzasset onayı bekleniyor`, id);
+    enqueueEvent(this.ctx, "settlement.gold_proposed", { settlement_id: id, direction: leg.direction, qty_mg: leg.qty_mg, proposed_ts: leg.proposed_ts });
+    const out = this.get(id)!;
+    bus.publish({ kind: "settlement", item: out });
+    return out;
+  }
+
+  /** Kanzasset teklifi onayladı: kasa girişi talebi artık gelebilir. */
+  approveGold(id: string): Settlement {
+    const row = this.requireRow(id, "RECONCILED", "PAYMENT_PENDING");
+    const leg = JSON.parse(row.gold_leg ?? "null");
+    if (!leg || leg.direction !== "VAULT_IN") throw new SettlementError("altın bacağı kasa girişi değil: onay yok");
+    if (!leg.proposed_ts) leg.proposed_ts = now();
+    if (leg.approved_ts) return this.get(id)!;
+    leg.approved_ts = now();
+    this.ctx.db.prepare("UPDATE settlements SET gold_leg = ?, history = ? WHERE settlement_id = ?")
+      .run(JSON.stringify(leg), this.push(row, row.status as SettlementStatus, `Kanzasset altın teklifini onayladı: ${g(leg.qty_mg)} g · kasa girişi talebi bekleniyor`), id);
+    this.ctx.notify("settlement.gold_approved", "Altın teklifi onaylandı", `${g(leg.qty_mg)} g · kasa girişi talebi bekleniyor`, id);
+    enqueueEvent(this.ctx, "settlement.gold_approved", { settlement_id: id, qty_mg: leg.qty_mg, approved_ts: leg.approved_ts });
+    const out = this.get(id)!;
     bus.publish({ kind: "settlement", item: out });
     return out;
   }
@@ -270,6 +326,7 @@ export class SettlementDesk {
     const doc = createDocument(this.ctx.db, "SETTLEMENT_STATEMENT", id, {
       title: "Mahsuplaşma Ekstresi", settlement_id: id, trigger: row.trigger,
       window_from: row.window_from, window_to: row.window_to,
+      scope: parseScope(row.scope).join(", "),
       gold_leg: gold ? `${gold.direction} ${g(gold.qty_mg)} g · talimatlar ${gold.requests.join(", ") || "yok"}` : "yok",
       money_leg: legs.map((l: any) => `${l.ccy} ${money(l.net_cents)} ${l.direction}${l.bank_ref ? ` (${l.bank_ref})` : ""}`).join(" · "),
       statement_hash: row.statement_hash, movements: statement.movements.length, settled_ts: ts,
@@ -294,6 +351,9 @@ export class SettlementDesk {
   private push(row: any, status: SettlementStatus, note: string) {
     return JSON.stringify([...JSON.parse(row.history), { status, ts: now(), note }]);
   }
+  private scopeText(legs: SettlementLeg[]) {
+    return legs.length === ALL_LEGS.length ? "tümü" : legs.map((l) => (l === "GOLD" ? "altın" : l)).join(" + ");
+  }
   private triggerText(t: SettlementTrigger) {
     return { CUTOFF: "kesim saati", REQUEST_KZ: "Kanzasset talebi", REQUEST_AMR: "rafineri talebi", LIMIT: "cari hesap limiti" }[t] ?? t;
   }
@@ -303,6 +363,7 @@ export class SettlementDesk {
       settlement_id: r.settlement_id, trigger: r.trigger, status: r.status,
       window_from: r.window_from, window_to: r.window_to,
       money_leg: JSON.parse(r.money_leg), opened_ts: r.opened_ts, history: JSON.parse(r.history),
+      scope: parseScope(r.scope),
     };
     if (r.statement) s.statement = JSON.parse(r.statement);
     if (r.statement_hash) s.statement_hash = r.statement_hash;

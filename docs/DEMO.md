@@ -174,13 +174,17 @@ Kontrol: `http://localhost:4000` açıldığında üst şeritte **Yayın açık*
 
 > "Gün boyunca biriken her şey burada: işlem listesi, net gram, kur bazında para. Ekstre imzalı."
 
-**K8 Mahsuplaşma:** mutabakat kendiliğinden yapılmış, **mutabakat sağlandı**.
+**K8 Mahsuplaşma:** mutabakat kendiliğinden yapılmış, **eşit**. Bacak tablosunda altın ve kurlar ayrı satırlarda.
 
-> "Kanzasset kendi kaydıyla karşılaştırdı, birebir tuttu. Tutmasaydı pencere fark listesiyle duracaktı ve ödeme yapılmayacaktı."
+> "Kanzasset kendi kaydıyla karşılaştırdı, birebir tuttu. Tutmasaydı hiçbir bacak kapanmayacaktı."
 
-**K8:** **Altın bacağını başlat** → **R4**'te **Kabul et** → **K8**'de **Şirket hesabından öde**.
+**K8:** altın satırında **Onayla: kasaya konsun** → **R4**'te **Kabul et** → **K8**'de **Öde (şirket hesabından)**.
 
-> "Altın bacağı kasa talimatıyla kapanıyor, para bacağı banka ödemesiyle. Ödeme yalnız şirket hesabından yapılıyor, müşteri hesabı asla ödemiyor."
+> "Rafineri bize gram borçlu olduğu için 'kasaya koyalım mı' diye sordu; onayladık, kasa girişi talebi gitti, fiş kesildi, token ondan sonra basıldı. Tersi durumda, biz borçlu olsaydık, önce token yakılır sonra çıkış talebi giderdi: rafineri bizim talebimiz olmadan kasadan gram çıkaramaz."
+
+**K8:** açık pencere yokken kapsam kutusundan **Yalnız USD** seçip talep edin.
+
+> "Gün içinde her şeyi kapatmak zorunda değiliz. Sadece dolar bacağını netleştirebiliriz, altın ve diğer kurlar olduğu gibi kalır."
 
 **R8:** pencere **kapandı**, Mahsuplaşma Ekstresi belgesi.
 
@@ -240,7 +244,9 @@ Kontrol: `http://localhost:4000` açıldığında üst şeritte **Yayın açık*
 | S6 | Cevapsız emir: durum sorgusu, iptal, kesin cevap |
 | S7 | Fiziksel teslimat uçtan uca |
 | S8 | Rafinasyon: katalog, teklif, üretim, teslim |
-| S9 | Mahsuplaşma: kesim, mutabakat, altın ve para bacağı; ardından uyuşmazlık ve çözümü |
+| S9 | Mahsuplaşma: kesim, mutabakat, altın bacağı (teklif ve onay) ve para bacağı |
+| S9c | Gün içi tek bacak: yalnız USD kapatılır, altın dokunulmaz |
+| S9b | Eşleşme uyuşmazlığı ve çözümü |
 
 Koşum sonunda K1 ve K2 kontrollerinin tuttuğu ve iki defterin eşit olduğu yazılır.
 

@@ -68,6 +68,7 @@ const OPS: Record<string, Op> = {
   "GET /admin/settlements": { summary: "R8 mahsuplaşma pencereleri" },
   "POST /admin/settlements": { summary: "R8 mahsuplaşma penceresi aç", description: "trigger: CUTOFF (kesim saati, kendiliğinden de açılır), REQUEST_AMR ya da REQUEST_KZ. Açık pencere varsa o döner.", body: { trigger: "tetikleyici", reason: "gerekçe" }, perm: "settlement.request" },
   "GET /admin/settlements/:id": { summary: "R8 mahsuplaşma penceresi ayrıntısı ve geçmişi" },
+  "POST /admin/settlements/:id/gold/propose": { summary: "R8 altın teklifi: kasaya koyalım mı", description: "rafineri Kanzasset'e gram borçluyken teklifi gönderir; Kanzasset onaylamadan kasa girişi talebi gelmez." },
   "POST /admin/settlements/:id/draft": { summary: "R8 ekstre taslağı üret (mutabakat adımı)", description: "rafineri ekstresi imzalanır ve Kanzasset'e gider; Kanzasset karşılaştırıp onaylar ya da MISMATCH der." },
   "POST /admin/settlements/:id/payment-notice": { summary: "R8 ödeme bildirimi (banka referansı)", body: { ccy: "kur", bank_ref: "banka referansı" }, perm: "settlement.payment", approval: true },
   "POST /admin/settlements/:id/payment-received": { summary: "R8 ödeme alındı (cari hesabı kapatır)", body: { ccy: "kur" }, perm: "settlement.payment" },

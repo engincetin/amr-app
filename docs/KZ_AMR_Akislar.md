@@ -450,15 +450,20 @@ stateDiagram-v2
 
 ## 12 · Mahsuplaşma (altın + para)
 
-Gün içinde biriken karşılıklı alacak ve borçların (gram ve para) tek seferde kapatılması. İçindeki **mutabakat** adımı iki tarafın ekstrelerinin birebir karşılaştırılmasıdır. **Tetik:** gün sonu kesim **17:00 Dubai** · **iki taraftan birinin talebi** ("şimdi netleş"; karşı tarafa bildirim düşer) · cari hesap limiti (K3). **Talep gelmese de** kesim saatinde mahsuplaşma kendiliğinden başlar; kesim saati, saat dilimi ve gün içi pencere sayısı panelden ayarlanır (R10 / K9, `settlement.cutoff_local`, `settlement.timezone`, `settlement.windows_per_day`). **Sıklık parametre:** gün sonu (`N = 1`) ya da gün içi pencereler (`N` / gün); iki şirket aynı bankada hesap tutarsa transfer anlık olur ve pencere sıklığı artırılabilir. Mint ve burn'de yeni fiyat alınmaz: her gram müşteri emrinde alındı ya da satıldı.
+Gün içinde biriken karşılıklı alacak ve borçların (gram ve para) tek seferde kapatılması. İçindeki **mutabakat** adımı iki tarafın ekstrelerinin birebir karşılaştırılmasıdır. **Tetik:** gün sonu kesim **17:00 Dubai** · **iki taraftan birinin talebi** ("şimdi netleş"; karşı tarafa bildirim düşer) · cari hesap limiti (K3). **Talep gelmese de** kesim saatinde mahsuplaşma kendiliğinden başlar; kesim saati, saat dilimi ve gün içi pencere sayısı panelden ayarlanır (R11 / K11, `settlement.cutoff_local`, `settlement.timezone`, `settlement.windows_per_day`). **Sıklık parametre:** gün sonu (`N = 1`) ya da gün içi pencereler (`N` / gün); iki şirket aynı bankada hesap tutarsa transfer anlık olur ve pencere sıklığı artırılabilir. Mint ve burn'de yeni fiyat alınmaz: her gram müşteri emrinde alındı ya da satıldı.
+
+**Kapatılacak her kalem bir bacaktır:** altın ve her kur (USD, EUR, AED) ayrı bacaktır. Pencere açılırken **kapsam** seçilir: kesim saatinde açılan pencerede kapsam hep tümüdür; gün içi talepte tek bacak da seçilebilir (ör. yalnız USD). Kapsam dışındaki bacaklar dokunulmadan kalır, bir sonraki pencereye girer. Bacakların hepsi kapanınca pencere kapanır.
 
 **Adımlar:**
 
 1. Pencere kapanır; iki taraf da ekstre hazırlar: işlem listesi · `T` net gram · kur bazında para (alış satış bedelleri + lojistik ve rafinasyon bedelleri) · hizmet bedelleri.
-2. **Mutabakat:** iki ekstre karşılaştırılır; bakiye bilgisi sayesinde birebir eşit olmalı; fark → `RECONCILE`, ödeme bekler.
-3. **Altın bacağı:** `T > 0` → kasa girişi `T` + mint `T` (05) · `T < 0` → burn `|T|` + kasa çıkışı `|T|` (06) · sonuç `T = 0`, `S = K = hedef`.
-4. **Para bacağı:** kur bazında net → borçlu öder, banka hesabından banka hesabına, Kanzasset tarafında yalnız şirket hesabı (K5) · ödeme bildirimi · karşı taraf "ödeme alındı" der → `SETTLED`.
-5. Limit sayaçları sıfırlanır.
+2. **Mutabakat:** iki ekstre karşılaştırılır; bakiye bilgisi sayesinde birebir eşit olmalı; fark → `RECONCILE`, ödeme bekler. Mutabakat sağlanmadan hiçbir bacak kapanmaz.
+3. **Altın bacağı.** Sıra iki yönde de sabittir ve bozulamaz:
+   - `T > 0` (rafineri gram borçlu): rafineri **"kasaya koyalım mı"** diye teklif eder → Kanzasset **onaylar** → kasa girişi talebi (05) → **Kasa Giriş Fişi** → **mint**. Fiş olmadan token basılmaz.
+   - `T < 0` (Kanzasset gram borçlu): Kanzasset önce **burn** eder, sonra kasa çıkışı talebi gönderir (06). **Rafineri kendi başına kasadan gram çıkaramaz:** çıkış yalnız Kanzasset'in talebiyle başlar, böylece karşılıksız token oluşmaz.
+   - Sonuç: `T = 0`, `S = K = hedef`.
+4. **Para bacağı:** kur bazında net → borçlu öder, banka hesabından banka hesabına, Kanzasset tarafında yalnız şirket hesabı (K5) · ödeme bildirimi · karşı taraf "ödeme alındı" der. Her kur kendi başına kapanır.
+5. Kapsamdaki bütün bacaklar kapanınca pencere `SETTLED` olur ve limit sayaçları sıfırlanır.
 
 <!-- cap: Örnek · gün sonu kesimi · T +7.000 g · USD net Kanzasset → AMR -->
 ```mermaid
@@ -472,6 +477,8 @@ sequenceDiagram
   KZ->>R: POST /v1/settlements (pencere kapanır) · karşı tarafa bildirim
   R-->>KZ: ekstre taslağı: işlemler · T net +7.000 g · USD net −1.839.164,88 · hizmet bedelleri
   KZ->>KZ: KZ kaydı ile karşılaştır (mutabakat) → onay
+  R-->>KZ: altın teklifi: 7.000 g kasaya konsun mu
+  KZ->>R: teklif onayı
   KZ->>R: KASA GİRİŞİ talebi 7.000 g (05)
   R-->>KZ: KABUL · KASA GİRİŞ FİŞİ + bakiye: T 0 · V 32.947,640
   KZ->>B: mint 7.000 → S 20.000 = hedef

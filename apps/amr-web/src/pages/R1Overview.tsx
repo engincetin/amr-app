@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { ageSec, api, fmtG, fmtMoney, fmtTime, STL_STATUS_TR, type Settlement, type useLive } from "../api.ts";
-import { nextAction, steps } from "../settlementFlow.ts";
+import { legs, summary } from "../settlementFlow.ts";
 
 type Live = ReturnType<typeof useLive>;
 
@@ -16,9 +16,8 @@ export function R1Overview({ live }: { live: Live }) {
       .then(([d, r]) => setWork({ deliveries: d.open, refining: r.open }))
       .catch(() => {});
   }, [live.overview?.account.seq]);
-  const stlNext = nextAction(stl);
-  const stlSteps = steps(stl);
-  const stlDone = stlSteps.filter((x) => x.state === "done").length;
+  const stlLegs = legs(stl);
+  const stlOpen = stlLegs.filter((l) => l.state === "sizde" || l.state === "karşıda").length;
   const pub = o?.publish;
   const src = o?.source;
   const acc = o?.account;
@@ -66,7 +65,7 @@ export function R1Overview({ live }: { live: Live }) {
           {stl ? (
             <>
               <div className="status"><span className={`dot ${stl.status === "MISMATCH" ? "bad" : stl.status === "SETTLED" ? "ok" : "warn"}`} />{STL_STATUS_TR[stl.status] ?? stl.status}</div>
-              <div className="small" style={{ marginTop: 6 }}>adım {stlDone}/5 · {stlNext.title}</div>
+              <div className="small" style={{ marginTop: 6 }}>{stl ? `${stlLegs.length - stlOpen}/${stlLegs.length} bacak kapandı` : ""} · {summary(stl)}</div>
               <div className="small">kesim {o?.settings["settlement.cutoff_local"] ?? "17:00"} {o?.settings["settlement.timezone"] ?? "Asia/Dubai"}</div>
             </>
           ) : (

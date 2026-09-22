@@ -99,21 +99,22 @@ Ekranda müşteri adı görünmez, yalnız adres ve sigorta lehtarı referansı 
 
 ### 2.6 Mahsuplaşma · R8
 
-Gün içinde biriken karşılıklı alacak ve borç günde bir kez kapanır.
+Gün içinde biriken karşılıklı alacak ve borç kapatılır. **Kapatılacak her kalem bir bacaktır:** altın, USD, EUR, AED. Ekranda her bacak bir satırdır; satırda ne kadar, kim borçlu ve o an yapılacak tek iş yazar.
 
-- Pencere **kesim saatinde kendiliğinden açılır** (varsayılan 17:00 Dubai). Beklemek istemezseniz **Kesimi şimdi tetikle** deyin.
-- Cari hesap limiti dolduğunda ya da Kanzasset istediğinde de açılır.
+- Pencere **kesim saatinde kendiliğinden açılır** (varsayılan 17:00 Dubai) ve kapsamı tümüdür.
+- Gün içinde siz de talep edebilirsiniz. Talep ederken **kapsam** seçilir: tümü, yalnız altın, yalnız para ya da tek kur. Kapsam dışındaki bacaklar dokunulmadan kalır.
+- Cari hesap limiti dolduğunda da açılır.
 
 Adımlar:
 
-1. Pencere açılınca ekstre taslağı üretilir: gün içi işlemler, net gram, kur bazında para.
-2. Kanzasset kendi ekstresiyle karşılaştırır. **Mutabakat sağlandı** görünürse iki kayıt birebir tutmuş demektir.
+1. Pencere açılınca **Ekstreyi çıkar** deyin: gün içi işlemler, net gram ve kur bazında para imzalı ekstre olur, Kanzasset'e gider.
+2. Kanzasset kendi kaydıyla karşılaştırır. **Eşit** görünürse iki kayıt birebir tutmuş demektir; bacaklar ancak bundan sonra kapanır.
    - **Fark var** görünürse tablo farkı satır satır gösterir. Ödeme yapmayın; farkı çözün, sonra **Ekstreyi yeniden çıkar** deyin.
-3. **Altın bacağı:** Kanzasset kasa talebi gönderir, siz R4'ten kabul edersiniz. Net gram sıfırlanınca bacak kapanır.
-4. **Para bacağı:** borçlu taraf öder.
-   - Ödeyen Kanzasset ise ödeme geldiğinde **Ödeme alındı** deyin.
-   - Ödeyen rafineri ise **Ödeme bildir** deyin ve banka referansını girin. Bu işlem ikinci onay ister: başka bir kullanıcı R10'dan onaylamalıdır.
-5. Her iki bacak kapanınca pencere **kapandı** olur, Mahsuplaşma Ekstresi kesilir ve limit sayaçları sıfırlanır.
+3. **Altın bacağı.** Rafineri gram borçluysa satırdaki **Kasaya koymayı teklif et** düğmesine basın; Kanzasset onaylayınca kasa girişi talebi gelir, R4'ten kabul edersiniz, fiş kesilir. Kanzasset gram borçluysa yapacağınız bir şey yoktur: çıkış talebini o gönderir, siz R4'ten kabul edersiniz. Rafineri kendi başına kasadan gram çıkaramaz.
+4. **Para bacağı.** Her kur kendi satırında kapanır.
+   - Ödeyen Kanzasset ise para geldiğinde **Ödeme alındı** deyin.
+   - Ödeyen rafineri ise **Ödemeyi bildir** deyin ve banka referansını girin. Bu işlem ikinci onay ister: başka bir kullanıcı R11 Ayarlar'dan onaylar.
+5. Kapsamdaki bütün bacaklar kapanınca pencere **kapandı** olur, Mahsuplaşma Ekstresi kesilir ve limit sayaçları sıfırlanır.
 
 ### 2.7 Belgeler · R9
 

@@ -180,3 +180,59 @@ test("kullanıcı ekleme ve rol değiştirme denetim günlüğüne yazılır", a
     assert.equal(log.length, 2);
   } finally { await s.close(); }
 });
+
+test("12 kapsam: yalnız USD seçilirse altın ve diğer kurlar bu pencerede kapanmaz", async () => {
+  const s = await setup();
+  try {
+    trade(s.ctx, 7_000_000, -994_000_00);                 // altın +7 kg, USD borcu
+    postMovements(s.ctx.db, { current: [{ type: "FEE_DELIVERY", gold_mg: 0, ccy: "EUR", amount_cents: -50_00, ref: "test" }] });
+    const w = s.ctx.settlement.open("REQUEST_KZ", "yalnız USD", ["USD"]);
+    assert.deepEqual(w.scope, ["USD"]);
+    assert.equal(w.money_leg.length, 1, "yalnız seçilen kur bacağı olur");
+    assert.equal(w.money_leg[0].ccy, "USD");
+    assert.equal(w.gold_leg?.direction, "NONE", "altın kapsam dışı: bu pencerede kapanmaz");
+    assert.equal(w.gold_leg?.done, true);
+
+    // mutabakat sonrası yalnız USD ödenir ve pencere kapanır
+    const rec = s.ctx.settlement.confirm(w.settlement_id, w.statement_hash!);
+    assert.equal(rec.status, "RECONCILED");
+    const done = s.ctx.settlement.paymentReceived(w.settlement_id, "USD", "TR-TEST");
+    assert.equal(done.status, "SETTLED", "kapsamdaki tek bacak kapanınca pencere kapanır");
+
+    const bal = currentAccountBalance(s.ctx.db);
+    assert.equal(bal.money.find((m) => m.ccy === "USD")?.cents, 0, "USD sıfırlandı");
+    assert.equal(bal.gold_mg, 7_000_000, "altın dokunulmadan kaldı");
+    assert.equal(bal.money.find((m) => m.ccy === "EUR")?.cents, -50_00, "EUR dokunulmadan kaldı");
+  } finally { await s.close(); }
+});
+
+test("12 altın bacağı: rafineri borçluyken önce teklif eder, Kanzasset onaylamadan kasa girişi beklenmez", async () => {
+  const s = await setup();
+  try {
+    trade(s.ctx, 7_000_000, -994_000_00);
+    const w = s.ctx.settlement.open("CUTOFF");
+    assert.equal(w.gold_leg?.direction, "VAULT_IN");
+    assert.equal(w.gold_leg?.proposed_ts, undefined, "mutabakattan önce teklif yok");
+
+    // mutabakat sağlanınca teklif kendiliğinden gider
+    const rec = s.ctx.settlement.confirm(w.settlement_id, w.statement_hash!);
+    assert.ok(rec.gold_leg?.proposed_ts, "mutabakattan sonra teklif gönderilir");
+    assert.equal(rec.gold_leg?.approved_ts, undefined, "onay Kanzasset'ten gelir");
+
+    const ok = s.ctx.settlement.approveGold(w.settlement_id);
+    assert.ok(ok.gold_leg?.approved_ts, "onaydan sonra kasa girişi talebi beklenir");
+    // aynı onay ikinci kez zaman damgasını değiştirmez
+    assert.equal(s.ctx.settlement.approveGold(w.settlement_id).gold_leg?.approved_ts, ok.gold_leg?.approved_ts);
+  } finally { await s.close(); }
+});
+
+test("12 altın bacağı: Kanzasset borçluyken rafineri teklif edemez (çıkış yalnız Kanzasset'in talebiyle)", async () => {
+  const s = await setup();
+  try {
+    trade(s.ctx, -5_000_000, 709_000_00);                 // T eksi: Kanzasset gram borçlu
+    const w = s.ctx.settlement.open("CUTOFF");
+    assert.equal(w.gold_leg?.direction, "VAULT_OUT");
+    s.ctx.settlement.confirm(w.settlement_id, w.statement_hash!);
+    assert.throws(() => s.ctx.settlement.proposeGold(w.settlement_id), /kasa girişi değil/);
+  } finally { await s.close(); }
+});

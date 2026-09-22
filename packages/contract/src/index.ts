@@ -400,13 +400,32 @@ export const SettlementStatus = Type.Union([
 ]);
 export type SettlementStatus = Static<typeof SettlementStatus>;
 
-/** Altın bacağı: T > 0 ise kasa girişi, T < 0 ise kasa çıkışı; sonuç T = 0. */
+/**
+ * Kapsam: hangi bacaklar kapatılacak. Boş ya da verilmemişse hepsi.
+ * Gün sonu kesiminde hep hepsi açılır; gün içi talepte tek bacak da seçilebilir (ör. yalnız USD).
+ */
+export const SettlementLeg = Type.Union([Type.Literal("GOLD"), Type.Literal("USD"), Type.Literal("EUR"), Type.Literal("AED")]);
+export type SettlementLeg = Static<typeof SettlementLeg>;
+
+/**
+ * Altın bacağı: T > 0 ise kasa girişi, T < 0 ise kasa çıkışı; sonuç T = 0.
+ *
+ * Sıra iki yönde de sabittir ve bozulamaz:
+ *   T > 0  rafineri "kasaya koyalım mı" diye teklif eder (proposed_ts) → Kanzasset onaylar (approved_ts)
+ *          → kasa girişi talebi → Kasa Giriş Fişi → mint. Fiş olmadan gram da token da hareket etmez.
+ *   T < 0  Kanzasset önce burn eder, sonra kasa çıkışı talebi gönderir. Rafineri kendi başına kasadan
+ *          gram çıkaramaz: çıkış yalnız Kanzasset'in talebiyle başlar (karşılıksız token olmasın diye).
+ */
 export const SettlementGoldLeg = Type.Object({
   t_net_mg: Type.Integer({ description: "pencere kapanışındaki T" }),
   direction: Type.Union([Type.Literal("VAULT_IN"), Type.Literal("VAULT_OUT"), Type.Literal("NONE")]),
   qty_mg: Type.Integer(),
   requests: Type.Array(Type.String({ description: "kasa talimatı referansları" })),
   done: Type.Boolean(),
+  /** rafineri kasaya koymayı teklif etti (yalnız VAULT_IN) */
+  proposed_ts: Type.Optional(IsoTs),
+  /** Kanzasset teklifi onayladı; kasa girişi talebi bundan sonra gelir */
+  approved_ts: Type.Optional(IsoTs),
 });
 /** Para bacağı: kur bazında net; eksi = Kanzasset öder, artı = rafineri öder. */
 export const SettlementMoneyLeg = Type.Object({
@@ -425,6 +444,7 @@ export const Settlement = Type.Object({
   status: SettlementStatus,
   window_from: IsoTs,
   window_to: IsoTs,
+  scope: Type.Optional(Type.Array(SettlementLeg, { description: "kapatılacak bacaklar; verilmezse hepsi" })),
   statement: Type.Optional(CurrentAccountStatement),
   statement_hash: Type.Optional(Type.String()),
   kz_statement_hash: Type.Optional(Type.String()),
@@ -452,7 +472,7 @@ export const EVENT_TYPES = [
   "delivery.quoted", "delivery.approved", "delivery.preparing", "delivery.ready", "delivery.shipped", "delivery.delivered", "delivery.cancelled", "delivery.failed",
   "catalog.updated",
   "refining.quoted", "refining.approved", "refining.in_production", "refining.ready", "refining.shipped", "refining.delivered", "refining.cancelled", "refining.failed",
-  "settlement.requested", "settlement.opened", "settlement.statement", "settlement.reconciled", "settlement.mismatch", "settlement.payment_notice", "settlement.payment_received", "settlement.settled",
+  "settlement.requested", "settlement.opened", "settlement.statement", "settlement.reconciled", "settlement.mismatch", "settlement.gold_proposed", "settlement.gold_approved", "settlement.payment_notice", "settlement.payment_received", "settlement.settled",
   "price.halt", "price.resume",
   "account.reconcile",
 ] as const;

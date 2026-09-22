@@ -1,16 +1,24 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, fmtDT, fmtG, fmtMoney, STL_STATUS_TR, STL_TRIGGER_TR, type Settlement, type useLive } from "../api.ts";
-import { nextAction, openMoneyLegs, steps } from "../settlementFlow.ts";
+import { legs, reconciliation, scopeText, summary, type Leg } from "../settlementFlow.ts";
 
 type Live = ReturnType<typeof useLive>;
+const LEG_CHOICES: { key: string; label: string; scope: string[] }[] = [
+  { key: "ALL", label: "Tümü (altın + üç kur)", scope: [] },
+  { key: "GOLD", label: "Yalnız altın", scope: ["GOLD"] },
+  { key: "MONEY", label: "Yalnız para (üç kur)", scope: ["USD", "EUR", "AED"] },
+  { key: "USD", label: "Yalnız USD", scope: ["USD"] },
+  { key: "EUR", label: "Yalnız EUR", scope: ["EUR"] },
+  { key: "AED", label: "Yalnız AED", scope: ["AED"] },
+];
 
 /**
  * R8 Mahsuplaşma (Akışlar 12).
  *
- * Ekran tek soruya cevap verir: "şimdi ne olacak". Üstte beş adımlık durum şeridi,
- * altında o an yapılacak tek aksiyon durur. Rakamlar ve geçmiş "Ayrıntılar" altındadır.
- * Akış değişmedi: ekstre → mutabakat → altın bacağı (kasa talimatı) → para bacağı → kapanış.
+ * Ekran tek bir listeye indirgenmiştir: kapatılacak her kalem bir bacaktır (altın, USD, EUR, AED).
+ * Her satırda ne kadar, kim borçlu, hangi hâlde ve o an yapılacak tek iş yazar. Üstte tek cümlelik özet,
+ * altında mutabakat satırı, sonra bacaklar. Rakamlar ve geçmiş "Ayrıntılar" altındadır.
  */
 export function R8Settlement({ live }: { live: Live }) {
   const [items, setItems] = useState<Settlement[]>([]);
@@ -19,7 +27,8 @@ export function R8Settlement({ live }: { live: Live }) {
   const [busy, setBusy] = useState("");
   const [sel, setSel] = useState<Settlement | null>(null);
   const [reason, setReason] = useState("");
-  const [bankRef, setBankRef] = useState("");
+  const [scope, setScope] = useState("ALL");
+  const [bankRef, setBankRef] = useState<Record<string, string>>({});
 
   const load = () => api.settlements().then((r) => { setItems(r.items); setOpen(r.open); if (sel) setSel(r.items.find((x) => x.settlement_id === sel.settlement_id) ?? null); }).catch((e) => setMsg(`Hata: ${e.message}`));
   useEffect(() => { load(); }, [live.overview?.account.seq]);
@@ -32,82 +41,104 @@ export function R8Settlement({ live }: { live: Live }) {
   };
 
   const w = sel ?? open;
-  /** Açık pencere yoksa şerit son pencereyi gösterir: ekran boş kalmasın, gün nasıl kapandı görünsün. */
+  /** Açık pencere yoksa son pencere gösterilir: ekran boş kalmasın, gün nasıl kapandı görünsün. */
   const shown = w ?? items[0] ?? null;
-  const flow = steps(shown);
-  const next = nextAction(w);
-  const legs = w ? openMoneyLegs(w) : [];
-  const leg = next.ccy ? w!.money_leg.find((m) => m.ccy === next.ccy)! : null;
+  const rec = reconciliation(w);
+  const rows = legs(w);
 
   return (
     <div>
       <span className="tag">R8</span>
       <h1>Mahsuplaşma</h1>
-      <p className="sub">Gün içinde biriken karşılıklı alacak ve borç tek seferde kapatılır. Pencere kesim saatinde talep gelmese de kendiliğinden açılır. Adımlar sırayla ilerler; her an yapılacak tek iş aşağıdaki kutuda yazar.</p>
+      <p className="sub">Gün içinde biriken karşılıklı alacak ve borç kapatılır. Kapatılacak her kalem bir bacaktır: altın ve her kur ayrı. Pencere kesim saatinde talep gelmese de kendiliğinden açılır; gün içinde iki taraf da talep edebilir ve isterse tek bacak seçebilir. Bacakların hepsi kapanınca pencere kapanır.</p>
 
-      {/* ---- durum şeridi ---- */}
-      {!w && shown && <div className="small" style={{ marginBottom: 6 }}>Son pencere: {shown.settlement_id} · {fmtDT(shown.opened_ts)}</div>}
-      <div className="steps" style={{ marginBottom: 14 }}>
-        {flow.map((s) => (
-          <div key={s.n} className={`step ${s.state === "bad" ? "now" : s.state}`}>
-            <div className="n">ADIM {s.n}{s.state === "done" ? " ✓" : ""}</div>
-            <div className="t" style={s.state === "bad" ? { color: "var(--bad)" } : undefined}>{s.title}</div>
-            <div className="d">{s.detail}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* ---- sıradaki adım: tek cümle, tek aksiyon ---- */}
+      {/* ---- tek cümlelik özet ---- */}
       <div className="next" style={{ marginBottom: 14 }}>
         <div>
-          <div className="q">{next.title}</div>
-          <div className="w">{next.body}</div>
+          <div className="q">{summary(w)}</div>
+          <div className="w">{w ? `${w.settlement_id} · ${STL_TRIGGER_TR[w.trigger] ?? w.trigger} · kapsam ${scopeText(w)}` : shown ? `son pencere ${shown.settlement_id} · ${fmtDT(shown.opened_ts)}` : "kesim saatinde kendiliğinden açılır"}</div>
         </div>
         <div className="sp" />
-        <div className="row">
-          {next.action === "open" && (
-            <>
-              <input placeholder="gerekçe" value={reason} onChange={(e) => setReason(e.target.value)} style={{ minWidth: 200 }} />
-              <button className="primary" disabled={busy === "open"} onClick={() => act("open", () => api.settlementOpen("REQUEST_AMR", reason.trim() || "rafineri talebi"), "Pencere açıldı, Kanzasset'e bildirim gitti.")}>Mahsuplaşma talep et</button>
-              <button disabled={busy === "open"} onClick={() => act("open", () => api.settlementOpen("CUTOFF", "kesim elle tetiklendi"), "Kesim tetiklendi, pencere açıldı.")}>Kesimi şimdi tetikle</button>
-            </>
-          )}
-          {next.action === "draft" && (
-            <button className="primary" disabled={busy === "draft"} onClick={() => act("draft", () => api.settlementDraft(w!.settlement_id), "Ekstre çıkarıldı ve Kanzasset'e gönderildi.")}>Ekstreyi çıkar</button>
-          )}
-          {next.action === "diffs" && (
-            <button className="primary" disabled={busy === "draft"} onClick={() => act("draft", () => api.settlementDraft(w!.settlement_id), "Ekstre yeniden çıkarıldı, mutabakat tekrar çalışacak.")}>Ekstreyi yeniden çıkar</button>
-          )}
-          {next.action === "gold" && <Link to="/kasa"><button className="primary">R4 Kasa hesabına git</button></Link>}
-          {next.action === "pay-out" && leg && (
-            <>
-              <input placeholder="banka referansı" value={bankRef} onChange={(e) => setBankRef(e.target.value)} style={{ minWidth: 200 }} />
-              <button className="primary" disabled={!bankRef.trim() || busy === "pn"} onClick={() => act("pn", async () => {
-                const r = await api.settlementNotice(w!.settlement_id, { ccy: leg.ccy, amount_cents: Math.abs(leg.net_cents), direction: "AMR_TO_KZ", bank_ref: bankRef.trim() });
-                if (r.needs_approval && r.approval_id) { setMsg(`Ödeme talimatı ikinci onay bekliyor (onay ${r.approval_id}). R10 → bekleyen onaylar ekranından farklı bir kullanıcı onaylamalı.`); throw new Error("ikinci onay bekleniyor"); }
-              }, "Ödeme bildirimi gönderildi.").catch(() => {})}>Ödemeyi bildir</button>
-            </>
-          )}
-          {next.action === "pay-in" && leg && (
-            <button className="primary" disabled={busy === "pr"} onClick={() => act("pr", () => api.settlementReceived(w!.settlement_id, leg.ccy), `${leg.ccy} ödemesi alındı olarak işaretlendi.`)}>Ödeme alındı</button>
-          )}
-          {next.action === "done" && w?.doc_id && (
-            <a className="pill accent" href={`/admin/documents/${w.doc_id}/pdf`} target="_blank" rel="noreferrer" style={{ padding: "8px 13px" }}>Mahsuplaşma Ekstresi (PDF)</a>
-          )}
-        </div>
+        {!w && (
+          <div className="row">
+            <select value={scope} onChange={(e) => setScope(e.target.value)}>
+              {LEG_CHOICES.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
+            </select>
+            <input placeholder="gerekçe" value={reason} onChange={(e) => setReason(e.target.value)} style={{ minWidth: 180 }} />
+            <button className="primary" disabled={busy === "open"} onClick={() => act("open", () => api.settlementOpen("REQUEST_AMR", reason.trim() || "rafineri talebi", LEG_CHOICES.find((c) => c.key === scope)!.scope), "Pencere açıldı, ekstre çıkarılabilir.")}>Mahsuplaşma talep et</button>
+          </div>
+        )}
+        {w && rec.canDraft && (
+          <button className="primary" disabled={busy === "draft"} onClick={() => act("draft", () => api.settlementDraft(w.settlement_id), "Ekstre çıkarıldı ve Kanzasset'e gönderildi.")}>{rec.state === "fark" ? "Ekstreyi yeniden çıkar" : "Ekstreyi çıkar"}</button>
+        )}
+        {w?.status === "SETTLED" && w.doc_id && (
+          <a className="pill accent" href={`/admin/documents/${w.doc_id}/pdf`} target="_blank" rel="noreferrer" style={{ padding: "8px 13px" }}>Mahsuplaşma Ekstresi (PDF)</a>
+        )}
       </div>
 
       {msg && <div className="note" style={{ marginBottom: 12 }}>{msg}</div>}
 
-      {/* ---- mutabakat farkları: yalnız fark varken ---- */}
-      {w?.diffs && w.diffs.length > 0 && (
-        <section className="card" style={{ marginBottom: 14, borderColor: "var(--bad)" }}>
-          <h2>Mutabakat farkları</h2>
-          <p className="small">İki ekstre tutmadığı sürece ödeme yapılmaz. Kalemler düzeltilip ekstre yeniden çıkarılır.</p>
+      {/* ---- mutabakat: tek satır, farklar açılır ---- */}
+      {w && (
+        <section className="card" style={{ marginBottom: 14, borderColor: rec.state === "fark" ? "var(--bad)" : undefined }}>
+          <div className="row">
+            <h2 style={{ margin: 0 }}>Mutabakat</h2>
+            <span className={`pill ${rec.state === "eşit" ? "ok" : rec.state === "fark" ? "bad" : "warn"}`}>{rec.state === "eşit" ? "eşit" : rec.state === "fark" ? "fark var" : rec.state === "bekliyor" ? "Kanzasset karşılaştırıyor" : "ekstre bekleniyor"}</span>
+            <span className="small">{rec.text}</span>
+          </div>
+          {w.diffs && w.diffs.length > 0 && (
+            <table style={{ marginTop: 10 }}>
+              <thead><tr><th>Alan</th><th className="num">Rafineri</th><th className="num">Kanzasset</th></tr></thead>
+              <tbody>{w.diffs.map((d, i) => <tr key={i}><td>{d.field}</td><td className="num mono">{d.amr}</td><td className="num mono">{d.kz}</td></tr>)}</tbody>
+            </table>
+          )}
+          <p className="small" style={{ marginTop: 8 }}>İki ekstre tutmadan hiçbir bacak kapanmaz: önce kalemler düzeltilir, ekstre yeniden çıkarılır.</p>
+        </section>
+      )}
+
+      {/* ---- bacaklar: her satırda tek iş ---- */}
+      {w && (
+        <section className="card" style={{ marginBottom: 14 }}>
+          <h2>Bacaklar</h2>
           <table>
-            <thead><tr><th>Alan</th><th className="num">Rafineri</th><th className="num">Kanzasset</th></tr></thead>
-            <tbody>{w.diffs.map((d, i) => <tr key={i}><td>{d.field}</td><td className="num mono">{d.amr}</td><td className="num mono">{d.kz}</td></tr>)}</tbody>
+            <thead><tr><th>Bacak</th><th className="num">Tutar</th><th>Kim borçlu</th><th>Durum</th><th>Şu an</th><th /></tr></thead>
+            <tbody>
+              {rows.length === 0 && <tr><td colSpan={6} className="small">Ekstre çıkınca bacaklar belirir.</td></tr>}
+              {rows.map((l) => (
+                <tr key={l.key}>
+                  <td><b>{l.label}</b></td>
+                  <td className="num mono">{l.amount}</td>
+                  <td className="small">{l.who}</td>
+                  <td><StatePill l={l} /></td>
+                  <td className="small">{l.note}</td>
+                  <td>
+                    <div className="row" style={{ justifyContent: "flex-end" }}>
+                      {l.action === "gold-propose" && (
+                        <button className="primary" disabled={busy === "gp"} onClick={() => act("gp", () => api.settlementProposeGold(w.settlement_id), "Teklif gönderildi: Kanzasset onaylayınca kasa girişi talebi gelir.")}>{l.actionLabel}</button>
+                      )}
+                      {l.action === "gold-accept-info" && <Link to="/kasa"><button className="ghost">{l.actionLabel}</button></Link>}
+                      {l.action === "pay-notice" && (
+                        <>
+                          <input placeholder="banka referansı" value={bankRef[l.ccy!] ?? ""} onChange={(e) => setBankRef({ ...bankRef, [l.ccy!]: e.target.value })} style={{ width: 150 }} />
+                          <button className="primary" disabled={!(bankRef[l.ccy!] ?? "").trim() || busy === `pn${l.ccy}`} onClick={() => act(`pn${l.ccy}`, async () => {
+                            const leg = w.money_leg.find((m) => m.ccy === l.ccy)!;
+                            const r = await api.settlementNotice(w.settlement_id, { ccy: leg.ccy, amount_cents: Math.abs(leg.net_cents), direction: "AMR_TO_KZ", bank_ref: (bankRef[l.ccy!] ?? "").trim() });
+                            if (r.needs_approval && r.approval_id) setMsg(`Ödeme talimatı ikinci onay bekliyor (onay ${r.approval_id}). R11 Ayarlar ekranından farklı bir kullanıcı onaylar.`);
+                          }, "Ödeme bildirimi gönderildi.")}>{l.actionLabel}</button>
+                        </>
+                      )}
+                      {l.action === "pay-received" && (
+                        <button className="primary" disabled={busy === `pr${l.ccy}`} onClick={() => act(`pr${l.ccy}`, () => api.settlementReceived(w.settlement_id, l.ccy!), `${l.ccy} ödemesi alındı olarak işlendi.`)}>{l.actionLabel}</button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
           </table>
+          <p className="small" style={{ marginTop: 8 }}>
+            Altın bacağının sırası sabittir. Rafineri gram borçluysa "kasaya koyalım mı" diye teklif eder, Kanzasset onaylar, kasa girişi talebi gelir, Kasa Giriş Fişi kesilir. Kanzasset gram borçluysa talebi o gönderir: rafineri kendi başına kasadan gram çıkaramaz.
+          </p>
         </section>
       )}
 
@@ -120,9 +151,10 @@ export function R8Settlement({ live }: { live: Live }) {
               <h2>Pencere</h2>
               <div className="kv">
                 <span className="k">Tetik</span><span>{STL_TRIGGER_TR[shown.trigger] ?? shown.trigger}</span>
+                <span className="k">Kapsam</span><span>{scopeText(shown)}</span>
                 <span className="k">Aralık</span><span className="mono small">{fmtDT(shown.window_from)} → {fmtDT(shown.window_to)}</span>
                 <span className="k">İşlem sayısı</span><span>{shown.statement?.movements.length ?? 0}</span>
-                <span className="k">Ekstre özeti</span><span className="mono small" style={{ wordBreak: "break-all" }}>{shown.statement_hash?.slice(0, 24)}…</span>
+                <span className="k">Ekstre özeti</span><span className="mono small" style={{ wordBreak: "break-all" }}>{shown.statement_hash?.slice(0, 24) ?? ""}…</span>
                 {shown.kz_statement_hash && <><span className="k">Kanzasset özeti</span><span className="mono small" style={{ wordBreak: "break-all" }}>{shown.kz_statement_hash.slice(0, 24)}…</span></>}
                 <span className="k">Kesim ayarı</span><span className="mono small">{live.overview?.settings["settlement.cutoff_local"] ?? "17:00"} {live.overview?.settings["settlement.timezone"] ?? "Asia/Dubai"}</span>
               </div>
@@ -136,10 +168,10 @@ export function R8Settlement({ live }: { live: Live }) {
               {shown.gold_leg ? (
                 <div className="kv">
                   <span className="k">T net</span><span className="mono">{shown.gold_leg.t_net_mg >= 0 ? "+" : ""}{fmtG(shown.gold_leg.t_net_mg)} g</span>
-                  <span className="k">Yön</span><span>{shown.gold_leg.direction === "VAULT_IN" ? "kasa girişi" : shown.gold_leg.direction === "VAULT_OUT" ? "kasa çıkışı" : "işlem yok"}</span>
-                  <span className="k">Miktar</span><span className="mono">{fmtG(shown.gold_leg.qty_mg)} g</span>
+                  <span className="k">Yön</span><span>{shown.gold_leg.direction === "VAULT_IN" ? "kasa girişi (rafineri borçlu)" : shown.gold_leg.direction === "VAULT_OUT" ? "kasa çıkışı (Kanzasset borçlu)" : "yok"}</span>
+                  <span className="k">Teklif</span><span className="mono small">{shown.gold_leg.proposed_ts ? fmtDT(shown.gold_leg.proposed_ts) : "yok"}</span>
+                  <span className="k">Onay</span><span className="mono small">{shown.gold_leg.approved_ts ? fmtDT(shown.gold_leg.approved_ts) : "bekliyor"}</span>
                   <span className="k">Talimatlar</span><span className="mono small">{shown.gold_leg.requests.join(", ") || "bekleniyor"}</span>
-                  <span className="k">Durum</span><span><span className={`pill ${shown.gold_leg.done ? "ok" : "warn"}`}>{shown.gold_leg.done ? "kapandı" : "bekliyor"}</span></span>
                 </div>
               ) : <div className="small">Ekstre çıkınca belirir.</div>}
               <h2 style={{ marginTop: 14 }}>Para bacağı</h2>
@@ -157,25 +189,25 @@ export function R8Settlement({ live }: { live: Live }) {
                   ))}
                 </tbody>
               </table>
-              {legs.length > 1 && <div className="small" style={{ marginTop: 6 }}>Kalan {legs.length} kur sırayla kapanır; üstteki kutu sıradakini gösterir.</div>}
             </div>
           </div>
           <h2 style={{ marginTop: 14 }}>Zaman çizelgesi</h2>
-          <table><tbody>{(shown.history ?? []).map((h, i) => <tr key={i}><td className="mono small" style={{ whiteSpace: "nowrap" }}>{fmtDT(h.ts)}</td><td className="small"><b>{STL_STATUS_TR[h.status] ?? h.status}</b> {h.note ?? ""}</td></tr>)}</tbody></table>
+          <table><tbody>{(shown.history ?? []).map((h, i) => <tr key={i}><td className="mono small" style={{ whiteSpace: "nowrap" }}>{fmtDT(h.ts)}</td><td className="small">{STL_STATUS_TR[h.status] ?? h.status}</td><td className="small">{h.note ?? ""}</td></tr>)}</tbody></table>
         </details>
       )}
 
       <section className="card">
         <h2>Pencereler</h2>
         <table>
-          <thead><tr><th>Açılış</th><th>Pencere</th><th>Tetik</th><th>Durum</th><th className="num">T net</th><th>Para</th><th>Kapanış</th></tr></thead>
+          <thead><tr><th>Açılış</th><th>Pencere</th><th>Tetik</th><th>Kapsam</th><th>Durum</th><th className="num">T net</th><th>Para</th><th>Kapanış</th></tr></thead>
           <tbody>
-            {items.length === 0 && <tr><td colSpan={7} className="small">Pencere yok</td></tr>}
+            {items.length === 0 && <tr><td colSpan={8} className="small">Pencere yok</td></tr>}
             {items.map((x) => (
-              <tr key={x.settlement_id} onClick={() => setSel(x.settlement_id === sel?.settlement_id ? null : x)} style={{ cursor: "pointer", background: sel?.settlement_id === x.settlement_id ? "var(--soft)" : undefined }}>
+              <tr key={x.settlement_id} onClick={() => setSel(x.settlement_id === sel?.settlement_id ? null : x)} style={{ cursor: "pointer", background: sel?.settlement_id === x.settlement_id ? "var(--sel)" : undefined }}>
                 <td className="mono">{fmtDT(x.opened_ts)}</td>
                 <td className="mono small">{x.settlement_id}</td>
                 <td className="small">{STL_TRIGGER_TR[x.trigger] ?? x.trigger}</td>
+                <td className="small">{scopeText(x)}</td>
                 <td><span className={`pill ${x.status === "SETTLED" ? "ok" : x.status === "MISMATCH" ? "bad" : "warn"}`}>{STL_STATUS_TR[x.status] ?? x.status}</span></td>
                 <td className="num mono">{x.gold_leg ? fmtG(x.gold_leg.t_net_mg) : ""}</td>
                 <td className="small">{x.money_leg.filter((m) => m.net_cents !== 0).map((m) => `${m.ccy} ${fmtMoney(m.net_cents)}`).join(" · ") || "yok"}</td>
@@ -184,8 +216,14 @@ export function R8Settlement({ live }: { live: Live }) {
             ))}
           </tbody>
         </table>
-        <div className="small" style={{ marginTop: 6 }}>Satıra tıklayınca o pencerenin adımları yukarıda görünür; tekrar tıklayınca açık pencereye döner.</div>
+        <div className="small" style={{ marginTop: 6 }}>Satıra tıklayınca o pencerenin bacakları yukarıda görünür; tekrar tıklayınca açık pencereye dönülür.</div>
       </section>
     </div>
   );
+}
+
+function StatePill({ l }: { l: Leg }) {
+  const cls = l.state === "kapandı" ? "ok" : l.state === "sizde" ? "warn" : l.state === "karşıda" ? "" : "neut";
+  const text = l.state === "sizde" ? "sizde" : l.state === "karşıda" ? "Kanzasset'te" : l.state;
+  return <span className={`pill ${cls}`}>{text}</span>;
 }

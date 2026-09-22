@@ -408,14 +408,20 @@ footer{margin-top:56px;border-top:1px solid var(--line);padding-top:14px;font-si
 </section>
 <section id="mahsuplaşma-altın-para" class="level2">
 <span class="tag">12</span><h2>Mahsuplaşma (altın + para)</h2>
-<p class="lead">Gün içinde biriken karşılıklı alacak ve borçların (gram ve para) tek seferde kapatılması. İçindeki <strong>mutabakat</strong> adımı iki tarafın ekstrelerinin birebir karşılaştırılmasıdır. <strong>Tetik:</strong> gün sonu kesim <strong>17:00 Dubai</strong> · <strong>iki taraftan birinin talebi</strong> ("şimdi netleş"; karşı tarafa bildirim düşer) · cari hesap limiti (K3). <strong>Talep gelmese de</strong> kesim saatinde mahsuplaşma kendiliğinden başlar; kesim saati, saat dilimi ve gün içi pencere sayısı panelden ayarlanır (R10 / K9, <code>settlement.cutoff_local</code>, <code>settlement.timezone</code>, <code>settlement.windows_per_day</code>). <strong>Sıklık parametre:</strong> gün sonu (<code>N = 1</code>) ya da gün içi pencereler (<code>N</code> / gün); iki şirket aynı bankada hesap tutarsa transfer anlık olur ve pencere sıklığı artırılabilir. Mint ve burn'de yeni fiyat alınmaz: her gram müşteri emrinde alındı ya da satıldı.</p>
+<p class="lead">Gün içinde biriken karşılıklı alacak ve borçların (gram ve para) tek seferde kapatılması. İçindeki <strong>mutabakat</strong> adımı iki tarafın ekstrelerinin birebir karşılaştırılmasıdır. <strong>Tetik:</strong> gün sonu kesim <strong>17:00 Dubai</strong> · <strong>iki taraftan birinin talebi</strong> ("şimdi netleş"; karşı tarafa bildirim düşer) · cari hesap limiti (K3). <strong>Talep gelmese de</strong> kesim saatinde mahsuplaşma kendiliğinden başlar; kesim saati, saat dilimi ve gün içi pencere sayısı panelden ayarlanır (R11 / K11, <code>settlement.cutoff_local</code>, <code>settlement.timezone</code>, <code>settlement.windows_per_day</code>). <strong>Sıklık parametre:</strong> gün sonu (<code>N = 1</code>) ya da gün içi pencereler (<code>N</code> / gün); iki şirket aynı bankada hesap tutarsa transfer anlık olur ve pencere sıklığı artırılabilir. Mint ve burn'de yeni fiyat alınmaz: her gram müşteri emrinde alındı ya da satıldı.</p>
+<p><strong>Kapatılacak her kalem bir bacaktır:</strong> altın ve her kur (USD, EUR, AED) ayrı bacaktır. Pencere açılırken <strong>kapsam</strong> seçilir: kesim saatinde açılan pencerede kapsam hep tümüdür; gün içi talepte tek bacak da seçilebilir (ör. yalnız USD). Kapsam dışındaki bacaklar dokunulmadan kalır, bir sonraki pencereye girer. Bacakların hepsi kapanınca pencere kapanır.</p>
 <div class="cap" style="margin-top:14px">Adımlar</div>
 <ol type="1">
 <li>Pencere kapanır; iki taraf da ekstre hazırlar: işlem listesi · <code>T</code> net gram · kur bazında para (alış satış bedelleri + lojistik ve rafinasyon bedelleri) · hizmet bedelleri.</li>
-<li><strong>Mutabakat:</strong> iki ekstre karşılaştırılır; bakiye bilgisi sayesinde birebir eşit olmalı; fark → <code>RECONCILE</code>, ödeme bekler.</li>
-<li><strong>Altın bacağı:</strong> <code>T &gt; 0</code> → kasa girişi <code>T</code> + mint <code>T</code> (05) · <code>T &lt; 0</code> → burn <code>|T|</code> + kasa çıkışı <code>|T|</code> (06) · sonuç <code>T = 0</code>, <code>S = K = hedef</code>.</li>
-<li><strong>Para bacağı:</strong> kur bazında net → borçlu öder, banka hesabından banka hesabına, Kanzasset tarafında yalnız şirket hesabı (K5) · ödeme bildirimi · karşı taraf "ödeme alındı" der → <code>SETTLED</code>.</li>
-<li>Limit sayaçları sıfırlanır.</li>
+<li><strong>Mutabakat:</strong> iki ekstre karşılaştırılır; bakiye bilgisi sayesinde birebir eşit olmalı; fark → <code>RECONCILE</code>, ödeme bekler. Mutabakat sağlanmadan hiçbir bacak kapanmaz.</li>
+<li><strong>Altın bacağı.</strong> Sıra iki yönde de sabittir ve bozulamaz:
+<ul>
+<li><code>T &gt; 0</code> (rafineri gram borçlu): rafineri <strong>"kasaya koyalım mı"</strong> diye teklif eder → Kanzasset <strong>onaylar</strong> → kasa girişi talebi (05) → <strong>Kasa Giriş Fişi</strong> → <strong>mint</strong>. Fiş olmadan token basılmaz.</li>
+<li><code>T &lt; 0</code> (Kanzasset gram borçlu): Kanzasset önce <strong>burn</strong> eder, sonra kasa çıkışı talebi gönderir (06). <strong>Rafineri kendi başına kasadan gram çıkaramaz:</strong> çıkış yalnız Kanzasset'in talebiyle başlar, böylece karşılıksız token oluşmaz.</li>
+<li>Sonuç: <code>T = 0</code>, <code>S = K = hedef</code>.</li>
+</ul></li>
+<li><strong>Para bacağı:</strong> kur bazında net → borçlu öder, banka hesabından banka hesabına, Kanzasset tarafında yalnız şirket hesabı (K5) · ödeme bildirimi · karşı taraf "ödeme alındı" der. Her kur kendi başına kapanır.</li>
+<li>Kapsamdaki bütün bacaklar kapanınca pencere <code>SETTLED</code> olur ve limit sayaçları sıfırlanır.</li>
 </ol>
 <div class="diagram"><div class="cap">Örnek · gün sonu kesimi · T +7.000 g · USD net Kanzasset → AMR</div><pre class="mermaid">sequenceDiagram
   autonumber

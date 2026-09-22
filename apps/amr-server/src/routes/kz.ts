@@ -17,6 +17,7 @@ import type { FastifyInstance } from "fastify";
 import { DeliveryRequestBody, OrderRequest, RefiningRequestBody, VaultRequestBody, type Catalog, type CurrentAccountStatement, type SessionStatus, type VaultStatement, type WsAuth } from "@amr/contract";
 import { Value } from "@sinclair/typebox/value";
 import type { AppContext } from "../context.ts";
+import { parseScope, type SettlementError } from "../settlement.ts";
 import { verify } from "../auth.ts";
 import { currentAccountBalance, getDocument, listCurrentAccountMovements, markDocumentSent, signContent } from "../ledger.ts";
 import { FulfilmentError } from "../fulfilment.ts";
@@ -143,15 +144,21 @@ export async function kzRoutes(app: FastifyInstance, ctx: AppContext) {
 
   // ----- mahsuplaşma (12) -----
   /** Pencere açar; açık pencere varsa onu döner. İki taraf da çağırabilir. */
-  app.post<{ Body: { trigger?: string; reason?: string } }>("/v1/settlements", async (req) => {
+  app.post<{ Body: { trigger?: string; reason?: string; scope?: string[] } }>("/v1/settlements", async (req) => {
     const trigger = (req.body?.trigger as any) ?? "REQUEST_KZ";
-    const s = ctx.settlement.open(trigger, req.body?.reason?.trim());
+    const s = ctx.settlement.open(trigger, req.body?.reason?.trim(), parseScope(req.body?.scope));
     if (trigger === "REQUEST_KZ") ctx.notify("settlement.requested", "Kanzasset mahsuplaşma talep etti", req.body?.reason ?? "", s.settlement_id);
     return s;
   });
   app.get<{ Params: { id: string } }>("/v1/settlements/:id", async (req, reply) =>
     ctx.settlement.get(req.params.id) ?? reply.code(404).send({ error: "pencere yok" }));
   /** Mutabakat: KZ kendi ekstresinin özetini gönderir. */
+  /** Altın teklifini onayla: kasa girişi talebi bundan sonra gelir (K1 güvencesi). */
+  app.post<{ Params: { id: string } }>("/v1/settlements/:id/gold/approve", async (req, reply) => {
+    try { return ctx.settlement.approveGold(req.params.id); }
+    catch (e) { return reply.code((e as SettlementError).code ?? 409).send({ error: (e as Error).message }); }
+  });
+
   app.post<{ Params: { id: string }; Body: { statement_hash?: string; gold_mg?: number; money?: { ccy: string; cents: number }[] } }>("/v1/settlements/:id/confirm", async (req, reply) => {
     const h = req.body?.statement_hash;
     if (!h) return reply.code(400).send({ error: "statement_hash zorunlu" });

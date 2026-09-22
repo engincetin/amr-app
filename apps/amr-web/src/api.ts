@@ -75,7 +75,8 @@ export const api = {
   rfnCancel: (id: string, reason: string) => req<Refining>(`/admin/refining/${id}/cancel`, { method: "POST", body: JSON.stringify({ reason }) }),
   // R8 mahsuplaşma
   settlements: () => req<{ items: Settlement[]; open: Settlement | null }>("/admin/settlements"),
-  settlementOpen: (trigger: string, reason?: string) => req<Settlement>("/admin/settlements", { method: "POST", body: JSON.stringify({ trigger, reason }) }),
+  settlementOpen: (trigger: string, reason?: string, scope?: string[]) => req<Settlement>("/admin/settlements", { method: "POST", body: JSON.stringify({ trigger, reason, scope }) }),
+  settlementProposeGold: (id: string) => req<Settlement>(`/admin/settlements/${id}/gold/propose`, { method: "POST", body: "{}" }),
   settlementDraft: (id: string) => req<Settlement>(`/admin/settlements/${id}/draft`, { method: "POST", body: "{}" }),
   settlementNotice: (id: string, b: { ccy: string; amount_cents: number; direction: string; bank_ref: string; approval_id?: number; approver?: string }) =>
     req<Settlement & { needs_approval?: boolean; approval_id?: number }>(`/admin/settlements/${id}/payment-notice`, { method: "POST", body: JSON.stringify(b) }),
@@ -151,7 +152,8 @@ export interface Settlement {
   statement?: { movements: Movement[]; gold_mg: number; money: { ccy: string; cents: number }[]; fees: { type: string; ccy: string; amount_cents: number }[]; hash: string; signature: string };
   statement_hash?: string; kz_statement_hash?: string;
   diffs?: { field: string; amr: string; kz: string }[];
-  gold_leg?: { t_net_mg: number; direction: string; qty_mg: number; requests: string[]; done: boolean };
+  scope?: string[];
+  gold_leg?: { t_net_mg: number; direction: string; qty_mg: number; requests: string[]; done: boolean; proposed_ts?: string; approved_ts?: string };
   money_leg: { ccy: string; net_cents: number; direction: string; paid: boolean; bank_ref?: string; notice_ts?: string; received_ts?: string }[];
   doc_id?: string; opened_ts: string; settled_ts?: string; history?: { status: string; ts: string; note?: string }[];
 }

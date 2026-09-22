@@ -1115,6 +1115,34 @@
         }
       }
     },
+    "/admin/settlements/{id}/gold/propose": {
+      "post": {
+        "summary": "R8 altın teklifi: kasaya koyalım mı",
+        "description": "rafineri Kanzasset'e gram borçluyken teklifi gönderir; Kanzasset onaylamadan kasa girişi talebi gelmez.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/admin/settlements/{id}/draft": {
       "post": {
         "summary": "R8 ekstre taslağı üret (mutabakat adımı)",

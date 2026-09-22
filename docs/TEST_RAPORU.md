@@ -32,7 +32,7 @@ Testlerdeki rakamlar dokümandaki örneklerle aynıdır: 70,104 g alış @ 142,0
 | Kasa talimatları (05, 06) | fiş üretimi ve defter etkisi · iki kuralın hem istekte hem kabulde çalışması · `ref` tekilliği (çift mint koruması) · red · T+3 aşımı ve gecikmeli kapanış · otomatik kabul · günlük kasa ekstresi |
 | Teslimat (10) | talep, teklif, onay (bedel cari hesaba), hazır (Sevkiyat Fişi), sevk, teslim · kasada yeterli gram kuralı · hazırdan iptalde külçenin kasaya dönmesi · sevkiyattan sonra iptal edilememesi · teklif süresinin dolması |
 | Rafinasyon (11) | katalog tohumlama ve sürüm artışı · kalemlerin toplam saf grama çevrilmesi · pasif ürünün seçilememesi · teklif, onay, üretim, hazır, teslim · iptalin yalnız üretime kadar olması |
-| Mahsuplaşma (12) | pencere açılışı ve ekstre taslağı · tek açık pencere kuralı · mutabakat (eşit / farklı) · altın bacağının kasa talimatıyla kapanması · para bacağı ve cari hesabın kapanması · kesim saatinin bir kez tetiklenmesi |
+| Mahsuplaşma (12) | pencere açılışı ve ekstre taslağı · tek açık pencere kuralı · **kapsam** (yalnız USD seçilince altın ve diğer kurlar dokunulmaz) · mutabakat (eşit / farklı) · **altın teklifi ve onayı** (rafineri borçluyken teklif, Kanzasset borçluyken teklif edilemez) · altın bacağının kasa talimatıyla kapanması · para bacağı ve cari hesabın kapanması · kesim saatinin bir kez tetiklenmesi |
 | Belgeler | PDF üretimi (A4, başlık, belge no, imza özeti) · Türkçe karakterlerin WinAnsi ile kodlanması |
 | Roller ve onaylar | Denetçinin hiçbir elle aksiyon yapamaması · rol yetkilerinin doğruluğu · ikinci onayda aynı kullanıcının onaylayamaması · kullanıcı değişikliğinin denetim günlüğüne yazılması |
 
@@ -47,7 +47,7 @@ Testlerdeki rakamlar dokümandaki örneklerle aynıdır: 70,104 g alış @ 142,0
 | Büyük alış / satış (07, 08) | eksik hesabı ve `mint_policy` · mint tamamlanınca tek seferde teslim · mint bloke iken teslimin beklemesi · tavan aşımında fazlanın yakılması · taban ve tavan aşılmadığında zincirin kurulmaması |
 | Hazine alım satımı (09) | onay matrisi · maker-checker kuralları · açılış alımı zinciri (S = K = 20.000, A = V) · satım zinciri ve hedefin düşmesi · stok yetmezse talebin açılmaması · emir reddinde zincirin kurulmaması · tavanın hazine alımını da durdurması |
 | Teslimat ve rafinasyon (10, 11) | emanet (E +x, C −x) ve arzın değişmemesi · burn anı (teslim / sevkiyat) · iptalde emanetin çözülmesi · müşteri tokeni yetmezse talebin açılmaması · müşteri fiyatının marj ve komisyon dahil hesaplanması · hazine stokunun ve hedefin etkilenmemesi (K2) |
-| Mahsuplaşma (12) | mutabakatın eşit ve farklı durumları · altın bacağının yönü · para bacağında borçlu ve alacaklı davranışı · ödemenin cari hesabı kapatması |
+| Mahsuplaşma (12) | mutabakatın eşit ve farklı durumları · altın bacağının yönü · **onaysız kasa girişi talebi gönderilmemesi** · kapsamın rafineriye iletilmesi · para bacağında borçlu ve alacaklı davranışı · ödemenin cari hesabı kapatması |
 
 ---
 
@@ -66,7 +66,8 @@ Testlerdeki rakamlar dokümandaki örneklerle aynıdır: 70,104 g alış @ 142,0
 | S6 cevapsız emir | ✓ zaman aşımı → durum sorgusu → iptal, kesin cevap |
 | S7 fiziksel teslimat | ✓ emanet, lojistik teklifi, onay, Sevkiyat Fişi, takip no, teslim, burn |
 | S8 rafinasyon | ✓ katalog, teklif, onay, üretim, teslim, burn; müşteri fiyatı marj ve komisyon dahil |
-| S9 mahsuplaşma | ✓ kesim tetiklendi, Kanzasset mutabakatı kendiliğinden yaptı (**EŞİT**), altın bacağı kasa talimatıyla, para bacağı şirket hesabından ödeme ile kapandı, pencere **SETTLED**, Mahsuplaşma Ekstresi kesildi |
+| S9 mahsuplaşma | ✓ kesim tetiklendi, Kanzasset mutabakatı kendiliğinden yaptı (**EŞİT**), rafineri altını kasaya koymayı teklif etti, Kanzasset onayladı, kasa girişi fişiyle kapandı, para bacağı şirket hesabından ödeme ile kapandı, pencere **SETTLED**, Mahsuplaşma Ekstresi kesildi |
+| S9c tek bacak | ✓ yalnız USD kapsamıyla pencere açıldı: USD sıfırlandı, altın (25 g) ve diğer kurlar dokunulmadan kaldı, pencere **SETTLED** |
 | S9b eşleşme uyuşmazlığı | ✓ kayıt bilerek kaydırıldı → RECONCILE ve bloke → açıklama ile çözüldü |
 
 **Koşum sonu (son koşum):**
