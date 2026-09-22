@@ -49,7 +49,7 @@ export function R7Refining({ live }: { live: Live }) {
           <tbody>
             {items.length === 0 && <tr><td colSpan={9} className="small">Rafinasyon talebi yok</td></tr>}
             {items.map((r) => (
-              <tr key={r.refining_id} style={{ background: sel?.refining_id === r.refining_id ? "#f4f5f7" : undefined }}>
+              <tr key={r.refining_id} style={{ background: sel?.refining_id === r.refining_id ? "var(--sel)" : undefined }}>
                 <td className="mono">{fmtDT(r.requested_ts)}</td>
                 <td className="mono small" onClick={() => setSel(r)} style={{ cursor: "pointer" }}>{r.ref}</td>
                 <td className="small">{r.items.map((l) => `${l.qty} × ${l.name}`).join(", ")}<br /><span className="small">adres {r.address_ref}</span></td>

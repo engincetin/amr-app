@@ -1,30 +1,42 @@
 /**
  * AMR rafineri paneli · görsel dil.
  *
- * Renkler ve tipografi Kanzasset tasarım dosyalarındaki "AMR Backoffice v3" düzeninden gelir:
- * sıcak nötrler (#F6F4F0 zemin, #E8E4DC çizgi), koyu kahve yan menü (#1C1813), rafineri vurgusu
- * altın kahve (#857458). Durum renkleri iki panelde ortaktır: yeşil #0F7A47, amber #B7791F,
- * mavi #0F5AA0, kırmızı #C0392B. Yazı Manrope, sayılar JetBrains Mono (tabular).
+ * Kanzasset backoffice'iyle (kanzasset-bo) aynı iskelet: açık renkli, açılıp kapanan yan menü,
+ * marka satırında logo + ad + rozet, ortak durum renkleri, Manrope + JetBrains Mono.
+ * Rafineri kimliği sıcak nötrler ve altın kahve vurgudur; Kanzasset kırmızısının karşılığıdır.
  *
+ * Açık / koyu mod: koyu değerler `html.dark` altında yeniden tanımlanır (ThemeService karşılığı
+ * api.ts içindeki tema yardımcısıdır, seçim localStorage'da durur, "sistem" tercihi de desteklenir).
  * Fontlar pakete gömülüdür (@fontsource): kapalı ağda da doğru görünür, dışarıdan dosya çekilmez.
- * Sınıf adları değişmedi; ekranlar aynı yapıyı kullanmaya devam eder.
+ * Sınıf adları değişmedi; ekranlar aynı bileşen sözlüğünü kullanır.
  */
 :root{
+  color-scheme:light;
   /* zemin ve yüzeyler */
-  --bg:#F6F4F0; --card:#fff; --soft:#FBFAF7; --soft2:#EFEBE3;
+  --bg:#F6F4F0; --card:#fff; --soft:#FBFAF7; --soft2:#EFEBE3; --sel:#EFEBE3;
   --line:#E8E4DC; --line2:#EFEBE3; --line3:#DED8CC;
   /* yazı */
   --ink:#171410; --mut:#8A8378; --mut2:#A39C90; --ink2:#6B6257;
   /* rafineri vurgusu */
   --accent:#857458; --accent-dark:#5C4F3B; --accent-hover:#6E5F47; --accent-soft:rgba(133,116,88,.12);
-  --red:#857458; /* eski ad, vurgu rengine bağlandı */
-  --gold:#857458;
-  /* yan menü */
-  --side:#1C1813; --side-fg:#CFC8BA; --side-fg-strong:#F0E9DC; --side-line:rgba(255,255,255,.08); --side-hover:rgba(255,255,255,.05);
+  --red:#857458; --gold:#857458;
   /* durum */
   --ok:#0F7A47; --warn:#B7791F; --info:#0F5AA0; --bad:#C0392B;
   --ok-soft:rgba(15,122,71,.1); --warn-soft:rgba(183,121,31,.12); --info-soft:rgba(15,90,160,.1); --bad-soft:rgba(192,57,43,.1);
   --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  --shadow:0 16px 40px rgba(23,20,16,.16);
+  --side-w:240px;
+}
+html.dark{
+  color-scheme:dark;
+  --bg:#121110; --card:#1A1815; --soft:#201D19; --soft2:#262218; --sel:#2A251E;
+  --line:#2C2822; --line2:#241F1A; --line3:#3A342B;
+  --ink:#F3EFE8; --mut:#A39C90; --mut2:#7C7466; --ink2:#DCD5C9;
+  --accent:#C9A87C; --accent-dark:#A98C64; --accent-hover:#D9BC93; --accent-soft:rgba(201,168,124,.16);
+  --red:#C9A87C; --gold:#C9A87C;
+  --ok:#3DD68C; --warn:#E0A042; --info:#5AA9E6; --bad:#E5645D;
+  --ok-soft:rgba(61,214,140,.14); --warn-soft:rgba(224,160,66,.14); --info-soft:rgba(90,169,230,.14); --bad-soft:rgba(229,100,93,.14);
+  --shadow:0 16px 40px rgba(0,0,0,.5);
 }
 *{box-sizing:border-box}
 html,body,#root{height:100%;margin:0}
@@ -34,22 +46,44 @@ a{color:inherit;text-decoration:none}
 ::-webkit-scrollbar-thumb{background:var(--line3);border-radius:6px;border:3px solid var(--bg)}
 .mono{font-family:var(--mono);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
 
-/* ---- iskelet ---- */
-.layout{display:grid;grid-template-columns:248px 1fr;grid-template-rows:64px 1fr;height:100%}
-.brand{grid-column:1;grid-row:1;background:var(--side);color:var(--side-fg-strong);padding:0 18px;display:flex;align-items:center;gap:11px;border-bottom:1px solid var(--side-line)}
-.brand img{width:30px;display:block;flex-shrink:0}
-.brand .bt{font-weight:800;font-size:11.5px;letter-spacing:.04em;line-height:1.25}
-.brand .bs{font-size:10.5px;color:#8A8378;font-weight:600}
-.brand b{display:none}
+/* ---- iskelet: yan menü + üst şerit + içerik ---- */
+.layout{display:grid;grid-template-columns:var(--side-w) 1fr;grid-template-rows:64px 1fr;height:100%;transition:grid-template-columns .22s ease}
+.layout.collapsed{--side-w:64px}
 
-.nav{grid-column:1;grid-row:2;background:var(--side);color:var(--side-fg);padding:14px 12px;overflow:auto;display:flex;flex-direction:column;gap:2px}
-.nav a{display:flex;gap:10px;align-items:center;padding:9px 11px;border-radius:8px;color:var(--side-fg);font-size:12.5px;font-weight:600;white-space:nowrap}
-.nav a .code{font-family:var(--mono);font-size:10px;letter-spacing:.06em;color:#7C7466;width:26px}
-.nav a:hover{background:var(--side-hover);color:#fff}
-.nav a.active{background:rgba(255,255,255,.09);color:#fff}
+/* yan menü: açık renkli, açılıp kapanır (kanzasset-bo düzeni) */
+.side{grid-column:1;grid-row:1 / 3;position:relative;background:var(--card);border-right:1px solid var(--line);display:flex;flex-direction:column;padding:0 14px 18px;min-width:0;transition:padding .22s ease}
+.layout.collapsed .side{padding:0 8px 16px}
+.side-toggle{position:absolute;top:25px;right:-12px;width:22px;height:22px;min-height:22px;padding:0;border-radius:11px;background:var(--card);border:1px solid var(--line);color:var(--mut);display:grid;place-items:center;cursor:pointer;z-index:5;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.side-toggle:hover{background:var(--soft);color:var(--ink)}
+.side-toggle svg{transition:transform .2s ease}
+.layout.collapsed .side-toggle svg{transform:rotate(180deg)}
+
+.brand{height:64px;flex-shrink:0;display:flex;align-items:center;gap:8px;padding:0 6px;color:var(--ink);overflow:hidden}
+.brand img{width:26px;height:22px;object-fit:contain;display:block;flex-shrink:0}
+/* logo koyu zeminde okunsun: altın kahve işaret açılır */
+html.dark .brand img{filter:brightness(1.55) saturate(1.1)}
+.brand .bt{font-size:16px;font-weight:800;letter-spacing:-.02em;white-space:nowrap}
+.brand .badge{font-family:var(--mono);font-size:10px;font-weight:800;color:var(--accent);background:var(--accent-soft);padding:2px 6px;border-radius:5px;letter-spacing:.04em}
+.layout.collapsed .brand{justify-content:center;padding:0;gap:0}
+.layout.collapsed .brand .bt,.layout.collapsed .brand .badge{display:none}
+
+.nav{grid-column:auto;grid-row:auto;display:flex;flex-direction:column;gap:2px;margin-top:8px;overflow-y:auto;overflow-x:hidden;min-height:0;background:transparent;padding:0}
+.nav a{display:flex;align-items:center;gap:12px;padding:9px 12px;border-radius:8px;color:var(--ink);font-size:13px;font-weight:500;letter-spacing:-.005em;white-space:nowrap}
+.nav a:hover{background:rgba(127,127,127,.07)}
+.nav a.active{background:var(--sel);font-weight:700}
+.nav a .code{font-family:var(--mono);font-size:10.5px;font-weight:700;color:var(--mut);width:26px;flex-shrink:0;text-align:left}
 .nav a.active .code{color:var(--accent)}
-.nav a.doc{margin-top:10px;border-top:1px solid var(--side-line);border-radius:0 0 8px 8px;padding-top:14px;color:#8A8378}
-.nav .sprint{margin-left:auto;font-family:var(--mono);font-size:9.5px;color:#8A8378;border:1px solid rgba(255,255,255,.14);border-radius:99px;padding:1px 7px}
+.nav a .label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.nav a.doc{margin-top:auto;border-top:1px solid var(--line);border-radius:0;padding-top:14px;color:var(--mut)}
+.nav .sprint{font-family:var(--mono);font-size:9.5px;color:var(--mut);border:1px solid var(--line);border-radius:99px;padding:1px 7px}
+.layout.collapsed .nav a{justify-content:center;gap:0;padding:10px 0}
+.layout.collapsed .nav a .label,.layout.collapsed .nav .sprint{display:none}
+.layout.collapsed .nav a .code{width:auto;text-align:center}
+.layout.collapsed .nav a.doc{margin-top:auto;border-radius:0}
+
+/* mobil çekmece */
+.nav-backdrop{display:none}
+.hamburger{display:none}
 
 .topbar{grid-column:2;grid-row:1;display:flex;gap:9px;align-items:center;padding:0 18px;background:var(--card);border-bottom:1px solid var(--line);flex-wrap:nowrap;overflow:hidden}
 /* ölçü kutuları kayar, sağdaki bildirim ve kullanıcı sabit kalır */
@@ -68,8 +102,10 @@ a{color:inherit;text-decoration:none}
 .bell{position:relative;border:1px solid var(--line);border-radius:10px;background:var(--card);height:38px;padding:0 13px;cursor:pointer;font-size:12px;font-weight:700;color:var(--ink2);display:flex;align-items:center;gap:8px;flex-shrink:0}
 .bell:hover{background:var(--soft)}
 .bell .n{background:var(--accent);color:#fff;border-radius:99px;font-family:var(--mono);font-size:10px;font-weight:700;padding:1px 6px;min-width:18px;text-align:center}
+/* tema düğmesi */
+.theme-btn{width:38px;height:38px;padding:0;display:grid;place-items:center;border-radius:10px;flex-shrink:0}
 
-.main{grid-column:2;grid-row:2;overflow:auto;padding:22px 26px 44px}
+.main{grid-column:2;grid-row:2;overflow:auto;padding:22px 26px 44px;min-width:0}
 h1{font-size:19px;font-weight:800;letter-spacing:-.01em;margin:0 0 4px}
 .sub{color:var(--mut);margin:0 0 18px;max-width:84ch;font-size:12.5px}
 .tag{display:inline-block;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.1em;color:var(--accent);background:var(--accent-soft);border-radius:7px;padding:2px 9px;margin-bottom:7px}
@@ -158,3 +194,58 @@ details.card>summary:hover{color:var(--ink)}
 .next .q{font-size:13.5px;font-weight:800;color:var(--ink)}
 .next .w{font-size:12px;color:var(--ink2);margin-top:2px;max-width:70ch}
 .next .sp{flex:1}
+
+/* ---- responsive ---- */
+/* Kırılma noktaları kanzasset-web ile aynı: 1024 tablet, 768 mobil. */
+@media (max-width:1024px){
+  .main{padding:18px 18px 40px}
+  .grid.c2{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+  .grid.c3{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .steps .step{min-width:130px}
+}
+@media (max-width:768px){
+  .layout{grid-template-columns:1fr;grid-template-rows:56px 1fr;--side-w:0px}
+  /* yan menü çekmeceye döner */
+  .side{position:fixed;top:0;left:0;height:100%;width:264px;z-index:60;transform:translateX(-100%);transition:transform .24s ease;padding:0 14px 18px}
+  .layout.nav-open .side{transform:translateX(0);box-shadow:var(--shadow)}
+  .layout.collapsed .side{padding:0 14px 18px}
+  .layout.collapsed .brand{justify-content:flex-start;padding:0 6px;gap:8px}
+  .layout.collapsed .brand .bt,.layout.collapsed .brand .badge{display:inline}
+  .layout.collapsed .nav a{justify-content:flex-start;gap:12px;padding:9px 12px}
+  .layout.collapsed .nav a .label{display:block}
+  .layout.collapsed .nav a .code{width:26px;text-align:left}
+  .side-toggle{display:none}
+  .layout.nav-open .nav-backdrop{display:block;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:59}
+  .hamburger{display:grid;place-items:center;width:36px;height:36px;padding:0;border-radius:9px;flex-shrink:0}
+  /* üst şerit mobilde sadeleşir: menü, bildirim, tema, kullanıcı. Ölçüler zaten ekranların içinde. */
+  .topbar{grid-column:1;grid-row:1;padding:0 10px;gap:6px;justify-content:space-between}
+  .chips{display:none}
+  .bell{padding:0 10px;height:36px;gap:6px}
+  .bell .label,.topbar .sse{display:none}
+  .theme-btn{width:36px;height:36px}
+  .topbar .chip{min-width:0;max-width:150px;padding:4px 9px;border:0}
+  .topbar .chip .l,.topbar .chip .s{display:none}
+  .main{grid-column:1;grid-row:2;padding:16px 14px 36px}
+  .grid{gap:11px}
+  .grid.c2,.grid.c3{grid-template-columns:1fr}
+  .card{padding:14px;border-radius:12px}
+  h1{font-size:18px}
+  .steps{flex-direction:column}
+  .steps .step{border-right:1px solid var(--line);border-bottom:0}
+  .steps .step:first-child{border-radius:11px 11px 0 0}
+  .steps .step:last-child{border-radius:0 0 11px 11px}
+  .next{flex-direction:column;align-items:flex-start;gap:10px}
+  .next .sp{display:none}
+  .drawer{width:auto;left:10px;right:10px;top:60px}
+  input.wide{min-width:0;width:100%}
+  .row{gap:7px}
+  /* geniş tablolar yatay kayar, sayfa taşmaz */
+  table{min-width:560px}
+  .card>table,section>table,details>table,.card table{display:table}
+  .card,section.card,details.card{overflow-x:auto}
+}
+@media (max-width:480px){
+  .main{padding:14px 11px 32px}
+  .chip{min-width:92px;padding:5px 10px}
+  .modal{padding:16px;border-radius:12px}
+}

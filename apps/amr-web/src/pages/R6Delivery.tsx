@@ -43,7 +43,7 @@ export function R6Delivery({ live }: { live: Live }) {
           <tbody>
             {items.length === 0 && <tr><td colSpan={9} className="small">Teslimat talebi yok</td></tr>}
             {items.map((d) => (
-              <tr key={d.delivery_id} style={{ background: sel?.delivery_id === d.delivery_id ? "#f4f5f7" : undefined }}>
+              <tr key={d.delivery_id} style={{ background: sel?.delivery_id === d.delivery_id ? "var(--sel)" : undefined }}>
                 <td className="mono">{fmtDT(d.requested_ts)}</td>
                 <td className="mono small" onClick={() => setSel(d)} style={{ cursor: "pointer" }}>{d.ref}</td>
                 <td className="num mono">{fmtG(d.qty_mg)}</td>

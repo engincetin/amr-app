@@ -98,7 +98,7 @@ function Bar({ pct, text }: { pct: number; text: string }) {
   const color = pct >= 1 ? "var(--bad)" : pct >= 0.8 ? "var(--warn)" : "var(--ok)";
   return (
     <div style={{ marginTop: 8 }}>
-      <div style={{ height: 6, background: "#eceef1", borderRadius: 99 }}><div style={{ width: `${p}%`, height: 6, background: color, borderRadius: 99 }} /></div>
+      <div style={{ height: 6, background: "var(--soft2)", borderRadius: 99 }}><div style={{ width: `${p}%`, height: 6, background: color, borderRadius: 99 }} /></div>
       <div className="small" style={{ marginTop: 4 }}>{text}</div>
     </div>
   );

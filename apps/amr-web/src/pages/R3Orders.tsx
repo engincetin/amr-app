@@ -47,7 +47,7 @@ export function R3Orders({ live }: { live: Live }) {
           <tbody>
             {orders.length === 0 && <tr><td colSpan={11} className="small">Kayıt yok</td></tr>}
             {orders.map((o) => (
-              <tr key={o.order_id} onClick={() => setSel(o)} style={{ cursor: "pointer", background: sel?.order_id === o.order_id ? "#f4f5f7" : undefined }}>
+              <tr key={o.order_id} onClick={() => setSel(o)} style={{ cursor: "pointer", background: sel?.order_id === o.order_id ? "var(--sel)" : undefined }}>
                 <td className="mono">{fmtTime(o.received_ts)}</td>
                 <td className="mono">{o.client_order_id}</td>
                 <td>{o.side === "BUY" ? <span className="pill ok">ALIŞ</span> : <span className="pill warn">SATIŞ</span>}</td>
