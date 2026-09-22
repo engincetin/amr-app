@@ -68,6 +68,7 @@ Docker olmadan, sunum için üç komut: `docs/DEMO.md` → "Sabah başlatma".
 | `VAULT_OPENING_MG` | `0` | açılış devri: kasada Kanzasset adına duran gram, yalnız defter boşken (demo: `20000000`) |
 | `vault.accept_mode` (ayar) | `MANUAL` | kasa talimatı kabulü: elle ("Kabul et") ya da `AUTO` · `vault.accept_target_minutes` hedef cevap süresi · `vault.placement_due_days` kasaya koyma vadesi (T+3) |
 | `ADMIN_TOKEN` | boş | verilirse panel API'si `X-Admin-Token` ister |
+| `log.retention_days` (ayar) | `90` | istek günlüğü saklama süresi (VARA kanıtı); R10'dan değişir |
 | `LOG_LEVEL` | `info` | |
 | `MERKEZ_WS_PORT` / `MERKEZ_HTTP_PORT` | `4100` / `4110` | mock merkez |
 | `MERKEZ_INTERVAL_MS` / `MERKEZ_START_USD` | `1000` / `141.9` | mock merkez tick aralığı ve açılış fiyatı |
@@ -89,6 +90,12 @@ Sözleşme `packages/contract/src/index.ts` içindedir. Değişiklik yalnız bur
 ## Sağlık ve izleme
 
 `GET /health`: alt sistemler ayrı ayrı (veritabanı, merkez bağlantısı, Kanzasset yayını, olay kuyruğu, kasa talimatları, açık mahsuplaşma penceresi). Her kontrolün `status` alanı `ok`, `degraded` ya da `down`, yanında tek cümlelik açıklama. Genel durum en kötü kontroldür. HTTP 503 yalnız `down` durumunda döner: merkez soketi koptuğunda servis `degraded` olur ama 200 döner, çünkü konteyner sağlıklıdır. Docker'da üç servis de bu uca bakar ve sıra ile kalkar (merkez, AMR, Kanzasset); durum `docker compose ps` ile görülür.
+
+## İstek günlüğü (VARA kanıtı)
+
+Kanzasset'ten gelen her `/v1` isteği ve panelden yapılan her değiştirici istek kalıcı olarak yazılır: zaman, uç, sonuç, süre, API anahtarı ya da kullanıcı, `Idempotency-Key` ve **gövdenin sha256 özeti**. Gövdenin kendisi saklanmaz: özet, "bu istek bu gövdeyle geldi" sorusunu cevaplar ama kayıt şişmez. Kanzasset kendi tarafında aynı özeti giden çağrı için tutar; iki özet birebir aynıdır, böylece tek taraflı kayda güvenmek gerekmez.
+
+Okuma: R9 Belgeler ekranının altındaki "İstek günlüğü" bölümü ya da `GET /admin/requests?limit=&channel=&errors=1`. Saklama süresi `log.retention_days` parametresidir (varsayılan 90 gün, R10'dan değişir); süresi geçen satırlar dakikada bir taranıp silinir.
 
 ## API dokümanı
 

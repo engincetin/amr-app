@@ -22,6 +22,15 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  /** İstek günlüğü (VARA kanıtı): Kanzasset'in istekleri ve panelin değişiklikleri. */
+  requests: (q: { limit?: number; channel?: string; path?: string; errors?: boolean } = {}) => {
+    const p = new URLSearchParams();
+    if (q.limit) p.set("limit", String(q.limit));
+    if (q.channel) p.set("channel", q.channel);
+    if (q.path) p.set("path", q.path);
+    if (q.errors) p.set("errors", "1");
+    return req<{ summary: RequestSummary; items: RequestLogRow[] }>(`/admin/requests${p.size ? `?${p}` : ""}`);
+  },
   overview: () => req<Overview>("/admin/overview"),
   connect: (url: string) => req("/admin/source/connect", { method: "POST", body: JSON.stringify({ url }) }),
   disconnect: () => req("/admin/source/disconnect", { method: "POST", body: "{}" }),
@@ -266,3 +275,12 @@ export function untilText(iso: string | null | undefined): { text: string; late:
   return { text: late ? `${parts} gecikti` : `${parts} kaldı`, late };
 }
 export const ageSec = (iso: string | null | undefined) => (iso ? Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 1000)) : null);
+
+export interface RequestLogRow {
+  id: number; ts: string; method: string; path: string; status: number; duration_ms: number;
+  channel: "KANZASSET" | "PANEL"; actor: string | null; api_key: string | null;
+  idempotency_key: string | null; body_sha256: string | null; bytes: number; ip: string | null; error: string | null;
+}
+export interface RequestSummary {
+  last_24h: number; errors_24h: number; avg_ms: number; total: number; oldest_ts: string | null; retention_days: number;
+}

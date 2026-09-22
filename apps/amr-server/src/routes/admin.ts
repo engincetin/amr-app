@@ -13,6 +13,7 @@ import type { FulfilmentError } from "../fulfilment.ts";
 import type { CatalogItem } from "@amr/contract";
 import type { SettlementError } from "../settlement.ts";
 import { ROLE_TR, SECOND_APPROVAL, type Permission, type Role } from "../users.ts";
+import { listRequests, requestSummary } from "../reqlog.ts";
 import { documentPdf } from "../pdf.ts";
 import { bus, type BusEvent } from "../bus.ts";
 
@@ -332,6 +333,20 @@ export async function adminRoutes(app: FastifyInstance, ctx: AppContext) {
     return allSettings(ctx.db);
   });
   app.get("/admin/audit", async () => listAudit(ctx.db, 100));
+
+  /**
+   * İstek günlüğü (VARA kanıtı): Kanzasset'in her isteği ve panelin her değişikliği.
+   * Gövde saklanmaz, imzalanan gövdenin sha256 özeti saklanır. Saklama süresi `log.retention_days`.
+   */
+  app.get<{ Querystring: { limit?: string; channel?: string; path?: string; errors?: string } }>("/admin/requests", async (req) => ({
+    summary: requestSummary(ctx.db),
+    items: listRequests(ctx.db, {
+      limit: Number(req.query.limit ?? 200),
+      channel: req.query.channel,
+      path: req.query.path,
+      onlyErrors: req.query.errors === "1",
+    }),
+  }));
 
   // ----- canlı akış (SSE) -----
   app.get("/admin/stream", async (req, reply: FastifyReply) => {

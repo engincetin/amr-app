@@ -27,6 +27,7 @@ import { kzRoutes } from "./routes/kz.ts";
 import { adminRoutes } from "./routes/admin.ts";
 import { docsRoutes } from "./docs.ts";
 import { healthRoutes } from "./health.ts";
+import { RequestLogPruner, ensureRequestLogTable, requestLogPlugin } from "./reqlog.ts";
 import { bus } from "./bus.ts";
 import type { AppContext } from "./context.ts";
 
@@ -34,13 +35,14 @@ const PORT = Number(process.env.PORT ?? 4000);
 const DB_PATH = process.env.DB_PATH ?? resolve(import.meta.dirname, "../data/amr.db");
 const SOURCE_URL = process.env.SOURCE_URL ?? "ws://localhost:4100/prices";
 
-export async function buildApp(opts: { dbPath?: string; autoconnect?: boolean; dispatchEvents?: boolean; sweepOverdue?: boolean; watchCutoff?: boolean } = {}) {
+export async function buildApp(opts: { dbPath?: string; autoconnect?: boolean; dispatchEvents?: boolean; sweepOverdue?: boolean; watchCutoff?: boolean; pruneRequests?: boolean } = {}) {
   const db = openDb(opts.dbPath ?? DB_PATH);
   ensureLedgerTables(db);
   ensureVaultTables(db);
   ensureFulfilmentTables(db);
   ensureSettlementTables(db);
   ensureUserTables(db);
+  ensureRequestLogTable(db);
   ensureApiClient(db, process.env.KZ_API_KEY ?? "kz-dev-key", "Kanzasset FZCO", process.env.KZ_API_SECRET ?? "kz-dev-secret", process.env.KZ_EVENT_URL ?? "http://localhost:5000/api/events");
   // varsayılan parametreler (R10)
   const defaults: Record<string, string> = {
@@ -60,6 +62,7 @@ export async function buildApp(opts: { dbPath?: string; autoconnect?: boolean; d
     "quote.delivery_valid_hours": "24",
     "quote.refining_valid_hours": "48",
     "events.retry_schedule_ms": "5000,30000,120000,600000",
+    "log.retention_days": "90", // istek günlüğü saklama süresi (VARA kanıtı)
     "debug.order_delay_ms": "0",
   };
   for (const [k, v] of Object.entries(defaults)) if (!getSetting(db, k, "")) setSetting(db, k, v);
@@ -112,6 +115,10 @@ export async function buildApp(opts: { dbPath?: string; autoconnect?: boolean; d
   };
 
   const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? "info" } });
+  // istek günlüğü: Kanzasset'in her isteği ve panelin her değişikliği yazılır (VARA kanıtı)
+  requestLogPlugin(app, ctx);
+  const pruner = new RequestLogPruner(ctx);
+  if (opts.pruneRequests ?? true) pruner.start();
   await app.register(cors, { origin: true });
   await app.register(websocket);
   await app.register(async (inst) => kzRoutes(inst, ctx));
@@ -132,7 +139,7 @@ export async function buildApp(opts: { dbPath?: string; autoconnect?: boolean; d
   const autoconnect = opts.autoconnect ?? (process.env.SOURCE_AUTOCONNECT ?? "1") === "1";
   if (autoconnect) source.connect(getSetting(db, "source.url", SOURCE_URL));
 
-  app.addHook("onClose", async () => { dispatcher.stop(); overdue.stop(); cutoff.stop(); publisher.stop(); source.disconnect(); db.close(); });
+  app.addHook("onClose", async () => { dispatcher.stop(); overdue.stop(); cutoff.stop(); pruner.stop(); publisher.stop(); source.disconnect(); db.close(); });
   return { app, ctx };
 }
 

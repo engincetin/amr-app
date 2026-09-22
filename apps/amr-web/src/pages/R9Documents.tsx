@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api, DOC_TYPE_TR, fmtDT, type Doc, type useLive } from "../api.ts";
+import { api, DOC_TYPE_TR, fmtDT, type Doc, type RequestLogRow, type RequestSummary, type useLive } from "../api.ts";
 import { DocModal } from "./shared.tsx";
 
 type Live = ReturnType<typeof useLive>;
@@ -16,12 +16,18 @@ export function R9Documents({ live }: { live: Live }) {
   const [doc, setDoc] = useState<Doc | null>(null);
   const [q, setQ] = useState({ type: "", text: "" });
   const [msg, setMsg] = useState("");
+  const [reqs, setReqs] = useState<RequestLogRow[]>([]);
+  const [reqSum, setReqSum] = useState<RequestSummary | null>(null);
+  const [reqQ, setReqQ] = useState({ channel: "", errors: false });
 
   const load = async () => {
-    try { const [d, e] = await Promise.all([api.documents(), api.events()]); setRows(d); setEvents(e); }
+    try {
+      const [d, e, r] = await Promise.all([api.documents(), api.events(), api.requests({ limit: 100, channel: reqQ.channel || undefined, errors: reqQ.errors })]);
+      setRows(d); setEvents(e); setReqs(r.items); setReqSum(r.summary);
+    }
     catch (e) { setMsg(`Hata: ${(e as Error).message}`); }
   };
-  useEffect(() => { load(); }, [live.overview?.account.seq]);
+  useEffect(() => { load(); }, [live.overview?.account.seq, reqQ.channel, reqQ.errors]);
 
   const types = [...new Set(rows.map((r) => r.type))];
   const shown = rows.filter((r) =>
@@ -89,6 +95,45 @@ export function R9Documents({ live }: { live: Live }) {
                 <td className="mono small">{fmtDT(e.created_ts)}</td>
                 <td className="mono small">{e.sent_ts ? fmtDT(e.sent_ts) : ""}</td>
                 <td className="small">{e.last_error ?? ""}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
+
+      <section className="card" style={{ marginTop: 14 }}>
+        <h2>İstek günlüğü <span className="pill">{reqSum?.total ?? 0}</span></h2>
+        <p className="small">Kanzasset'in yaptığı her istek ve panelden yapılan her değişiklik burada. Gövdenin kendisi saklanmaz; imzalanan gövdenin sha256 özeti saklanır, böylece "bu istek bu gövdeyle geldi" sonradan kanıtlanır. Saklama süresi R10'daki <span className="mono">log.retention_days</span> parametresidir{reqSum ? ` (şu an ${reqSum.retention_days} gün)` : ""}.</p>
+        {reqSum && (
+          <div className="row" style={{ marginBottom: 8 }}>
+            <span className="pill">son 24 saat: {reqSum.last_24h}</span>
+            <span className={`pill ${reqSum.errors_24h > 0 ? "warn" : "ok"}`}>hata: {reqSum.errors_24h}</span>
+            <span className="pill">ortalama {reqSum.avg_ms} ms</span>
+            {reqSum.oldest_ts && <span className="small">en eski kayıt {fmtDT(reqSum.oldest_ts)}</span>}
+          </div>
+        )}
+        <div className="row" style={{ marginBottom: 8 }}>
+          <select value={reqQ.channel} onChange={(e) => setReqQ({ ...reqQ, channel: e.target.value })}>
+            <option value="">tüm kanallar</option>
+            <option value="KANZASSET">Kanzasset (/v1)</option>
+            <option value="PANEL">panel (/admin)</option>
+          </select>
+          <label className="small"><input type="checkbox" checked={reqQ.errors} onChange={(e) => setReqQ({ ...reqQ, errors: e.target.checked })} /> yalnız hatalar</label>
+          <button className="ghost" onClick={load}>Yenile</button>
+        </div>
+        <table>
+          <thead><tr><th>Zaman</th><th>Kanal</th><th>İstek</th><th className="num">Sonuç</th><th className="num">Süre</th><th>Kim</th><th>Gövde özeti</th></tr></thead>
+          <tbody>
+            {reqs.length === 0 && <tr><td colSpan={7} className="small">Kayıt yok</td></tr>}
+            {reqs.map((r) => (
+              <tr key={r.id}>
+                <td className="mono small">{fmtDT(r.ts)}</td>
+                <td className="small">{r.channel === "KANZASSET" ? "Kanzasset" : "panel"}</td>
+                <td className="mono small">{r.method} {r.path}</td>
+                <td className="num"><span className={`pill ${r.status >= 400 ? "bad" : "ok"}`}>{r.status}</span></td>
+                <td className="num mono small">{r.duration_ms} ms</td>
+                <td className="small">{r.actor ?? r.api_key ?? ""}</td>
+                <td className="mono small" title={r.body_sha256 ?? ""}>{r.body_sha256 ? r.body_sha256.slice(0, 12) + "…" : ""}{r.idempotency_key ? <div style={{ opacity: .6 }}>idem {r.idempotency_key.slice(0, 10)}…</div> : null}</td>
               </tr>
             ))}
           </tbody>
