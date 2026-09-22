@@ -91,3 +91,48 @@ test("istek günlüğü saklama süresi: süresi geçen satırlar silinir", asyn
   assert.equal(listRequests(s.ctx.db).length, 1);
   await s.close();
 });
+
+test("ikinci onay verilince kritik aksiyon uygulanır (onay ile uygulama aynı yerde)", async () => {
+  const s = await setup();
+  s.ctx.users.seed();
+  // 1) yönetici parametre değişikliği ister: uygulanmaz, onay numarası döner
+  const asked = await s.app.inject({ method: "PUT", url: "/admin/settings", headers: { "x-user": "yonetici" }, payload: { "limit.warn_pct": "73" } });
+  assert.equal(asked.statusCode, 202);
+  const { approval_id } = asked.json() as { approval_id: number };
+  assert.equal((await s.app.inject({ method: "GET", url: "/admin/settings" })).json<Record<string, string>>()["limit.warn_pct"], "80", "onaysız değişmez");
+
+  // 2) aynı kullanıcı onaylayamaz
+  const same = await s.app.inject({ method: "POST", url: `/admin/approvals/${approval_id}/approve`, payload: { approver: "yonetici" } });
+  assert.equal(same.statusCode, 409);
+
+  // 3) farklı kullanıcı onaylayınca sunucu uygular: ayrıca "bir daha gönder" gerekmez
+  const ok = await s.app.inject({ method: "POST", url: `/admin/approvals/${approval_id}/approve`, payload: { approver: "masa" } });
+  assert.equal(ok.statusCode, 200);
+  assert.match((ok.json() as { applied: string }).applied, /parametreler güncellendi/);
+  assert.equal((await s.app.inject({ method: "GET", url: "/admin/settings" })).json<Record<string, string>>()["limit.warn_pct"], "73");
+
+  // 4) aynı onay ikinci kez kullanılamaz
+  assert.equal((await s.app.inject({ method: "POST", url: `/admin/approvals/${approval_id}/approve`, payload: { approver: "kasa" } })).statusCode, 409);
+  await s.close();
+});
+
+test("kayıtlar ucu: kaynak seçimi, metin süzme ve sayfalama", async () => {
+  const s = await setup();
+  await s.app.inject({ method: "GET", url: "/v1/account" });
+  await s.app.inject({ method: "PUT", url: "/admin/settings", headers: { "x-user": "yonetici" }, payload: { "limit.warn_pct": "77" } });
+
+  const all = (await s.app.inject({ method: "GET", url: "/admin/logs?source=requests&limit=50" })).json() as { items: { what: string }[]; total: number; source: string };
+  assert.equal(all.source, "requests");
+  assert.ok(all.total >= 2);
+
+  const filtered = (await s.app.inject({ method: "GET", url: "/admin/logs?source=requests&q=account" })).json() as { items: { what: string }[]; total: number };
+  assert.ok(filtered.items.every((x) => x.what.includes("account")), "süzgeç yalnız eşleşenleri döner");
+
+  const page1 = (await s.app.inject({ method: "GET", url: "/admin/logs?source=requests&limit=1&offset=0" })).json() as { items: { what: string }[] };
+  const page2 = (await s.app.inject({ method: "GET", url: "/admin/logs?source=requests&limit=1&offset=1" })).json() as { items: { what: string }[] };
+  assert.notEqual(page1.items[0].what, page2.items[0].what, "sayfa geçişi eskiye gider");
+
+  const audit = (await s.app.inject({ method: "GET", url: "/admin/logs?source=audit" })).json() as { source: string };
+  assert.equal(audit.source, "audit");
+  await s.close();
+});

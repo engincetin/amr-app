@@ -232,10 +232,48 @@ export async function adminRoutes(app: FastifyInstance, ctx: AppContext) {
     if (!req.body?.username) return reply.code(400).send({ error: "username zorunlu" });
     return ctx.users.upsert(req.body as any, actor);
   });
+  /**
+   * Onaylanan kritik aksiyonu uygular.
+   *
+   * Onay ile uygulama aynı yerdedir: ikinci kullanıcı onayladığı anda iş yapılır.
+   * İstek hangi ekrandan açılmışsa açılsın (R8, R10) sonuç aynıdır; onay bir kez uygulanır.
+   */
+  const applyApproved = (action: string, payload: Record<string, unknown>, approver: string): string => {
+    switch (action) {
+      case "settings.update": {
+        const before = allSettings(ctx.db);
+        for (const [k, v] of Object.entries(payload)) if (typeof v === "string") setSetting(ctx.db, k, v);
+        ctx.audit(approver, "settings.update", before, allSettings(ctx.db));
+        return "parametreler güncellendi";
+      }
+      case "clients.create": {
+        const key = `kz-${randomUUID().slice(0, 8)}`;
+        const secret = randomUUID().replace(/-/g, "");
+        ctx.db.prepare("INSERT INTO api_clients(api_key, name, secret, event_url, active, created_ts) VALUES (?, ?, ?, ?, 1, ?)")
+          .run(key, (payload.name as string) ?? "Kanzasset", secret, (payload.event_url as string) ?? null, new Date().toISOString());
+        ctx.audit(approver, "clients.create", undefined, { api_key: key });
+        return `API anahtarı üretildi: ${key}`;
+      }
+      case "settlement.payment": {
+        ctx.settlement.paymentNotice(String(payload.settlement_id), String(payload.ccy), Number(payload.amount_cents ?? 0), String(payload.direction ?? "AMR_TO_KZ"), String(payload.bank_ref ?? "").trim());
+        return "ödeme bildirimi gönderildi";
+      }
+      default: return `bu aksiyon kendiliğinden uygulanmıyor: ${action}`;
+    }
+  };
+
   app.post<{ Params: { id: string }; Body: { approver?: string } }>("/admin/approvals/:id/approve", async (req, reply) => {
     const actor = req.body?.approver ?? actorOf(req);
-    try { return { ok: true, ...ctx.users.approve(Number(req.params.id), actor) }; }
+    let approved: { action: string; payload: unknown };
+    try { approved = ctx.users.approve(Number(req.params.id), actor); }
     catch (e) { return reply.code(409).send({ error: (e as Error).message }); }
+    try {
+      const applied = applyApproved(approved.action, (approved.payload ?? {}) as Record<string, unknown>, actor);
+      return { ok: true, ...approved, applied };
+    } catch (e) {
+      ctx.audit(actor, `${approved.action}:apply_failed`, undefined, { error: (e as Error).message });
+      return reply.code(502).send({ error: `onay verildi ama uygulanamadı: ${(e as Error).message}` });
+    }
   });
   app.post<{ Params: { id: string } }>("/admin/approvals/:id/reject", async (req) => { ctx.users.reject(Number(req.params.id), actorOf(req)); return { ok: true }; });
   /** API istemcisi: anahtar üret / iptal (ikinci onay ister). */

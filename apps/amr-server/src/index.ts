@@ -28,6 +28,7 @@ import { adminRoutes } from "./routes/admin.ts";
 import { docsRoutes } from "./docs.ts";
 import { healthRoutes } from "./health.ts";
 import { RequestLogPruner, ensureRequestLogTable, requestLogPlugin } from "./reqlog.ts";
+import { logRoutes } from "./logs.ts";
 import { bus } from "./bus.ts";
 import type { AppContext } from "./context.ts";
 
@@ -127,6 +128,7 @@ export async function buildApp(opts: { dbPath?: string; autoconnect?: boolean; d
   await app.register(async (inst) => adminRoutes(inst, ctx));
   await app.register(async (inst) => docsRoutes(inst, ctx));
   await app.register(async (inst) => healthRoutes(inst, ctx));
+  await app.register(async (inst) => logRoutes(inst, ctx));
 
   // Rafineri ekranları (üretim: apps/amr-web/dist)
   const webDist = resolve(import.meta.dirname, "../../amr-web/dist");

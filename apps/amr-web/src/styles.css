@@ -67,43 +67,54 @@ html.dark .brand img{filter:brightness(1.55) saturate(1.1)}
 .layout.collapsed .brand{justify-content:center;padding:0;gap:0}
 .layout.collapsed .brand .bt,.layout.collapsed .brand .badge{display:none}
 
-.nav{grid-column:auto;grid-row:auto;display:flex;flex-direction:column;gap:2px;margin-top:8px;overflow-y:auto;overflow-x:hidden;min-height:0;background:transparent;padding:0}
+.nav{display:flex;flex-direction:column;gap:2px;margin-top:8px;overflow-y:auto;overflow-x:hidden;min-height:0;flex:1;background:transparent;padding:0}
 .nav a{display:flex;align-items:center;gap:12px;padding:9px 12px;border-radius:8px;color:var(--ink);font-size:13px;font-weight:500;letter-spacing:-.005em;white-space:nowrap}
 .nav a:hover{background:rgba(127,127,127,.07)}
 .nav a.active{background:var(--sel);font-weight:700}
 .nav a .code{font-family:var(--mono);font-size:10.5px;font-weight:700;color:var(--mut);width:26px;flex-shrink:0;text-align:left}
 .nav a.active .code{color:var(--accent)}
 .nav a .label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
-.nav a.doc{margin-top:auto;border-top:1px solid var(--line);border-radius:0;padding-top:14px;color:var(--mut)}
+.nav a.doc{margin-top:8px;border-top:1px solid var(--line);border-radius:0;padding-top:14px;color:var(--mut)}
 .nav .sprint{font-family:var(--mono);font-size:9.5px;color:var(--mut);border:1px solid var(--line);border-radius:99px;padding:1px 7px}
 .layout.collapsed .nav a{justify-content:center;gap:0;padding:10px 0}
 .layout.collapsed .nav a .label,.layout.collapsed .nav .sprint{display:none}
 .layout.collapsed .nav a .code{width:auto;text-align:center}
-.layout.collapsed .nav a.doc{margin-top:auto;border-radius:0}
+.layout.collapsed .nav a.doc{border-radius:0}
+
+/* yan menü altı: bağlantı ve kontrol satırları (üst şerit yerine burada) */
+.side-status{margin-top:auto;padding-top:12px;display:flex;flex-direction:column;gap:6px;flex-shrink:0}
+.side-status .srow{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;background:var(--soft);font-size:10.5px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden}
+.side-status .srow .label{overflow:hidden;text-overflow:ellipsis}
+.layout.collapsed .side-status .srow{justify-content:center;padding:7px 0;gap:0}
+.layout.collapsed .side-status .srow .label{display:none}
 
 /* mobil çekmece */
 .nav-backdrop{display:none}
 .hamburger{display:none}
 
-.topbar{grid-column:2;grid-row:1;display:flex;gap:9px;align-items:center;padding:0 18px;background:var(--card);border-bottom:1px solid var(--line);flex-wrap:nowrap;overflow:hidden}
-/* ölçü kutuları kayar, sağdaki bildirim ve kullanıcı sabit kalır */
-.chips{display:flex;gap:9px;align-items:center;flex:1;min-width:0;overflow-x:auto;padding:8px 0;scrollbar-width:none}
-.chips::-webkit-scrollbar{display:none}
-.chip{display:flex;flex-direction:column;justify-content:center;padding:6px 12px;border:1px solid var(--line);border-radius:10px;min-width:104px;background:var(--card);flex-shrink:0}
-.chip .l{font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--mut);font-weight:700}
-.chip .v{font-size:13px;white-space:nowrap;font-weight:800;display:flex;gap:6px;align-items:center;margin-top:1px}
-.chip .s{font-size:10.5px;color:var(--mut2);white-space:nowrap;font-weight:600}
-.chip select{border:0;background:transparent;font:inherit;font-weight:800;font-size:13px;padding:0;height:22px;color:var(--ink);cursor:pointer}
-.chip select:focus{outline:none}
+.topbar{grid-column:2;grid-row:1;display:flex;gap:9px;align-items:center;padding:0 18px;background:var(--card);border-bottom:1px solid var(--line);flex-wrap:nowrap;overflow:hidden;min-width:0}
+.topbar .tspace{flex:1;min-width:0}
+/* canlı durum: tek satır, alt yazı yok */
+.state{display:inline-flex;align-items:center;gap:7px;height:38px;padding:0 13px;border-radius:10px;border:1px solid var(--line);background:var(--card);font-size:11.5px;font-weight:800;white-space:nowrap;flex-shrink:0}
+.state.ok{color:var(--ok);border-color:var(--ok-soft);background:var(--ok-soft)}
+.state.bad{color:var(--bad);border-color:var(--bad-soft);background:var(--bad-soft)}
+.price{display:inline-flex;align-items:baseline;gap:8px;height:38px;padding:0 13px;border-radius:10px;border:1px solid var(--line);background:var(--card);white-space:nowrap;flex-shrink:0}
+.price .k{font-family:var(--mono);font-size:9px;font-weight:700;color:var(--mut);letter-spacing:.08em}
+.price .v{font-size:12.5px;font-weight:700;color:var(--ink)}
 .dot{width:7px;height:7px;border-radius:4px;display:inline-block;background:var(--mut2);flex-shrink:0}
 .dot.ok{background:var(--ok);box-shadow:0 0 0 3px var(--ok-soft)}
 .dot.warn{background:var(--warn);box-shadow:0 0 0 3px var(--warn-soft)}
 .dot.bad{background:var(--bad);box-shadow:0 0 0 3px var(--bad-soft)}
-.bell{position:relative;border:1px solid var(--line);border-radius:10px;background:var(--card);height:38px;padding:0 13px;cursor:pointer;font-size:12px;font-weight:700;color:var(--ink2);display:flex;align-items:center;gap:8px;flex-shrink:0}
-.bell:hover{background:var(--soft)}
-.bell .n{background:var(--accent);color:#fff;border-radius:99px;font-family:var(--mono);font-size:10px;font-weight:700;padding:1px 6px;min-width:18px;text-align:center}
-/* tema düğmesi */
+/* aksiyonlar: tema, bildirim, kullanıcı */
+.bell{position:relative;border:1px solid var(--line);border-radius:10px;background:var(--card);height:38px;width:38px;padding:0;cursor:pointer;color:var(--ink2);display:grid;place-items:center;flex-shrink:0}
+.bell:hover{background:var(--soft);color:var(--ink)}
+.bell .n{position:absolute;top:-6px;right:-6px;background:var(--accent);color:#fff;border-radius:99px;font-family:var(--mono);font-size:9.5px;font-weight:700;padding:1px 5px;min-width:17px;text-align:center;border:2px solid var(--card)}
+.bell .n.warn{background:var(--warn);right:auto;left:-8px}
 .theme-btn{width:38px;height:38px;padding:0;display:grid;place-items:center;border-radius:10px;flex-shrink:0}
+.user{display:flex;align-items:center;gap:9px;height:42px;padding:0 10px 0 6px;border-radius:10px;border:1px solid var(--line);background:var(--card);flex-shrink:0;cursor:pointer}
+.user .avatar{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--accent-dark));color:#fff;display:grid;place-items:center;font-weight:800;font-size:11.5px;flex-shrink:0}
+.user select{border:0;background:transparent;font:inherit;font-size:12.5px;font-weight:700;color:var(--ink);padding:0;height:22px;cursor:pointer;max-width:120px}
+.user select:focus{outline:none}
 
 .main{grid-column:2;grid-row:2;overflow:auto;padding:22px 26px 44px;min-width:0}
 h1{font-size:19px;font-weight:800;letter-spacing:-.01em;margin:0 0 4px}
@@ -156,6 +167,10 @@ th.num{font-family:'Manrope',sans-serif}
 .placeholder{border:1px dashed var(--line3);border-radius:12px;padding:18px;background:var(--soft);color:var(--mut)}
 .placeholder b{color:var(--ink)}
 .toast{position:fixed;right:18px;bottom:18px;background:var(--ink);color:#fff;padding:11px 15px;border-radius:10px;font-size:12.5px;max-width:360px;box-shadow:0 12px 30px rgba(23,20,16,.22)}
+.drawer-backdrop{position:fixed;inset:0;z-index:9}
+.drawer .dhead{display:flex;align-items:center;gap:8px;padding:11px 15px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--card);z-index:1}
+.drawer .dhead .sp{flex:1}
+.drawer .dhead button{height:28px;padding:0 9px;font-size:11px}
 .drawer{position:fixed;top:66px;right:16px;width:380px;max-height:70vh;overflow:auto;background:var(--card);border:1px solid var(--line);border-radius:13px;box-shadow:0 16px 40px rgba(23,20,16,.16);z-index:10}
 .drawer .item{padding:11px 15px;border-bottom:1px solid var(--line2);font-size:12.5px;display:flex;gap:10px;align-items:flex-start}
 .drawer .item.unread{background:var(--soft)}
@@ -218,13 +233,15 @@ details.card>summary:hover{color:var(--ink)}
   .layout.nav-open .nav-backdrop{display:block;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:59}
   .hamburger{display:grid;place-items:center;width:36px;height:36px;padding:0;border-radius:9px;flex-shrink:0}
   /* üst şerit mobilde sadeleşir: menü, bildirim, tema, kullanıcı. Ölçüler zaten ekranların içinde. */
-  .topbar{grid-column:1;grid-row:1;padding:0 10px;gap:6px;justify-content:space-between}
-  .chips{display:none}
-  .bell{padding:0 10px;height:36px;gap:6px}
-  .bell .label,.topbar .sse{display:none}
-  .theme-btn{width:36px;height:36px}
-  .topbar .chip{min-width:0;max-width:150px;padding:4px 9px;border:0}
-  .topbar .chip .l,.topbar .chip .s{display:none}
+  .topbar{grid-column:1;grid-row:1;padding:0 10px;gap:6px}
+  .state{height:34px;padding:0 10px;font-size:10.5px}
+  .state .label{display:none}
+  .price{height:34px;padding:0 10px}
+  .price .k{display:none}
+  .bell,.theme-btn{width:34px;height:34px}
+  .user{height:36px;padding:0 6px}
+  .user select{max-width:74px;font-size:11.5px}
+  .user .avatar{width:26px;height:26px;font-size:10.5px}
   .main{grid-column:1;grid-row:2;padding:16px 14px 36px}
   .grid{gap:11px}
   .grid.c2,.grid.c3{grid-template-columns:1fr}

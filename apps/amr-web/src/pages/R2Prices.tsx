@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { api, ageSec, fmtTime, type useLive } from "../api.ts";
 
@@ -81,7 +82,10 @@ export function R2Prices({ live }: { live: Live }) {
       </section>
 
       <section className="card" style={{ marginTop: 14 }}>
-        <h2>Son 50 tick</h2>
+        <div className="row" style={{ justifyContent: "space-between", alignItems: "baseline" }}>
+          <h2 style={{ margin: 0 }}>Son 50 tick</h2>
+          <Link to="/kayitlar" className="small">tamamı ve geçmişi: R11 Kayıtlar →</Link>
+        </div>
         <table>
           <thead><tr><th className="num">seq</th><th>Zaman</th><th className="num">USD bid</th><th className="num">USD ask</th><th className="num">EUR bid</th><th className="num">EUR ask</th><th className="num">AED bid</th><th className="num">AED ask</th><th>tradable</th></tr></thead>
           <tbody>

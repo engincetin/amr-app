@@ -95,7 +95,7 @@ Sözleşme `packages/contract/src/index.ts` içindedir. Değişiklik yalnız bur
 
 Kanzasset'ten gelen her `/v1` isteği ve panelden yapılan her değiştirici istek kalıcı olarak yazılır: zaman, uç, sonuç, süre, API anahtarı ya da kullanıcı, `Idempotency-Key` ve **gövdenin sha256 özeti**. Gövdenin kendisi saklanmaz: özet, "bu istek bu gövdeyle geldi" sorusunu cevaplar ama kayıt şişmez. Kanzasset kendi tarafında aynı özeti giden çağrı için tutar; iki özet birebir aynıdır, böylece tek taraflı kayda güvenmek gerekmez.
 
-Okuma: R9 Belgeler ekranının altındaki "İstek günlüğü" bölümü ya da `GET /admin/requests?limit=&channel=&errors=1`. Saklama süresi `log.retention_days` parametresidir (varsayılan 90 gün, R10'dan değişir); süresi geçen satırlar dakikada bir taranıp silinir.
+Okuma: R11 Kayıtlar ekranı (beş kaynak, metin ve tarih süzgeci, sayfa geçişi) ya da `GET /admin/logs?source=&q=&from=&to=&limit=&offset=`. Kısa liste R9 Belgeler ekranında da durur (`GET /admin/requests`). Saklama süresi `log.retention_days` parametresidir (varsayılan 90 gün, R10'dan değişir); süresi geçen satırlar dakikada bir taranıp silinir.
 
 ## API dokümanı
 
@@ -124,3 +124,4 @@ curl -X POST localhost:4110/control/jump -H 'content-type: application/json' -d 
 | 4 ✓ | fiziksel teslimat (lojistik teklifi, Sevkiyat Fişi, takip no, teslimat kaydı), rafinasyon + katalog | R6, R7 |
 | 5 ✓ | mahsuplaşma (kesim saati otomatik, talep iki yönlü, mutabakat, altın ve para bacağı), belgeler ve PDF, kullanıcılar ve roller, ikinci onay | R8, R9, R10 |
 | 6 ✓ | demo senaryoları S0..S9, sunum senaryosu, kullanım kılavuzu, Docker, test raporu | |
+| + | görsel dil (açılır kapanır yan menü, açık / koyu mod, responsive), kayıtlar ekranı, sağlık ve istek günlüğü, API dokümanı | R11 |

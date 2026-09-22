@@ -78,6 +78,12 @@ const OPS: Record<string, Op> = {
   "GET /admin/events": { summary: "R9 olay teslimleri (webhook kuyruğu)" },
   "GET /admin/requests": { summary: "R9 istek günlüğü (VARA kanıtı)", description: "Kanzasset'in istekleri ve panelin değişiklikleri; gövdenin kendisi değil sha256 özeti saklanır.", params: [{ name: "limit", in: "query" }, { name: "channel", in: "query", description: "KANZASSET ya da PANEL" }, { name: "path", in: "query" }, { name: "errors", in: "query", description: "1 ise yalnız hatalar" }] },
 
+  "GET /admin/logs": {
+    summary: "R11 kayıtlar: beş kaynak tek biçimde, süzgeçli ve sayfalı",
+    description: "Kaynaklar: requests (istek günlüğü), audit (denetim günlüğü), events (olay teslimleri), notifications (bildirimler), ticks (fiyat tick'leri). Satırlar zaman · kim · ne · sonuç olarak döner.",
+    params: [{ name: "source", in: "query", description: "requests | audit | events | notifications | ticks" }, { name: "q", in: "query", description: "metin süzgeci" }, { name: "from", in: "query", description: "YYYY-AA-GG" }, { name: "to", in: "query", description: "YYYY-AA-GG" }, { name: "limit", in: "query" }, { name: "offset", in: "query" }],
+    returns: "{ items, total, source }",
+  },
   "GET /admin/notifications": { summary: "Bildirimler" },
   "POST /admin/notifications/:id/read": { summary: "Bildirimi okundu işaretle" },
   "GET /admin/settings": { summary: "R10 parametreler" },

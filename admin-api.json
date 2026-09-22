@@ -1929,6 +1929,72 @@
           }
         }
       }
+    },
+    "/admin/logs": {
+      "get": {
+        "summary": "R11 kayıtlar: beş kaynak tek biçimde, süzgeçli ve sayfalı",
+        "description": "Kaynaklar: requests (istek günlüğü), audit (denetim günlüğü), events (olay teslimleri), notifications (bildirimler), ticks (fiyat tick'leri). Satırlar zaman · kim · ne · sonuç olarak döner.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "name": "source",
+            "in": "query",
+            "description": "requests | audit | events | notifications | ticks"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "name": "q",
+            "in": "query",
+            "description": "metin süzgeci"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "name": "from",
+            "in": "query",
+            "description": "YYYY-AA-GG"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "name": "to",
+            "in": "query",
+            "description": "YYYY-AA-GG"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "name": "offset",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "{ items, total, source }",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   }
 }
