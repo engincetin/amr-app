@@ -25,6 +25,7 @@ import { UserDesk, ensureUserTables } from "./users.ts";
 import { EventDispatcher, enqueueEvent } from "./events.ts";
 import { kzRoutes } from "./routes/kz.ts";
 import { adminRoutes } from "./routes/admin.ts";
+import { docsRoutes } from "./docs.ts";
 import { bus } from "./bus.ts";
 import type { AppContext } from "./context.ts";
 
@@ -114,13 +115,14 @@ export async function buildApp(opts: { dbPath?: string; autoconnect?: boolean; d
   await app.register(websocket);
   await app.register(async (inst) => kzRoutes(inst, ctx));
   await app.register(async (inst) => adminRoutes(inst, ctx));
+  await app.register(async (inst) => docsRoutes(inst, ctx));
 
   // Rafineri ekranları (üretim: apps/amr-web/dist)
   const webDist = resolve(import.meta.dirname, "../../amr-web/dist");
   if (existsSync(webDist)) {
     await app.register(fastifyStatic, { root: webDist, prefix: "/" });
     app.setNotFoundHandler((req, reply) => {
-      if (req.url.startsWith("/v1") || req.url.startsWith("/admin")) return reply.code(404).send({ error: "not found" });
+      if (req.url.startsWith("/v1") || req.url.startsWith("/admin") || req.url.startsWith("/docs") || req.url.endsWith(".json")) return reply.code(404).send({ error: "not found" });
       return reply.sendFile("index.html");
     });
   }
@@ -137,5 +139,5 @@ export async function buildApp(opts: { dbPath?: string; autoconnect?: boolean; d
 if (process.argv[1] && import.meta.url.endsWith(process.argv[1].split("/").pop() ?? "")) {
   const { app } = await buildApp();
   await app.listen({ port: PORT, host: "0.0.0.0" });
-  app.log.info(`AMR uygulaması: http://localhost:${PORT}  · fiyat soketi ws://localhost:${PORT}/v1/prices · yönetim /admin/overview`);
+  app.log.info(`AMR uygulaması: http://localhost:${PORT}  · fiyat soketi ws://localhost:${PORT}/v1/prices · yönetim /admin/overview · API dokümanı /docs`);
 }

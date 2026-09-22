@@ -86,6 +86,10 @@ Docker olmadan, sunum için üç komut: `docs/DEMO.md` → "Sabah başlatma".
 
 Sözleşme `packages/contract/src/index.ts` içindedir. Değişiklik yalnız burada yapılır, sonra `kz-treasury` içinde `npm run contract:sync` çalıştırılır. OpenAPI: `openapi.json` (repo kökü).
 
+## API dokümanı
+
+Sunucu ayaktayken `http://localhost:4000/docs`: tek sayfalık görüntüleyici, iki sekme (Kanzasset sözleşmesi `/v1` ve panel API'si `/admin`). Uçlar, parametreler, istek gövdeleri, cevaplar ve şemalar buradan gezilir. Ham belgeler: `GET /openapi.json` ve `GET /admin-api.json`. Görüntüleyici bağımlılıksızdır ve dışarıdan dosya çekmez, kapalı ağda da açılır. Rafineri ekranlarında sol menünün altındaki "API dokümanı" bağlantısı aynı sayfayı açar.
+
 ## Demo ayarları (R10 → parametreler)
 
 `debug.order_delay_ms`: emir kararını geciktirir (cevapsız emir ve geç fill senaryoları) · `order.quote_max_age_ms`: quote_seq tazeliği · `limit.current_account_*`: cari hesap limitleri · `limit.warn_pct`: uyarı eşiği · `events.retry_schedule_ms`: olay tekrar takvimi.

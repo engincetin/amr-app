@@ -39,6 +39,9 @@ export function App() {
             {s.sprint > 1 && !(s as any).done && <span className="sprint">Sprint {s.sprint}</span>}
           </NavLink>
         ))}
+        <a className="doc" href="/docs" target="_blank" rel="noreferrer">
+          <span className="code">API</span><span>API dokümanı</span>
+        </a>
       </nav>
       <TopBar o={o} sseConnected={live.connected} refresh={live.refresh} />
       <main className="main">
