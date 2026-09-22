@@ -219,7 +219,7 @@ export async function adminRoutes(app: FastifyInstance, ctx: AppContext) {
       .send(documentPdf(d));
   });
 
-  // ----- R10: kullanıcılar, roller, ikinci onay -----
+  // ----- R11 Ayarlar: kullanıcılar, roller, ikinci onay -----
   app.get("/admin/users", async () => ({
     items: ctx.users.list().map((u) => ({ ...u, role_tr: ROLE_TR[u.role], permissions: ctx.users.permissions(u.role) })),
     roles: Object.entries(ROLE_TR).map(([code, name]) => ({ code, name, permissions: ctx.users.permissions(code as Role) })),
@@ -236,7 +236,7 @@ export async function adminRoutes(app: FastifyInstance, ctx: AppContext) {
    * Onaylanan kritik aksiyonu uygular.
    *
    * Onay ile uygulama aynı yerdedir: ikinci kullanıcı onayladığı anda iş yapılır.
-   * İstek hangi ekrandan açılmışsa açılsın (R8, R10) sonuç aynıdır; onay bir kez uygulanır.
+   * İstek hangi ekrandan açılmışsa açılsın (R8, R11) sonuç aynıdır; onay bir kez uygulanır.
    */
   const applyApproved = (action: string, payload: Record<string, unknown>, approver: string): string => {
     switch (action) {
@@ -351,7 +351,7 @@ export async function adminRoutes(app: FastifyInstance, ctx: AppContext) {
     return { ok: true, unread: unreadCount(ctx.db) };
   });
 
-  // ----- ayarlar ve denetim günlüğü (R10, Sprint 1: parametre listesi) -----
+  // ----- ayarlar ve denetim günlüğü (R11, Sprint 1: parametre listesi) -----
   app.get("/admin/settings", async () => allSettings(ctx.db));
   /** Parametre değişikliği kritiktir: ikinci onay ister (Sistem 09). */
   app.put<{ Body: Record<string, string> & { approval_id?: string; approver?: string } }>("/admin/settings", async (req, reply) => {

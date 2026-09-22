@@ -72,14 +72,14 @@ flowchart LR
   TOP --> R7["R7 Rafinasyon<br/>katalog · teklif · üretim · teslimat"]
   TOP --> R8["R8 Mahsuplaşma<br/>talep · ekstre · mutabakat · ödeme"]
   TOP --> R9["R9 Belgeler"]
-  TOP --> R11["R11 Kayıtlar<br/>istek · denetim · olay · bildirim · tick"]
-  TOP --> R10["R10 Ayarlar<br/>bağlantı · parametreler · API istemcileri · kullanıcılar"]
+  TOP --> R10["R10 Kayıtlar<br/>istek · denetim · olay · bildirim · tick"]
+  TOP --> R11["R11 Ayarlar<br/>bağlantı · parametreler · API istemcileri · kullanıcılar"]
 ```
 
 | Ekran | Amaç | Gösterir | Aksiyonlar (elle) | Otomatik olan | Rol |
 |---|---|---|---|---|---|
 | **R1 Genel bakış** | Günün durumu tek bakışta | bugünkü emirler (adet, gram, alış / satış) · gün içi cari hesap grafiği (altın ve para) · limit kullanımı · bekleyen işler (kasa talepleri, teslimat ve rafinasyon adımları, mahsuplaşma) · son bildirimler | yok, gezinme | tümü | hepsi |
-| **R2 Fiyat** (01) | Yayını yönetmek | merkez bağlantısı durumu (bağlı / kopuk, son fiyat zamanı; adres ve bağlan / kes R10 Ayarlar'da) · yayın durumu (`tradable`) · son 50 tick (seq, ts, üç kur bid / ask) · abone istemci (KZ bağlı mı, son heartbeat) | **Bağlan / Kes** (merkez) · **Yayını durdur / başlat** (gerekçe zorunlu; `price.halt` / `price.resume` olayı) | merkez fiyatı geldikçe tick yayını · heartbeat · merkez kesintisinde `tradable=false` ve bildirim | Masa, Yönetici |
+| **R2 Fiyat** (01) | Yayını yönetmek | merkez bağlantısı durumu (bağlı / kopuk, son fiyat zamanı; adres ve bağlan / kes R11 Ayarlar'da) · yayın durumu (`tradable`) · son 50 tick (seq, ts, üç kur bid / ask) · abone istemci (KZ bağlı mı, son heartbeat) | **Bağlan / Kes** (merkez) · **Yayını durdur / başlat** (gerekçe zorunlu; `price.halt` / `price.resume` olayı) | merkez fiyatı geldikçe tick yayını · heartbeat · merkez kesintisinde `tradable=false` ve bildirim | Masa, Yönetici |
 | **R3 Emirler** (03, 04, 07, 08, 09) | KZ'den gelen alış / satış emirlerini izlemek | özet kartları (bugün: adet, gerçekleşen alış / satış, red; listedeki alış ve satış gramı) · liste (20'şer sayfa): zaman · müşteri emri no · yön · gram · kur · fiyat sırası · limit · sonuç (FILLED / REJECTED / CANCELLED) · fill fiyatı ve tutar · Tahsis Belgesi bağlantısı; filtre: gün, yön, durum; detay: red sebebi, o andaki bakiye bilgisi | yok | emri al · fiyatı `quote_seq` ve limitle karşılaştır · fill ya da red · Tahsis Belgesi üret (alışta) · cari hesabı güncelle · bakiye bilgisiyle cevapla · olay gönder · iptal talebine kesin cevap | Masa (okur), Denetçi |
 | **R4 Kasa hesabı** (05, 06) | Kasa giriş / çıkış taleplerini işlemek ve kasa hesabını görmek | kasa hesabı alt kalemleri · **bekleyen talepler** (giriş / çıkış: gram, KZ ref, geliş zamanı, hedef cevap süresi sayacı) · işlenen talepler ve fişleri · "kasaya konuluyor" kuyruğu ve T+3 sayacı · günlük kasa ekstresi | **Kabul et / Reddet** (giriş ve çıkış; kabulde fiş oluşur ve KZ'ye gider) · giriş için **Kasaya konuluyor** → **Kasaya konuldu** durumları · fişleri ve ekstreyi görüntüle / indir | otomatik kabul (ayarlardan açılırsa) · kural kontrolleri: giriş için cari hesap altını yeterli, çıkış için kasada yeterli · fiş üretimi ve gönderimi · günlük ekstre (kesimde) · T+3 aşımında uyarı | Kasa operasyonu |
 | **R5 Cari hesap** (02, 12) | Gün içi karşılıklı alacak borcu izlemek | **altın**: `T` hareketleri (fill'ler, kasa giriş / çıkış aktarımları) ve bakiye · **para**: kur bazında kalemler (alış satış bedelleri, lojistik, rafinasyon) ve net · limit göstergeleri (gram ve kur bazında para) · limit yaklaşırken uyarı | **Mahsuplaşma çağır** (gerekçe: talep ya da limit; KZ'ye bildirim) | hareketlerin işlenmesi · limit uyarısı · limitte yeni emir reddi | Masa |
@@ -87,8 +87,8 @@ flowchart LR
 | **R7 Rafinasyon** (11) | Ürün kataloğunu tutmak, rafinasyon taleplerini yürütmek | **Katalog**: ürün · gramaj · ayar · tarife · üretim süresi · aktif / pasif · **Talepler**: kalemler × adet, adres referansı, teklif, üretim ve teslimat durumu | Katalog: **ürün ekle / düzenle / pasife al** (KZ'ye `catalog.updated`) · Talep: **Teklif ver** (ürün bedeli + lojistik, geçerlilik) → KZ onayı beklenir · **Üretime al** · **Hazır** (Sevkiyat Fişi) · **Taşıyıcıya verildi** (takip no) · **Teslim edildi** · **İptal** (üretime kadar) | her adımda `refining.*` olayı ve bildirim · onaylanan bedel cari hesaba kalem | Üretim, Kasa operasyonu |
 | **R8 Mahsuplaşma** (12) | Pencereyi kapatmak, ekstreleri karşılaştırmak, ödemeyi kapatmak | pencereler (tarih, tetik: kesim / KZ talebi / AMR talebi / limit, durum) · **gelen talep bildirimi** · ekstre taslağı (işlemler, `T` net, kur bazında para, hizmet bedelleri) · KZ ekstresiyle **karşılaştırma sonucu** (eşit / fark satırları) · altın bacağı (KZ'den gelen giriş / çıkış talepleri) · para bacağı (ödeyen taraf, banka bilgileri) | **Mahsuplaşma talep et** · **Ekstreyi onayla** (mutabakat) · **Ödeme bildir** (AMR ödeyen ise banka referansı) · **Ödeme alındı** (KZ ödeyen ise) | kesim saatinde pencere · ekstre taslağı · karşılaştırma · `SETTLED` kapanışı ve limit sayaçlarının sıfırlanması | Masa, Yönetici |
 | **R9 Belgeler** | Tüm fiş ve belgelerin arşivi | Tahsis Belgesi · Kasa Giriş / Çıkış Fişi · Lojistik ve Rafinasyon Teklifi · Sevkiyat Fişi · Teslimat Kaydı · faturalar · ekstreler; her biri için oluşturma ve **KZ'ye gönderim zamanı**, teslim durumu; arama (tip, tarih, referans); imza doğrulama | görüntüle · indir · yeniden gönder | üretim, imzalama, gönderim | hepsi (Denetçi salt okunur) |
-| **R11 Kayıtlar** | Denetim ve kanıt tek ekranda | istek günlüğü (Kanzasset istekleri ve panel değişiklikleri; gövde yerine sha256) · denetim günlüğü · olay teslimleri · bildirimler · fiyat tick'leri; aynı dört sütun (zaman · kim · ne · sonuç), metin süzgeci, 20'şer sayfa | yok | yazım ve saklama süresi (90 gün) | hepsi |
-| **R10 Ayarlar** | Bağlantı, parametreler ve erişim | **merkez bağlantısı** (soket adresi, bağlan / kes, yeniden bağlanma kuralı) · parametreler (kasa talimatı kabulü elle / otomatik ve hedef cevap süresi · kasaya koyma vadesi T+3 · cari hesap limitleri · kesim saati · teklif geçerlilik süreleri · kur bazında banka hesapları) · API istemcileri (KZ anahtarı, imza sırrı, olay adresi) · kullanıcılar ve roller · **denetim günlüğü** | parametre değiştir (ikinci onay) · istemci anahtarı üret / iptal et · kullanıcı ekle / rol ver | her elle aksiyonun günlüğe yazılması | Yönetici |
+| **R10 Kayıtlar** | Denetim ve kanıt tek ekranda | istek günlüğü (Kanzasset istekleri ve panel değişiklikleri; gövde yerine sha256) · denetim günlüğü · olay teslimleri · bildirimler · fiyat tick'leri; aynı dört sütun (zaman · kim · ne · sonuç), metin süzgeci, 20'şer sayfa | yok | yazım ve saklama süresi (90 gün) | hepsi |
+| **R11 Ayarlar** | Bağlantı, parametreler ve erişim | **merkez bağlantısı** (soket adresi, bağlan / kes, yeniden bağlanma kuralı) · parametreler (kasa talimatı kabulü elle / otomatik ve hedef cevap süresi · kasaya koyma vadesi T+3 · cari hesap limitleri · kesim saati · teklif geçerlilik süreleri · kur bazında banka hesapları) · API istemcileri (KZ anahtarı, imza sırrı, olay adresi) · kullanıcılar ve roller · **denetim günlüğü** | parametre değiştir (ikinci onay) · istemci anahtarı üret / iptal et · kullanıcı ekle / rol ver | her elle aksiyonun günlüğe yazılması | Yönetici |
 
 **Bildirimler (zil):** bekleyen kasa talebi · hedef cevap süresi aşıldı · kasaya koyma T+3 yaklaştı · teslimat ve rafinasyon adımı bekliyor · KZ onayı geldi · mahsuplaşma talebi geldi · limit yaklaştı / aşıldı · merkez bağlantısı koptu · KZ soketi koptu · eşleşme uyuşmazlığı. Her bildirim ilgili ekrana götürür; okundu / işlendi izi tutulur.
 
@@ -105,33 +105,33 @@ Mevcut backoffice'e **Hazine → Rafineri** modülü olarak eklenir. Müşteri e
 flowchart LR
   H["Hazine → Rafineri · bildirim zili"]
   H --> K1["K1 Genel bakış"]
-  H --> K11["K11 Fiyat<br/>rafineri → müşteri fiyat zinciri · müşteri işlemlerini durdur / başlat"]
+  H --> K2["K2 Fiyat<br/>rafineri → müşteri fiyat zinciri · müşteri işlemlerini durdur / başlat"]
   H --> K3["K3 Emirler<br/>müşteri emri ↔ rafineri emri · cevapsız emir kararı"]
   H --> K4["K4 Kasa hesabı<br/>giriş / çıkış talepleri · fişler · mint / burn eşlemesi"]
-  H --> K2["K2 Hesaplar<br/>KZ kaydı ↔ bakiye bilgisi · RECONCILE çöz"]
-  H --> K5["K5 Hazine alım satımı<br/>maker-checker · canlı fiyatla gönder"]
+  H --> K5["K5 Cari hesap<br/>KZ kaydı ↔ bakiye bilgisi · RECONCILE çöz"]
+  H --> K12["K12 Hazine alım satımı<br/>maker-checker · canlı fiyatla gönder"]
   H --> K6["K6 Fiziksel teslimat<br/>talep · lojistik onayı · takip"]
   H --> K7["K7 Rafinasyon<br/>katalog · müşteri seçimi · teklif onayı · takip"]
   H --> K8["K8 Mahsuplaşma<br/>talep · ekstre karşılaştırma · ödeme talimatı"]
-  H --> K12["K12 Belgeler<br/>rafineri belgelerinin Kanzasset kopyası · özet ve imza doğrulama"]
+  H --> K9["K9 Belgeler<br/>rafineri belgelerinin Kanzasset kopyası · özet ve imza doğrulama"]
   H --> K10["K10 Kayıtlar"]
-  H --> K9["K9 Ayarlar<br/>bağlantı · parametreler · günlükler"]
+  H --> K11["K11 Ayarlar<br/>bağlantı · parametreler · günlükler"]
 ```
 
 | Ekran | Amaç | Gösterir | Aksiyonlar (elle) | Otomatik olan |
 |---|---|---|---|---|
 | **K1 Genel bakış** | Günün durumu tek bakışta | müşteri işlemleri durumu · rafineri ve müşteri fiyatı · iki hesabın KZ kaydı ve eşleşme · bugünkü emirler · bekleyen işler (cevapsız, geç fill, onay, teslim) · mahsuplaşma adımı · belge sayısı · kontroller | yok, gezinme | tümü |
-| **K11 Fiyat** (01) | Rafineri fiyatının ve müşteri fiyatının sağlığı | soket durumu (ayarlar K9'da) · fiyat zinciri (rafineri alış / satış → müşteri satar / alır, marj, komisyon) · son 50 tick · müşteri işlemlerinin durumu (açık / durdu ve sebebi) | **Müşteri işlemlerini durdur / başlat** (gerekçeli) | bayat fiyat ya da `tradable=false` → müşteri tarafı otomatik durur · yeniden bağlanma · `seq` boşluğunda yeniden abonelik |
-| **K2 Hesaplar** (02) | KZ kaydı ile rafineri bakiye bilgisinin eşleşmesi | kasa hesabı alt kalemleri · cari hesap (altın, kur bazında para) · **eşleşme durumu** (EŞİT / RECONCILE) · fark satırları · `seq` | **Anlık fotoğraf iste** · **RECONCILE çöz** (fark açıklaması + düzeltme kaydı, maker-checker) | her harekette karşılaştırma · uyuşmazlıkta mint ve kasa çıkışı blokesi |
+| **K2 Fiyat** (01) | Rafineri fiyatının ve müşteri fiyatının sağlığı | soket durumu (ayarlar K11'de) · fiyat zinciri (rafineri alış / satış → müşteri satar / alır, marj, komisyon) · son 50 tick · müşteri işlemlerinin durumu (açık / durdu ve sebebi) | **Müşteri işlemlerini durdur / başlat** (gerekçeli) | bayat fiyat ya da `tradable=false` → müşteri tarafı otomatik durur · yeniden bağlanma · `seq` boşluğunda yeniden abonelik |
+| **K5 Cari hesap** (02) | KZ kaydı ile rafineri bakiye bilgisinin eşleşmesi | kasa hesabı alt kalemleri · cari hesap (altın, kur bazında para) · **eşleşme durumu** (EŞİT / RECONCILE) · fark satırları · `seq` | **Anlık fotoğraf iste** · **RECONCILE çöz** (fark açıklaması + düzeltme kaydı, maker-checker) | her harekette karşılaştırma · uyuşmazlıkta mint ve kasa çıkışı blokesi |
 | **K3 Emirler** (03, 04, 07, 08) | Müşteri emri ile rafineri emrinin eşlemesi | özet kartları (bugün, listedeki alış / satış gramı) · süzgeçli ve 20'şer sayfalı liste · müşteri emri ↔ rafineri emri (müşteri emri no) · durumlar · fill fiyatı ve müşteri fiyatı · **cevapsız emir kuyruğu** (sorgu / iptal sonucu) · geç fill pozisyonları | **Geç fill kararı**: ters emirle kapat ya da toleransta taşı | emir gönderimi · zaman sınırı · durum sorgusu · iptal talebi |
 | **K4 Kasa hesabı** (05, 06) | Giriş / çıkış talepleri, fişler ve mint / burn eşlemesi | talep listesi ve durumları (talep · kabul · kasaya konuluyor · kasaya konuldu · red) · Kasa Giriş / Çıkış Fişleri · BitGo mint / burn işlem referansı · T+3 sayacı · `kasaya konuluyor` tavanı göstergesi | yalnız yönetici: **elle giriş / çıkış talebi** (gerekçeli, ikinci onay) | 07, 09, 12'de otomatik giriş talebi · 08, 09, 12'de otomatik çıkış talebi · fiş gelince mint, burn sonra çıkış talebi |
-| **K5 Hazine alım satımı** (09) | Envanter hedefini değiştirmek | talepler · onay matrisi durumu · canlı fiyat ve tutar · sonuç zinciri (fill → kasa girişi / çıkışı → mint / burn) | **Talep oluştur** (maker) · **Onayla** · **Son onaycı: canlı fiyatla gönder** | zincirin geri kalanı |
+| **K12 Hazine alım satımı** (09) | Envanter hedefini değiştirmek | talepler · onay matrisi durumu · canlı fiyat ve tutar · sonuç zinciri (fill → kasa girişi / çıkışı → mint / burn) | **Talep oluştur** (maker) · **Onayla** · **Son onaycı: canlı fiyatla gönder** | zincirin geri kalanı |
 | **K6 Fiziksel teslimat** (10) | Müşteri itfa taleplerinin rafineriye iletimi ve takibi | müşteri talebi ↔ rafineri talebi · lojistik teklifi · durum (`delivery.*`) · emanet tokenler (`E`) · burn anı | **Talebi gönder** · **Lojistik teklifini onayla** (müşteri onayından sonra) · **İptal** (sevkiyattan önce) | onayda lojistik bedeli cari hesaba · `DELIVERED` olayında burn · müşteriye durum yansıması |
 | **K7 Rafinasyon** (11) | Katalogdan müşteri seçimi, teklif onayı, takip | güncel katalog (rafineriden) · müşteri seçimleri · rafineri teklifi (ürün bedeli + lojistik) · müşteriye gösterilen fiyat (marj + komisyon dahil) · durum (`refining.*`) · emanet tokenler | **Talebi gönder** · **Teklifi onayla** (müşteri onayından sonra) · **İptal** (üretime kadar) | katalog güncellemesi (`catalog.updated`) · onayda bedel cari hesaba · `DELIVERED` olayında burn |
 | **K8 Mahsuplaşma** (12) | Pencereyi kapatmak ve ödemeyi yapmak | pencereler · **gelen talep bildirimi** · KZ ekstresi ↔ AMR ekstresi karşılaştırma · altın bacağı (giriş / çıkış + mint / burn) izleme · para bacağı: kur bazında net, yön, banka talimatı | **Mahsuplaşma talep et** · **Mutabakat onayı** · **Ödeme talimatı** (şirket hesabından, ikinci onay) ve **ödeme bildirimi** · **Ödeme alındı** onayı | kesimde pencere · ekstre · karşılaştırma · altın bacağı talepleri |
-| **K12 Belgeler** | Rafineri belgelerinin Kanzasset kopyası | olayla gelen her belge numarası çekilir, sha256 özeti yeniden hesaplanır (hash_ok), anahtar verilmişse imza doğrulanır (signature_ok), içerik saklanır · tip ve metin süzgeci · 20'şer sayfa · PDF (rafineriden imzalı istekle) | **Belgeleri eşitle** (geriye dönük tarama) · görüntüle · PDF | olayla çekme, doğrulama, özet tutmuyorsa bildirim |
+| **K9 Belgeler** | Rafineri belgelerinin Kanzasset kopyası | olayla gelen her belge numarası çekilir, sha256 özeti yeniden hesaplanır (hash_ok), anahtar verilmişse imza doğrulanır (signature_ok), içerik saklanır · tip ve metin süzgeci · 20'şer sayfa · PDF (rafineriden imzalı istekle) | **Belgeleri eşitle** (geriye dönük tarama) · görüntüle · PDF | olayla çekme, doğrulama, özet tutmuyorsa bildirim |
 | **K10 Kayıtlar** | Denetim ve kanıt tek ekranda | istek günlüğü · denetim günlüğü · olaylar · bildirimler · fiyat tick'leri; aynı dört sütun, metin süzgeci, 20'şer sayfa | yok | yazım ve saklama süresi |
-| **K9 Ayarlar** | Bağlantı ve iş kurallarının değerleri | rafineri soketi ve REST adresi, durum, son mesaj, yeniden bağlanma (salt okunur; adres ortam değişkeni) · taban / tavan / hedef · mint politikası · tavan aşımında burn hedefi · slippage aralığı · emir zaman sınırı · bayatlık eşiği · cari hesap limitleri · pencere sayısı · burn anı · `kasaya konuluyor` tavanı · onay matrisi | değiştir (ikinci onay, günlüğe yazılır) | |
+| **K11 Ayarlar** | Bağlantı ve iş kurallarının değerleri | rafineri soketi ve REST adresi, durum, son mesaj, yeniden bağlanma (salt okunur; adres ortam değişkeni) · taban / tavan / hedef · mint politikası · tavan aşımında burn hedefi · slippage aralığı · emir zaman sınırı · bayatlık eşiği · cari hesap limitleri · pencere sayısı · burn anı · `kasaya konuluyor` tavanı · onay matrisi | değiştir (ikinci onay, günlüğe yazılır) | |
 
 ---
 
@@ -320,13 +320,13 @@ Hesap durumu: `OK` · `RECONCILE` (uyuşmazlık; KZ tarafında mint ve kasa çı
 |---|---|---|---|
 | **Kasa operasyonu** | Rafineri | R1, R4, R6, R7 (talepler), R9 | kasa talebini kabul et / reddet · kasaya konuluyor / konuldu · teslimat ve sevkiyat adımları |
 | **Üretim** | Rafineri | R1, R7, R9 | katalog · rafinasyon teklifi · üretime al · hazır |
-| **Masa** | Rafineri | hepsi (R10 hariç) | merkez bağlantısı · yayını durdur / başlat · lojistik fiyatı gir · mahsuplaşma talebi, ekstre onayı, ödeme bildirimi |
-| **Yönetici** | Rafineri | hepsi | R10: parametreler, istemciler, kullanıcılar; kritik parametrede ikinci onay |
+| **Masa** | Rafineri | hepsi (R11 hariç) | merkez bağlantısı · yayını durdur / başlat · lojistik fiyatı gir · mahsuplaşma talebi, ekstre onayı, ödeme bildirimi |
+| **Yönetici** | Rafineri | hepsi | R11: parametreler, istemciler, kullanıcılar; kritik parametrede ikinci onay |
 | **Denetçi** | Rafineri | hepsi, salt okunur | belge ve günlük indirme |
-| **Hazineci (maker)** | Kanzasset | K1'den K9'a | talep oluşturur (hazine alım satımı, teslimat ve rafinasyon onayı, ödeme talimatı) |
-| **Onaycı** | Kanzasset | K1'den K9'a | onay matrisi; son onaycı canlı fiyatla gönderir |
+| **Hazineci (maker)** | Kanzasset | K1'den K12'ye | talep oluşturur (hazine alım satımı, teslimat ve rafinasyon onayı, ödeme talimatı) |
+| **Onaycı** | Kanzasset | K1'den K12'ye | onay matrisi; son onaycı canlı fiyatla gönderir |
 | **Operasyon** | Kanzasset | K1, K3, K6, K7, K8 | cevapsız emir kararı · RECONCILE inceleme · teslimat ve rafinasyon takibi |
-| **Yönetici** | Kanzasset | hepsi | K9 parametreler (ikinci onay) · elle kasa talimatı (gerekçeli) |
+| **Yönetici** | Kanzasset | hepsi | K11 ayarlar (ikinci onay) · elle kasa talimatı (gerekçeli) |
 
 Kritik aksiyonlarda iki kişi: parametre değişikliği, elle kasa talimatı, ödeme talimatı, RECONCILE düzeltmesi. Her aksiyon denetim günlüğünde: kim, ne zaman, ne, önceki ve sonraki değer.
 
@@ -336,13 +336,13 @@ Kritik aksiyonlarda iki kişi: parametre değişikliği, elle kasa talimatı, ö
 
 | Katman | Seçim | Not |
 |---|---|---|
-| Rafineri ekranları | **React + TypeScript** (Vite) · tablo ve form bileşenleri · bildirim zili · Türkçe arayüz · sayılar 3 ondalık gram, 2 ondalık para | üst şerit ortak bileşen; ekranlar R1'den R10'a rotalar |
+| Rafineri ekranları | **React + TypeScript** (Vite) · tablo ve form bileşenleri · bildirim zili · Türkçe arayüz · sayılar 3 ondalık gram, 2 ondalık para | üst şerit ortak bileşen; ekranlar R1'den R11'e rotalar |
 | AMR API ve soket | Node.js + TypeScript (Fastify, ws) · sözleşme TypeBox → OpenAPI · HMAC imza · idempotency | tek sözleşme dosyası iki tarafa tip üretir |
 | AMR defteri | Postgres (geliştirmede SQLite) · hareket tabloları + türetilmiş bakiyeler · günlük yeniden hesaplama kontrolü | |
 | Fiş ve belgeler | JSON içerik + sha256 + rafineri imzası, aynı içerikten A4 PDF · `GET /documents/{id}` ve `/pdf` · gönderim izi | imza doğrulama R9 ve K4'te; imza HMAC-SHA256, Ed25519 kuruluma bırakıldı |
 | Merkez adaptörü | R2'den kurulan soket bağlantısı; ilk sürüm **mock merkez** (rastgele yürüyüş, kesinti komutu); rafinerinin gerçek arayüzü gelince adaptör değişir, gerisi değişmez | |
 | KZ simülatörü | S0'dan S9'a senaryoları otomatik koşan istemci (açılış, stoktan alış / satış, büyük alış / satış, kasa talepleri, teslimat, rafinasyon, cevapsız emir, mahsuplaşma) | rafineri ekranlarını demo için doldurur |
-| Kanzasset tarafı | mevcut yığın (Next.js / Supabase); AMR bağlantı katmanı ayrı modül; K1'den K9'a backoffice sayfaları | |
+| Kanzasset tarafı | mevcut yığın (Next.js / Supabase); AMR bağlantı katmanı ayrı modül; K1'den K12'ye backoffice sayfaları | |
 | Ortamlar | geliştirme · UAT (Render) · rafineri kurulumu (konteyner) | UAT'ta iki taraf da simülatörlerle |
 | Teslim paketi | çalışan konteyner · OpenAPI · bu doküman + Akışlar · rafineri personeli kullanım kılavuzu · demo senaryosu ve test raporu | yöneticiye teslim |
 
@@ -353,7 +353,7 @@ Mevcut prototipler (`amr-app`, `kz-treasury`) bu tasarıma çekilir: kasa hesab�
 ## 11 · Sıradaki adımlar
 
 1. **Bu dokümanın onayı:** ekran listesi ve aksiyonlar (02, 03), API alanları (05), red sebepleri, olay listesi (06).
-2. **Ekran tasarımı:** iki yol var. (a) Claude Design'da R1'den R10'a ekranları çizip sonra koda geçmek: estetik önce, daha uzun. (b) Doğrudan React'te basit bir tasarım sistemiyle çalışan ekranları yapmak, estetiği sonra iyileştirmek: daha hızlı, yöneticiye çalışan sistem gösterir. Öneri: (b), çünkü amaç sistemin nasıl çalıştığını göstermek.
+2. **Ekran tasarımı:** iki yol var. (a) Claude Design'da R1'den R11'e ekranları çizip sonra koda geçmek: estetik önce, daha uzun. (b) Doğrudan React'te basit bir tasarım sistemiyle çalışan ekranları yapmak, estetiği sonra iyileştirmek: daha hızlı, yöneticiye çalışan sistem gösterir. Öneri: (b), çünkü amaç sistemin nasıl çalıştığını göstermek.
 3. **Sözleşme:** OpenAPI ve soket şeması bu dokümandan üretilir; iki taraf da aynı dosyadan tip alır.
 4. **Mock merkez ve KZ simülatörü:** senaryolar uçtan uca; rafineri ekranları gerçek veriyle dolar.
 5. **Yöneticiye teslim:** çalışan uygulama + bu iki doküman + kullanım kılavuzu; rafinerinin gerçek fiyat arayüzü netleşince yalnız merkez adaptörü değişir.

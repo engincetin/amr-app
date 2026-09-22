@@ -47,7 +47,7 @@ const VIEWER = docsViewerHtml({
     {
       id: "admin", label: "Panel API'si (/admin)", url: "/admin-api.json",
       heading: "Panel API'si",
-      intro: "Rafineri ekranlarının (R1'den R10'a) kullandığı iç uçlar. Kanzasset bu uçları kullanmaz. Aktör <code>X-User</code> başlığıyla gelir ve yetkisi rolüne göre denetlenir; <code>ADMIN_TOKEN</code> verilmişse ayrıca <code>X-Admin-Token</code> istenir.",
+      intro: "Rafineri ekranlarının (R1'den R11'e) kullandığı iç uçlar. Kanzasset bu uçları kullanmaz. Aktör <code>X-User</code> başlığıyla gelir ve yetkisi rolüne göre denetlenir; <code>ADMIN_TOKEN</code> verilmişse ayrıca <code>X-Admin-Token</code> istenir.",
       note: "Kritik aksiyonlar ikinci onay ister: önce istek açılır (<code>202</code> ve onay numarası döner), sonra farklı bir kullanıcı onaylar. Bu belge çalışan sunucunun yol tablosundan üretilir (<code>npm run adminapi:export</code>), böylece uçlarla belgenin arası açılmaz.",
       hint: "Belge için <code>npm run adminapi:export</code> çalıştırın.",
     },

@@ -5,7 +5,7 @@ Bu repo Ahlatcı Metal Refinery (AMR) tarafındaki uygulamadır. Kanzasset taraf
 ## Kaynak dokümanlar (önce bunlara bak)
 
 - `docs/KZ_AMR_Akislar.md`: rafineri ile Kanzasset arasındaki akışlar (fiyat, bakiye bilgisi, stoktan alış / satış, kasa girişi / çıkışı, büyük alış / satış, hazine alım satımı, fiziksel teslimat, rafinasyon, mahsuplaşma). Rakamlı örnekler buradadır.
-- `docs/KZ_AMR_Sistemi.md`: ekranlar (R1..R10, K1..K9), API, soket protokolü, veri modeli, kontroller, sprint planı.
+- `docs/KZ_AMR_Sistemi.md`: ekranlar (R1..R11, K1..K12), API, soket protokolü, veri modeli, kontroller, sprint planı.
 - `docs/KARARLAR.md`: tasarımda karşılığı olmayan kararlar. Tasarımda olmayan bir karar verince buraya tek satır yazılır.
 - `docs/DEMO.md` (sunum), `docs/KULLANIM_KILAVUZU.md` (personel), `docs/TEST_RAPORU.md` (kapsam ve bilinen eksikler).
 - Akışlar ile kod çelişirse akışlar kazanır; önce dokümanı düzelt, sonra kodu.
@@ -61,4 +61,4 @@ Bu repo Ahlatcı Metal Refinery (AMR) tarafındaki uygulamadır. Kanzasset taraf
 
 ## Sprint durumu
 
-Sprint 1'den 6'ya tamam: sözleşme, mock merkez, kaynak bağlantısı, yayın, HMAC, bildirimler, ayarlar, defter, emirler, cari hesap ve limit, Tahsis Belgesi, olaylar, kasa talimatları ve fişler, günlük kasa ekstresi, fiziksel teslimat, katalog ve rafinasyon, mahsuplaşma, belgeler ve PDF, kullanıcılar ve roller; ekranlar R1'den R10'a hepsi. Teslim paketi hazır: demo senaryoları (`kz-treasury` içinde `npm run demo`), sunum senaryosu, kullanım kılavuzu, Docker ve test raporu. Plan `README.md` sonunda.
+Sprint 1'den 6'ya tamam: sözleşme, mock merkez, kaynak bağlantısı, yayın, HMAC, bildirimler, ayarlar, defter, emirler, cari hesap ve limit, Tahsis Belgesi, olaylar, kasa talimatları ve fişler, günlük kasa ekstresi, fiziksel teslimat, katalog ve rafinasyon, mahsuplaşma, belgeler ve PDF, kullanıcılar ve roller; ekranlar R1'den R11'e hepsi. Teslim paketi hazır: demo senaryoları (`kz-treasury` içinde `npm run demo`), sunum senaryosu, kullanım kılavuzu, Docker ve test raporu. Plan `README.md` sonunda.

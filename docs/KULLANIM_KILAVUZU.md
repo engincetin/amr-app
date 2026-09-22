@@ -13,7 +13,7 @@ Solda ekran listesi (simge + ad; Kanzasset paneliyle aynı sıra), üstte sade b
 | Yer | Ne anlatır | Ne zaman endişelenmeli |
 |---|---|---|
 | Üst şerit: Yayın | Fiyat Kanzasset'e akıyor mu | "Yayın durdu" yazıyorsa Kanzasset işlem yapamaz; R2 Fiyat'a bakın |
-| Yan menü altı: Merkez | Fiyat kaynağına bağlı mıyız | "Kopuk" ise R10 Ayarlar'dan yeniden bağlanın |
+| Yan menü altı: Merkez | Fiyat kaynağına bağlı mıyız | "Kopuk" ise R11 Ayarlar'dan yeniden bağlanın |
 | Yan menü altı: Kanzasset | Karşı taraf soketimize abone mi | "Bağlı değil" ise emir gelmez |
 | Genel bakış: Kasa hesabı | Kanzasset adına kasada duran gram | Beklenmedik düşüş varsa R4'teki hareketlere bakın |
 | Genel bakış: Cari hesap | Karşılıklı açık hesap: gram ve para | Limit yüzdesi %80'i geçtiyse mahsuplaşma zamanı |
@@ -38,7 +38,7 @@ Yetkiniz olmayan bir düğmeye bastığınızda uygulama size neden yapamadığ�
 ### 2.1 Sabah: yayını açmak
 
 1. **R2 Fiyat** ekranını açın.
-2. Merkez kutusunda **Bağlı** yazmıyorsa **R10 Ayarlar → Bağlantı** bölümünden **Bağlan** deyin.
+2. Merkez kutusunda **Bağlı** yazmıyorsa **R11 Ayarlar → Bağlantı** bölümünden **Bağlan** deyin.
 3. Tick listesi akmaya başlayınca yayın açıktır; üst şeritte **Yayın açık** görünür.
 
 Yayını durdurmanız gerekirse (örneğin merkezde sorun varsa) **Yayını durdur** deyin ve gerekçe yazın. Gerekçe Kanzasset'e gider ve müşteri tarafı anında durur. Sorun geçince **Başlat**.
@@ -131,7 +131,7 @@ Adımlar:
 
 | Belirti | Ne demek | Ne yapmalı |
 |---|---|---|
-| Yan menü altında "Merkez kopuk" | Fiyat kaynağına bağlantı gitti | R10 Ayarlar → **Bağlan**. Düzelmiyorsa merkez tarafına haber verin. Yayın kendiliğinden durur, emir kabul edilmez. |
+| Yan menü altında "Merkez kopuk" | Fiyat kaynağına bağlantı gitti | R11 Ayarlar → **Bağlan**. Düzelmiyorsa merkez tarafına haber verin. Yayın kendiliğinden durur, emir kabul edilmez. |
 | Üst şeritte "Yayın durdu" | Biri elle durdurmuş ya da merkez yok | R2 → **Yayını başlat**. Gerekçeyi bildirimlerden görebilirsiniz. |
 | Cari hesap limiti %80 üstü | Açık hesap büyüdü | R8 → **Mahsuplaşma talep et**. Limit dolarsa yeni emirler reddedilir. |
 | Kasa talebi reddedildi diyor | Kural tutmadı | Girişte Kanzasset'in cari hesabında yeterli gram yok; çıkışta kasada yeterli gram yok ("kasaya konuluyor" sayılmaz). Kanzasset ile konuşun. |

@@ -21,11 +21,11 @@ const LABELS: Record<string, string> = {
 };
 
 /**
- * R10 Ayarlar ve kullanıcılar.
+ * R11 Ayarlar ve kullanıcılar.
  * Parametreler koddan değil buradan girilir ve kritik olanlar ikinci onay ister.
  * Kullanıcılar ve roller, API istemcileri, bekleyen onaylar ve denetim günlüğü burada.
  */
-export function R10Settings({ live }: { live: Live }) {
+export function R11Settings({ live }: { live: Live }) {
   const [form, setForm] = useState<Record<string, string>>({});
   const [audit, setAudit] = useState<AuditRow[]>([]);
   const [users, setUsers] = useState<UsersView | null>(null);
@@ -47,7 +47,7 @@ export function R10Settings({ live }: { live: Live }) {
 
   return (
     <div>
-      <span className="tag">R10</span>
+      <span className="tag">R11</span>
       <h1>Ayarlar</h1>
       <p className="sub">Parametreler kod değil, buradan girilir. Kritik değişiklikler (parametreler, API anahtarı, ödeme talimatı) ikinci onay ister: bir kullanıcı ister, başka bir kullanıcı onaylar. Her elle aksiyon denetim günlüğüne yazılır. Demoda aktif kullanıcı üst şeritten seçilir; ekranlardaki düğmeler rolüne göre çalışır.</p>
 

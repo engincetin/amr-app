@@ -84,7 +84,7 @@ Aynı koşumda **28 olay** Kanzasset'e gönderildi, **teslim edilemeyen yok**; *
 
 Ayrıca elle doğrulananlar: belge PDF indirme (`HTTP 200`, `application/pdf`, geçerli `xref`), rol kapısı (Denetçi ve Kasa mahsuplaşma talep edemiyor), ikinci onay (aynı kullanıcı onaylayamıyor, farklı kullanıcı onaylayınca değer uygulanıyor), katalog değişikliğinin olayla Kanzasset'e ulaşması.
 
-Bütün ekranların görüntüleri senaryolar koşturulduktan sonra gerçek veriyle alındı: `docs/ekranlar` (R1'den R10'a, K1'den K9'a).
+Bütün ekranların görüntüleri senaryolar koşturulduktan sonra gerçek veriyle alındı: `docs/ekranlar` (R1'den R11'e, K1'den K12'ye).
 
 ---
 

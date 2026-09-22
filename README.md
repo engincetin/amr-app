@@ -21,7 +21,7 @@ Rafineri tarafında token, mint, burn, cüzdan, müşteri adı yoktur. Talepler 
 packages/contract     @amr/contract   sözleşme: TypeBox şemaları, sabitler, imza kuralı (tek kaynak, kz-treasury'ye kopyalanır)
 apps/mock-merkez      @amr/mock-merkez merkez taklidi: ws://localhost:4100/prices, kontrol http://localhost:4110/control/*
 apps/amr-server       @amr/server     Fastify API + soket + SQLite (node:sqlite), rafineri paneli API'si, SSE
-apps/amr-web          @amr/web        React 19 + Vite, rafineri ekranları R1..R10
+apps/amr-web          @amr/web        React 19 + Vite, rafineri ekranları R1..R11
 scripts/kz-client.mjs                 soket test istemcisi (Kanzasset gibi bağlanır)
 docs/                                 KZ_AMR_Akislar, KZ_AMR_Sistemi (md + html), DEMO, KULLANIM_KILAVUZU, TEST_RAPORU, KARARLAR, ekranlar/
 ```
@@ -95,7 +95,7 @@ Sözleşme `packages/contract/src/index.ts` içindedir. Değişiklik yalnız bur
 
 Kanzasset'ten gelen her `/v1` isteği ve panelden yapılan her değiştirici istek kalıcı olarak yazılır: zaman, uç, sonuç, süre, API anahtarı ya da kullanıcı, `Idempotency-Key` ve **gövdenin sha256 özeti**. Gövdenin kendisi saklanmaz: özet, "bu istek bu gövdeyle geldi" sorusunu cevaplar ama kayıt şişmez. Kanzasset kendi tarafında aynı özeti giden çağrı için tutar; iki özet birebir aynıdır, böylece tek taraflı kayda güvenmek gerekmez.
 
-Okuma: R11 Kayıtlar ekranı (beş kaynak, metin ve tarih süzgeci, sayfa geçişi) ya da `GET /admin/logs?source=&q=&from=&to=&limit=&offset=`. Kısa liste R9 Belgeler ekranında da durur (`GET /admin/requests`). Saklama süresi `log.retention_days` parametresidir (varsayılan 90 gün, R10'dan değişir); süresi geçen satırlar dakikada bir taranıp silinir.
+Okuma: R10 Kayıtlar ekranı (beş kaynak, metin ve tarih süzgeci, sayfa geçişi) ya da `GET /admin/logs?source=&q=&from=&to=&limit=&offset=`. Kısa liste R9 Belgeler ekranında da durur (`GET /admin/requests`). Saklama süresi `log.retention_days` parametresidir (varsayılan 90 gün, R10'dan değişir); süresi geçen satırlar dakikada bir taranıp silinir.
 
 ## API dokümanı
 

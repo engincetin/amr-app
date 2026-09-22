@@ -80,7 +80,7 @@ export const api = {
   settlementNotice: (id: string, b: { ccy: string; amount_cents: number; direction: string; bank_ref: string; approval_id?: number; approver?: string }) =>
     req<Settlement & { needs_approval?: boolean; approval_id?: number }>(`/admin/settlements/${id}/payment-notice`, { method: "POST", body: JSON.stringify(b) }),
   settlementReceived: (id: string, ccy: string) => req<Settlement>(`/admin/settlements/${id}/payment-received`, { method: "POST", body: JSON.stringify({ ccy }) }),
-  // R10 kullanıcılar
+  // R11 kullanıcılar
   users: () => req<UsersView>("/admin/users"),
   userSave: (u: { username: string; display_name?: string; role?: string; active?: boolean }) => req<AppUser>("/admin/users", { method: "PUT", body: JSON.stringify(u) }),
   approve: (id: number, approver: string) => req<{ ok: boolean }>(`/admin/approvals/${id}/approve`, { method: "POST", body: JSON.stringify({ approver }) }),

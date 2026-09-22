@@ -21,7 +21,7 @@ export interface AppContext {
   catalog: CatalogDesk;
   /** mahsuplaşma (Sprint 5, R8) */
   settlement: SettlementDesk;
-  /** kullanıcılar, roller, ikinci onay (Sprint 5, R10) */
+  /** kullanıcılar, roller, ikinci onay (Sprint 5, R11 Ayarlar) */
   users: UserDesk;
   /** bildirim oluşturur ve canlı akışa düşürür */
   notify: (type: string, title: string, body?: string, relatedId?: string) => number;

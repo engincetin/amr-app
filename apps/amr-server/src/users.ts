@@ -1,8 +1,8 @@
 /**
- * Kullanıcılar, roller ve yetkiler (Sistem 09 · ekran R10).
+ * Kullanıcılar, roller ve yetkiler (Sistem 09 · ekran R11).
  *
  * Roller ve gördükleri: Kasa operasyonu (R1, R4, R6, R7 talepleri, R9) · Üretim (R1, R7, R9) ·
- * Masa (R10 hariç hepsi) · Yönetici (hepsi) · Denetçi (hepsi, salt okunur).
+ * Masa (R11 hariç hepsi) · Yönetici (hepsi) · Denetçi (hepsi, salt okunur).
  * Kritik aksiyonlarda iki kişi: parametre değişikliği, elle kasa talimatı, ödeme talimatı, RECONCILE düzeltmesi.
  *
  * Demoda oturum açma yoktur: üst şeritten kullanıcı seçilir ve `X-User` başlığıyla gelir.

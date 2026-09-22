@@ -5,7 +5,7 @@ import { Icon, NavIcon, useSidebar, useTheme } from "./ui.tsx";
 import { LogsPage } from "./pages/Logs.tsx";
 import { R1Overview } from "./pages/R1Overview.tsx";
 import { R2Prices } from "./pages/R2Prices.tsx";
-import { R10Settings } from "./pages/R10Settings.tsx";
+import { R11Settings } from "./pages/R11Settings.tsx";
 import { R3Orders } from "./pages/R3Orders.tsx";
 import { R5CurrentAccount } from "./pages/R5CurrentAccount.tsx";
 import { R4Vault } from "./pages/R4Vault.tsx";
@@ -28,8 +28,8 @@ export const SCREENS = [
   { code: "R7", path: "/rafinasyon", title: "Rafinasyon", icon: "refining" },
   { code: "R8", path: "/mahsuplasma", title: "Mahsuplaşma", icon: "settlement" },
   { code: "R9", path: "/belgeler", title: "Belgeler", icon: "documents" },
-  { code: "R11", path: "/kayitlar", title: "Kayıtlar", icon: "logs" },
-  { code: "R10", path: "/ayarlar", title: "Ayarlar", icon: "settings" },
+  { code: "R10", path: "/kayitlar", title: "Kayıtlar", icon: "logs" },
+  { code: "R11", path: "/ayarlar", title: "Ayarlar", icon: "settings" },
 ];
 
 export function App() {
@@ -70,8 +70,8 @@ export function App() {
           <Route path="/rafinasyon" element={<R7Refining live={live} />} />
           <Route path="/mahsuplasma" element={<R8Settlement live={live} />} />
           <Route path="/belgeler" element={<R9Documents live={live} />} />
-          <Route path="/ayarlar" element={<R10Settings live={live} />} />
-          <Route path="/kayitlar" element={<LogsPage endpoint="/admin/logs" tag="R11" title="Kayıtlar" />} />
+          <Route path="/ayarlar" element={<R11Settings live={live} />} />
+          <Route path="/kayitlar" element={<LogsPage endpoint="/admin/logs" tag="R10" title="Kayıtlar" />} />
         </Routes>
       </main>
     </div>
@@ -165,7 +165,7 @@ function TopBar({ o, sseConnected, refresh, onMenu }: { o: Overview | null; sseC
 
 /** Bildirimi ilgili ekrana bağlar: "okundu" demek yerine işi yapılacak yere götürür. */
 function noticeRoute(type: string): { path: string; label: string } | null {
-  if (type.startsWith("approval")) return { path: "/ayarlar", label: "Onaya git (R10 Ayarlar)" };
+  if (type.startsWith("approval")) return { path: "/ayarlar", label: "Onaya git (R11 Ayarlar)" };
   if (type.startsWith("vault")) return { path: "/kasa", label: "Kasa hesabına git (R4)" };
   if (type.startsWith("settlement")) return { path: "/mahsuplasma", label: "Mahsuplaşmaya git (R8)" };
   if (type.startsWith("delivery")) return { path: "/teslimat", label: "Teslimata git (R6)" };

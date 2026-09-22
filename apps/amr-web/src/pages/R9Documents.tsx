@@ -35,29 +35,36 @@ export function R9Documents({ live }: { live: Live }) {
     (!q.type || r.type === q.type) &&
     (!q.text || r.doc_id.toLowerCase().includes(q.text.toLowerCase()) || r.related_id.toLowerCase().includes(q.text.toLowerCase())));
 
-  const pDocs = usePager(shown, 20);
+  const sent = rows.filter((r) => r.sent_ts).length;
+  const pDocs = usePager(shown, 20, `${q.type}|${q.text}`);
   return (
     <div>
       <span className="tag">R9</span>
       <h1>Belgeler</h1>
       <p className="sub">Rafinerinin ürettiği bütün belgeler: Tahsis Belgesi, Kasa Giriş ve Çıkış Fişi, Lojistik ve Rafinasyon Teklifi, Sevkiyat Fişi, Teslimat Kaydı, günlük kasa ekstresi, cari hesap ekstresi ve mahsuplaşma ekstresi. Her belgenin içeriği, sha256 özeti ve imzası saklanır; Kanzasset belgeyi çektiğinde gönderim zamanı işlenir. PDF olarak indirilebilir.</p>
 
+      <div className="grid c3" style={{ marginBottom: 14 }}>
+        <div className="card kpi"><h2>Üretilen belge</h2><div className="n">{rows.length}</div><div className="small">imzalı ve sha256 özetli, burada saklanır</div></div>
+        <div className="card kpi"><h2>Kanzasset'e gönderim</h2><div className="n">{sent} / {rows.length}</div><div className="small">{rows.length - sent === 0 ? "hepsinin kopyası karşı tarafta" : `${rows.length - sent} belge henüz çekilmedi`}</div></div>
+        <div className="card">
+          <h2>Karşı taraf</h2>
+          <p className="small">Kanzasset belge numarasını olayla alır ve kopyasını kendisi çeker; ayrıca düzenli eşitleme yapar. Rafineride eşitleme yoktur: belgenin aslı buradadır.</p>
+          <button className="ghost" onClick={load}>Listeyi yenile</button>
+        </div>
+      </div>
+
       {msg && <div className="note" style={{ marginBottom: 12 }}>{msg}</div>}
 
       <section className="card" style={{ marginBottom: 14 }}>
-        <h2>Arama</h2>
-        <div className="row">
+        <div className="row" style={{ marginBottom: 10 }}>
           <select value={q.type} onChange={(e) => setQ({ ...q, type: e.target.value })}>
             <option value="">tüm tipler</option>
             {types.map((t) => <option key={t} value={t}>{DOC_TYPE_TR[t] ?? t}</option>)}
           </select>
           <input className="wide" placeholder="belge no ya da ilgili kayıt" value={q.text} onChange={(e) => setQ({ ...q, text: e.target.value })} />
           <button className="ghost" onClick={load}>Yenile</button>
+          <span className="small" style={{ marginLeft: "auto" }}>{shown.length} kayıt</span>
         </div>
-      </section>
-
-      <section className="card" style={{ marginBottom: 14 }}>
-        <h2>Belgeler <span className="pill">{shown.length}</span></h2>
         <table>
           <thead><tr><th>Belge no</th><th>Tip</th><th>İlgili kayıt</th><th>Oluşturma</th><th>Kanzasset'e gönderim</th><th>Aksiyon</th></tr></thead>
           <tbody>

@@ -56,7 +56,7 @@ footer{margin-top:56px;border-top:1px solid var(--line);padding-top:14px;font-si
 <div class="meta"><span>21 Eylül 2026 · v2</span><span>Eş doküman: KZ-AMR_Akislar v2 (21 Eyl)</span><span>İş kuralları: KANZASSET_FZCO_How_the_business_works (21 Eyl)</span></div>
 <div class="strip two" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr))">
 <div class="k v"><b>RAFİNERİ UYGULAMASI (AMR UYGULAMASI)</b><span>React ekranlar (kasa operasyonu, üretim, masa, yönetici) · REST API + WebSocket fiyat soketi · kendi defteri (kasa hesabı, cari hesap, talepler, fişler) · merkez adaptörü · olay gönderici · bildirimler. Konteyner olarak teslim edilir; rafineri kendi ortamında çalıştırır.</span></div>
-<div class="k t"><b>KANZASSET TARAFI EKLER</b><span>AMR bağlantı katmanı (soket istemcisi, REST istemcisi, olay alıcısı) · KZ kaydı ve eşleşme kontrolü · Hazine → Rafineri backoffice modülü (K1'den K9'a) · bildirimler. Müşteri platformu, BitGo ve banka entegrasyonları değişmez.</span></div>
+<div class="k t"><b>KANZASSET TARAFI EKLER</b><span>AMR bağlantı katmanı (soket istemcisi, REST istemcisi, olay alıcısı) · KZ kaydı ve eşleşme kontrolü · Hazine → Rafineri backoffice modülü (K1'den K12'ye) · bildirimler. Müşteri platformu, BitGo ve banka entegrasyonları değişmez.</span></div>
 <div class="k"><b>ORTAK SÖZLEŞME</b><span>Tek OpenAPI dosyası ve soket mesaj şeması; iki taraf bundan üretilen tiplerle çalışır. İlk günden mock merkez (fiyat simülatörü) ve KZ simülatörü ile uçtan uca demo; rafineri hazır olmadan sistem gösterilebilir.</span></div>
 </div>
 <div class="strip">
@@ -120,8 +120,8 @@ footer{margin-top:56px;border-top:1px solid var(--line);padding-top:14px;font-si
   TOP --&gt; R7[&quot;R7 Rafinasyon&lt;br/&gt;katalog · teklif · üretim · teslimat&quot;]
   TOP --&gt; R8[&quot;R8 Mahsuplaşma&lt;br/&gt;talep · ekstre · mutabakat · ödeme&quot;]
   TOP --&gt; R9[&quot;R9 Belgeler&quot;]
-  TOP --&gt; R11[&quot;R11 Kayıtlar&lt;br/&gt;istek · denetim · olay · bildirim · tick&quot;]
-  TOP --&gt; R10[&quot;R10 Ayarlar&lt;br/&gt;bağlantı · parametreler · API istemcileri · kullanıcılar&quot;]
+  TOP --&gt; R10[&quot;R10 Kayıtlar&lt;br/&gt;istek · denetim · olay · bildirim · tick&quot;]
+  TOP --&gt; R11[&quot;R11 Ayarlar&lt;br/&gt;bağlantı · parametreler · API istemcileri · kullanıcılar&quot;]
 </pre></div>
 <div class="tbl"><table class="wide">
 <colgroup>
@@ -154,7 +154,7 @@ footer{margin-top:56px;border-top:1px solid var(--line);padding-top:14px;font-si
 <tr class="even">
 <td><strong>R2 Fiyat</strong> (01)</td>
 <td>Yayını yönetmek</td>
-<td>merkez bağlantısı durumu (bağlı / kopuk, son fiyat zamanı; adres ve bağlan / kes R10 Ayarlar'da) · yayın durumu (<code>tradable</code>) · son 50 tick (seq, ts, üç kur bid / ask) · abone istemci (KZ bağlı mı, son heartbeat)</td>
+<td>merkez bağlantısı durumu (bağlı / kopuk, son fiyat zamanı; adres ve bağlan / kes R11 Ayarlar'da) · yayın durumu (<code>tradable</code>) · son 50 tick (seq, ts, üç kur bid / ask) · abone istemci (KZ bağlı mı, son heartbeat)</td>
 <td><strong>Bağlan / Kes</strong> (merkez) · <strong>Yayını durdur / başlat</strong> (gerekçe zorunlu; <code>price.halt</code> / <code>price.resume</code> olayı)</td>
 <td>merkez fiyatı geldikçe tick yayını · heartbeat · merkez kesintisinde <code>tradable=false</code> ve bildirim</td>
 <td>Masa, Yönetici</td>
@@ -216,7 +216,7 @@ footer{margin-top:56px;border-top:1px solid var(--line);padding-top:14px;font-si
 <td>hepsi (Denetçi salt okunur)</td>
 </tr>
 <tr class="odd">
-<td><strong>R11 Kayıtlar</strong></td>
+<td><strong>R10 Kayıtlar</strong></td>
 <td>Denetim ve kanıt tek ekranda</td>
 <td>istek günlüğü (Kanzasset istekleri ve panel değişiklikleri; gövde yerine sha256) · denetim günlüğü · olay teslimleri · bildirimler · fiyat tick'leri; aynı dört sütun (zaman · kim · ne · sonuç), metin süzgeci, 20'şer sayfa</td>
 <td>yok</td>
@@ -224,7 +224,7 @@ footer{margin-top:56px;border-top:1px solid var(--line);padding-top:14px;font-si
 <td>hepsi</td>
 </tr>
 <tr class="even">
-<td><strong>R10 Ayarlar</strong></td>
+<td><strong>R11 Ayarlar</strong></td>
 <td>Bağlantı, parametreler ve erişim</td>
 <td><strong>merkez bağlantısı</strong> (soket adresi, bağlan / kes, yeniden bağlanma kuralı) · parametreler (kasa talimatı kabulü elle / otomatik ve hedef cevap süresi · kasaya koyma vadesi T+3 · cari hesap limitleri · kesim saati · teklif geçerlilik süreleri · kur bazında banka hesapları) · API istemcileri (KZ anahtarı, imza sırrı, olay adresi) · kullanıcılar ve roller · <strong>denetim günlüğü</strong></td>
 <td>parametre değiştir (ikinci onay) · istemci anahtarı üret / iptal et · kullanıcı ekle / rol ver</td>
@@ -243,17 +243,17 @@ footer{margin-top:56px;border-top:1px solid var(--line);padding-top:14px;font-si
 <div class="diagram"><div class="cap">Ekran haritası · Kanzasset (Hazine → Rafineri modülü)</div><pre class="mermaid">flowchart LR
   H[&quot;Hazine → Rafineri · bildirim zili&quot;]
   H --&gt; K1[&quot;K1 Genel bakış&quot;]
-  H --&gt; K11[&quot;K11 Fiyat&lt;br/&gt;rafineri → müşteri fiyat zinciri · müşteri işlemlerini durdur / başlat&quot;]
+  H --&gt; K2[&quot;K2 Fiyat&lt;br/&gt;rafineri → müşteri fiyat zinciri · müşteri işlemlerini durdur / başlat&quot;]
   H --&gt; K3[&quot;K3 Emirler&lt;br/&gt;müşteri emri ↔ rafineri emri · cevapsız emir kararı&quot;]
   H --&gt; K4[&quot;K4 Kasa hesabı&lt;br/&gt;giriş / çıkış talepleri · fişler · mint / burn eşlemesi&quot;]
-  H --&gt; K2[&quot;K2 Hesaplar&lt;br/&gt;KZ kaydı ↔ bakiye bilgisi · RECONCILE çöz&quot;]
-  H --&gt; K5[&quot;K5 Hazine alım satımı&lt;br/&gt;maker-checker · canlı fiyatla gönder&quot;]
+  H --&gt; K5[&quot;K5 Cari hesap&lt;br/&gt;KZ kaydı ↔ bakiye bilgisi · RECONCILE çöz&quot;]
+  H --&gt; K12[&quot;K12 Hazine alım satımı&lt;br/&gt;maker-checker · canlı fiyatla gönder&quot;]
   H --&gt; K6[&quot;K6 Fiziksel teslimat&lt;br/&gt;talep · lojistik onayı · takip&quot;]
   H --&gt; K7[&quot;K7 Rafinasyon&lt;br/&gt;katalog · müşteri seçimi · teklif onayı · takip&quot;]
   H --&gt; K8[&quot;K8 Mahsuplaşma&lt;br/&gt;talep · ekstre karşılaştırma · ödeme talimatı&quot;]
-  H --&gt; K12[&quot;K12 Belgeler&lt;br/&gt;rafineri belgelerinin Kanzasset kopyası · özet ve imza doğrulama&quot;]
+  H --&gt; K9[&quot;K9 Belgeler&lt;br/&gt;rafineri belgelerinin Kanzasset kopyası · özet ve imza doğrulama&quot;]
   H --&gt; K10[&quot;K10 Kayıtlar&quot;]
-  H --&gt; K9[&quot;K9 Ayarlar&lt;br/&gt;bağlantı · parametreler · günlükler&quot;]
+  H --&gt; K11[&quot;K11 Ayarlar&lt;br/&gt;bağlantı · parametreler · günlükler&quot;]
 </pre></div>
 <div class="tbl"><table class="wide">
 <colgroup>
@@ -281,14 +281,14 @@ footer{margin-top:56px;border-top:1px solid var(--line);padding-top:14px;font-si
 <td>tümü</td>
 </tr>
 <tr class="even">
-<td><strong>K11 Fiyat</strong> (01)</td>
+<td><strong>K2 Fiyat</strong> (01)</td>
 <td>Rafineri fiyatının ve müşteri fiyatının sağlığı</td>
-<td>soket durumu (ayarlar K9'da) · fiyat zinciri (rafineri alış / satış → müşteri satar / alır, marj, komisyon) · son 50 tick · müşteri işlemlerinin durumu (açık / durdu ve sebebi)</td>
+<td>soket durumu (ayarlar K11'de) · fiyat zinciri (rafineri alış / satış → müşteri satar / alır, marj, komisyon) · son 50 tick · müşteri işlemlerinin durumu (açık / durdu ve sebebi)</td>
 <td><strong>Müşteri işlemlerini durdur / başlat</strong> (gerekçeli)</td>
 <td>bayat fiyat ya da <code>tradable=false</code> → müşteri tarafı otomatik durur · yeniden bağlanma · <code>seq</code> boşluğunda yeniden abonelik</td>
 </tr>
 <tr class="even">
-<td><strong>K2 Hesaplar</strong> (02)</td>
+<td><strong>K5 Cari hesap</strong> (02)</td>
 <td>KZ kaydı ile rafineri bakiye bilgisinin eşleşmesi</td>
 <td>kasa hesabı alt kalemleri · cari hesap (altın, kur bazında para) · <strong>eşleşme durumu</strong> (EŞİT / RECONCILE) · fark satırları · <code>seq</code></td>
 <td><strong>Anlık fotoğraf iste</strong> · <strong>RECONCILE çöz</strong> (fark açıklaması + düzeltme kaydı, maker-checker)</td>
@@ -309,7 +309,7 @@ footer{margin-top:56px;border-top:1px solid var(--line);padding-top:14px;font-si
 <td>07, 09, 12'de otomatik giriş talebi · 08, 09, 12'de otomatik çıkış talebi · fiş gelince mint, burn sonra çıkış talebi</td>
 </tr>
 <tr class="odd">
-<td><strong>K5 Hazine alım satımı</strong> (09)</td>
+<td><strong>K12 Hazine alım satımı</strong> (09)</td>
 <td>Envanter hedefini değiştirmek</td>
 <td>talepler · onay matrisi durumu · canlı fiyat ve tutar · sonuç zinciri (fill → kasa girişi / çıkışı → mint / burn)</td>
 <td><strong>Talep oluştur</strong> (maker) · <strong>Onayla</strong> · <strong>Son onaycı: canlı fiyatla gönder</strong></td>
@@ -337,7 +337,7 @@ footer{margin-top:56px;border-top:1px solid var(--line);padding-top:14px;font-si
 <td>kesimde pencere · ekstre · karşılaştırma · altın bacağı talepleri</td>
 </tr>
 <tr class="even">
-<td><strong>K12 Belgeler</strong></td>
+<td><strong>K9 Belgeler</strong></td>
 <td>Rafineri belgelerinin Kanzasset kopyası</td>
 <td>olayla gelen her belge numarası çekilir, sha256 özeti yeniden hesaplanır (hash_ok), anahtar verilmişse imza doğrulanır (signature_ok), içerik saklanır · tip ve metin süzgeci · 20'şer sayfa · PDF (rafineriden imzalı istekle)</td>
 <td><strong>Belgeleri eşitle</strong> (geriye dönük tarama) · görüntüle · PDF</td>
@@ -351,7 +351,7 @@ footer{margin-top:56px;border-top:1px solid var(--line);padding-top:14px;font-si
 <td>yazım ve saklama süresi</td>
 </tr>
 <tr class="even">
-<td><strong>K9 Ayarlar</strong></td>
+<td><strong>K11 Ayarlar</strong></td>
 <td>Bağlantı ve iş kurallarının değerleri</td>
 <td>rafineri soketi ve REST adresi, durum, son mesaj, yeniden bağlanma (salt okunur; adres ortam değişkeni) · taban / tavan / hedef · mint politikası · tavan aşımında burn hedefi · slippage aralığı · emir zaman sınırı · bayatlık eşiği · cari hesap limitleri · pencere sayısı · burn anı · <code>kasaya konuluyor</code> tavanı · onay matrisi</td>
 <td>değiştir (ikinci onay, günlüğe yazılır)</td>
@@ -832,14 +832,14 @@ footer{margin-top:56px;border-top:1px solid var(--line);padding-top:14px;font-si
 <tr class="odd">
 <td><strong>Masa</strong></td>
 <td>Rafineri</td>
-<td>hepsi (R10 hariç)</td>
+<td>hepsi (R11 hariç)</td>
 <td>merkez bağlantısı · yayını durdur / başlat · lojistik fiyatı gir · mahsuplaşma talebi, ekstre onayı, ödeme bildirimi</td>
 </tr>
 <tr class="even">
 <td><strong>Yönetici</strong></td>
 <td>Rafineri</td>
 <td>hepsi</td>
-<td>R10: parametreler, istemciler, kullanıcılar; kritik parametrede ikinci onay</td>
+<td>R11: parametreler, istemciler, kullanıcılar; kritik parametrede ikinci onay</td>
 </tr>
 <tr class="odd">
 <td><strong>Denetçi</strong></td>
@@ -850,13 +850,13 @@ footer{margin-top:56px;border-top:1px solid var(--line);padding-top:14px;font-si
 <tr class="even">
 <td><strong>Hazineci (maker)</strong></td>
 <td>Kanzasset</td>
-<td>K1'den K9'a</td>
+<td>K1'den K12'ye</td>
 <td>talep oluşturur (hazine alım satımı, teslimat ve rafinasyon onayı, ödeme talimatı)</td>
 </tr>
 <tr class="odd">
 <td><strong>Onaycı</strong></td>
 <td>Kanzasset</td>
-<td>K1'den K9'a</td>
+<td>K1'den K12'ye</td>
 <td>onay matrisi; son onaycı canlı fiyatla gönderir</td>
 </tr>
 <tr class="even">
@@ -869,7 +869,7 @@ footer{margin-top:56px;border-top:1px solid var(--line);padding-top:14px;font-si
 <td><strong>Yönetici</strong></td>
 <td>Kanzasset</td>
 <td>hepsi</td>
-<td>K9 parametreler (ikinci onay) · elle kasa talimatı (gerekçeli)</td>
+<td>K11 ayarlar (ikinci onay) · elle kasa talimatı (gerekçeli)</td>
 </tr>
 </tbody>
 </table></div>
@@ -895,7 +895,7 @@ footer{margin-top:56px;border-top:1px solid var(--line);padding-top:14px;font-si
 <tr class="odd">
 <td>Rafineri ekranları</td>
 <td><strong>React + TypeScript</strong> (Vite) · tablo ve form bileşenleri · bildirim zili · Türkçe arayüz · sayılar 3 ondalık gram, 2 ondalık para</td>
-<td>üst şerit ortak bileşen; ekranlar R1'den R10'a rotalar</td>
+<td>üst şerit ortak bileşen; ekranlar R1'den R11'e rotalar</td>
 </tr>
 <tr class="even">
 <td>AMR API ve soket</td>
@@ -924,7 +924,7 @@ footer{margin-top:56px;border-top:1px solid var(--line);padding-top:14px;font-si
 </tr>
 <tr class="odd">
 <td>Kanzasset tarafı</td>
-<td>mevcut yığın (Next.js / Supabase); AMR bağlantı katmanı ayrı modül; K1'den K9'a backoffice sayfaları</td>
+<td>mevcut yığın (Next.js / Supabase); AMR bağlantı katmanı ayrı modül; K1'den K12'ye backoffice sayfaları</td>
 <td></td>
 </tr>
 <tr class="even">
@@ -946,7 +946,7 @@ footer{margin-top:56px;border-top:1px solid var(--line);padding-top:14px;font-si
 <span class="tag">11</span><h2>Sıradaki adımlar</h2>
 <ol type="1">
 <li><strong>Bu dokümanın onayı:</strong> ekran listesi ve aksiyonlar (02, 03), API alanları (05), red sebepleri, olay listesi (06).</li>
-<li><strong>Ekran tasarımı:</strong> iki yol var. (a) Claude Design'da R1'den R10'a ekranları çizip sonra koda geçmek: estetik önce, daha uzun. (b) Doğrudan React'te basit bir tasarım sistemiyle çalışan ekranları yapmak, estetiği sonra iyileştirmek: daha hızlı, yöneticiye çalışan sistem gösterir. Öneri: (b), çünkü amaç sistemin nasıl çalıştığını göstermek.</li>
+<li><strong>Ekran tasarımı:</strong> iki yol var. (a) Claude Design'da R1'den R11'e ekranları çizip sonra koda geçmek: estetik önce, daha uzun. (b) Doğrudan React'te basit bir tasarım sistemiyle çalışan ekranları yapmak, estetiği sonra iyileştirmek: daha hızlı, yöneticiye çalışan sistem gösterir. Öneri: (b), çünkü amaç sistemin nasıl çalıştığını göstermek.</li>
 <li><strong>Sözleşme:</strong> OpenAPI ve soket şeması bu dokümandan üretilir; iki taraf da aynı dosyadan tip alır.</li>
 <li><strong>Mock merkez ve KZ simülatörü:</strong> senaryolar uçtan uca; rafineri ekranları gerçek veriyle dolar.</li>
 <li><strong>Yöneticiye teslim:</strong> çalışan uygulama + bu iki doküman + kullanım kılavuzu; rafinerinin gerçek fiyat arayüzü netleşince yalnız merkez adaptörü değişir.</li>

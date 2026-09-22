@@ -4,8 +4,8 @@ Bu doküman toplantıda adım adım ne yapılacağını yazar: hangi ekran açı
 
 İki uygulama aynı anda çalışır:
 
-- **Rafineri (AMR uygulaması)** `http://localhost:4000` · ekranlar R1'den R10'a
-- **Kanzasset (hazine çekirdeği)** `http://localhost:5000` · ekranlar K1'den K9'a
+- **Rafineri (AMR uygulaması)** `http://localhost:4000` · ekranlar R1'den R11'e
+- **Kanzasset (hazine çekirdeği)** `http://localhost:5000` · ekranlar K1'den K12'ye
 
 Sunumda iki tarayıcı penceresi yan yana durur: solda rafineri, sağda Kanzasset. Aynı olayın iki tarafta birden göründüğünü göstermek sunumun ana fikridir.
 
@@ -56,7 +56,7 @@ Kontrol: `http://localhost:4000` açıldığında üst şeritte **Yayın açık*
 
 > "Fiyat rafinerinin merkezi uygulamasından geliyor, biz onu Kanzasset'e kendi soketimizle yayınlıyoruz. Gram başına, 999,9 ayar, üç kurda çift yönlü."
 
-**K11 Fiyat:** aynı fiyat, yanında müşteri fiyatı (fiyat zinciri).
+**K2 Fiyat:** aynı fiyat, yanında müşteri fiyatı (fiyat zinciri).
 
 > "Kanzasset aynı fiyatı alıyor, üstüne marjını gömüyor ve müşteriye tek fiyat gösteriyor. Komisyon ayrı satır. Müşteri rafineri fiyatını görmüyor."
 
@@ -120,7 +120,7 @@ Kontrol: `http://localhost:4000` açıldığında üst şeritte **Yayın açık*
 
 > "Külçe fiziksel olarak kasaya konunca işaretleniyor. Vade en geç üç gün; geçerse uyarı düşüyor ve yeni mint duruyor."
 
-**K2 Hesaplar:** eşleşme durumu **EŞİT**, K1 ve K2 kontrolleri yeşil.
+**K5 Cari hesap:** eşleşme durumu **EŞİT**, K1 ve K2 kontrolleri yeşil.
 
 > "Her harekette Kanzasset kendi kaydını rafinerinin bakiye bilgisiyle karşılaştırıyor. Birebir eşit olmak zorunda. Eşit değilse işlem duruyor."
 
@@ -196,7 +196,7 @@ Kontrol: `http://localhost:4000` açıldığında üst şeritte **Yayın açık*
 
 **Bir PDF açın.**
 
-**R10 Ayarlar:** üst şeritten **Kullanıcı** seçiciyi gösterin, **Denetçi**'ye geçin.
+**R11 Ayarlar:** üst şeritten **Kullanıcı** seçiciyi gösterin, **Denetçi**'ye geçin.
 
 > "Roller gerçek: Denetçi hiçbir düğmeye basamıyor, yalnız okuyor. Kasa operasyonu kasa taleplerini kabul ediyor, parametrelere dokunamıyor."
 

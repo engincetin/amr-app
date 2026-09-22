@@ -45,7 +45,7 @@ export async function buildApp(opts: { dbPath?: string; autoconnect?: boolean; d
   ensureUserTables(db);
   ensureRequestLogTable(db);
   ensureApiClient(db, process.env.KZ_API_KEY ?? "kz-dev-key", "Kanzasset FZCO", process.env.KZ_API_SECRET ?? "kz-dev-secret", process.env.KZ_EVENT_URL ?? "http://localhost:5000/api/events");
-  // varsayılan parametreler (R10)
+  // varsayılan parametreler (R11 Ayarlar)
   const defaults: Record<string, string> = {
     "source.url": SOURCE_URL,
     "settlement.cutoff_local": "17:00",

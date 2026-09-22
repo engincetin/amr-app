@@ -63,7 +63,7 @@ export function R4Vault({ live }: { live: Live }) {
             <span className="k">Hedef cevap</span><span>{v?.accept_target_minutes ?? 15} dk</span>
             <span className="k">Kasaya koyma vadesi</span><span>T+{v?.placement_due_days ?? 3}</span>
           </div>
-          <div className="small" style={{ marginTop: 6 }}>Otomatik kabul R10 → parametreler (`vault.accept_mode`) ile açılır.</div>
+          <div className="small" style={{ marginTop: 6 }}>Otomatik kabul R11 Ayarlar → parametreler (`vault.accept_mode`) ile açılır.</div>
         </div>
       </div>
 
