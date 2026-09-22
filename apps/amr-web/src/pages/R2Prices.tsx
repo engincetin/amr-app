@@ -61,8 +61,9 @@ export function R2Prices({ live }: { live: Live }) {
 
       <section className="card" style={{ marginTop: 14 }}>
         <h2>Güncel fiyat (gram başına, 999,9)</h2>
+        <p className="small">Fiyat merkezden geldiği gibi yayınlanır: rafineri üzerine bir şey eklemez, yuvarlamaz. Makas sütunu bilgidir, merkezin kendi alış satış farkıdır. Kanzasset'in müşterisine verdiği fiyat bu fiyatın üstüne kendi marjını ve komisyonunu koyar; o hesap Kanzasset tarafındadır.</p>
         <table>
-          <thead><tr><th>Kur</th><th className="num">Alış (biz alırız)</th><th className="num">Satış (biz satarız)</th><th className="num">Makas</th></tr></thead>
+          <thead><tr><th>Kur</th><th className="num">Alış (biz alırız)</th><th className="num">Satış (biz satarız)</th><th className="num">Makas (merkez)</th></tr></thead>
           <tbody>
             {lastPrices.length === 0 && <tr><td colSpan={4} className="small">Fiyat yok</td></tr>}
             {lastPrices.map((p) => (
