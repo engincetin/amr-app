@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api, DLV_STATUS_TR, fmtDT, fmtG, fmtMoney, type Catalog, type Doc, type Refining, type useLive } from "../api.ts";
 import { DocModal, Timeline } from "./shared.tsx";
+import { Pager, usePager } from "../components/Pager.tsx";
 
 type Live = ReturnType<typeof useLive>;
 
@@ -34,6 +35,7 @@ export function R7Refining({ live }: { live: Live }) {
     finally { setBusy(""); }
   };
 
+  const pItems = usePager(items, 20);
   return (
     <div>
       <span className="tag">R7</span>
@@ -48,7 +50,7 @@ export function R7Refining({ live }: { live: Live }) {
           <thead><tr><th>Geliş</th><th>Talep</th><th>Kalemler</th><th className="num">Saf gram</th><th>Durum</th><th>Teklif</th><th>Takip</th><th>Belgeler</th><th>Aksiyon</th></tr></thead>
           <tbody>
             {items.length === 0 && <tr><td colSpan={9} className="small">Rafinasyon talebi yok</td></tr>}
-            {items.map((r) => (
+            {pItems.slice.map((r) => (
               <tr key={r.refining_id} style={{ background: sel?.refining_id === r.refining_id ? "var(--sel)" : undefined }}>
                 <td className="mono">{fmtDT(r.requested_ts)}</td>
                 <td className="mono small" onClick={() => setSel(r)} style={{ cursor: "pointer" }}>{r.ref}</td>
@@ -76,6 +78,7 @@ export function R7Refining({ live }: { live: Live }) {
             ))}
           </tbody>
         </table>
+        <Pager p={pItems} label="Talepler" />
       </section>
 
       {sel && (sel.status === "REQUESTED" || sel.status === "QUOTED") && (

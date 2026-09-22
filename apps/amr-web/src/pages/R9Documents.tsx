@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api, DOC_TYPE_TR, fmtDT, type Doc, type RequestLogRow, type RequestSummary, type useLive } from "../api.ts";
 import { DocModal } from "./shared.tsx";
+import { Pager, usePager } from "../components/Pager.tsx";
 
 type Live = ReturnType<typeof useLive>;
 type Row = { doc_id: string; type: string; related_id: string; created_ts: string; sent_ts: string | null };
@@ -34,6 +35,7 @@ export function R9Documents({ live }: { live: Live }) {
     (!q.type || r.type === q.type) &&
     (!q.text || r.doc_id.toLowerCase().includes(q.text.toLowerCase()) || r.related_id.toLowerCase().includes(q.text.toLowerCase())));
 
+  const pDocs = usePager(shown, 20);
   return (
     <div>
       <span className="tag">R9</span>
@@ -60,7 +62,7 @@ export function R9Documents({ live }: { live: Live }) {
           <thead><tr><th>Belge no</th><th>Tip</th><th>İlgili kayıt</th><th>Oluşturma</th><th>Kanzasset'e gönderim</th><th>Aksiyon</th></tr></thead>
           <tbody>
             {shown.length === 0 && <tr><td colSpan={6} className="small">Belge yok</td></tr>}
-            {shown.map((r) => (
+            {pDocs.slice.map((r) => (
               <tr key={r.doc_id}>
                 <td className="mono small">{r.doc_id}</td>
                 <td>{DOC_TYPE_TR[r.type] ?? r.type}</td>
@@ -77,6 +79,7 @@ export function R9Documents({ live }: { live: Live }) {
             ))}
           </tbody>
         </table>
+        <Pager p={pDocs} label="Belgeler" />
       </section>
 
       <section className="card">

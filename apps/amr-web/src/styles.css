@@ -184,6 +184,16 @@ th.num{font-family:'Manrope',sans-serif}
 .kpi .n{font-family:var(--mono);font-size:23px;font-weight:700;letter-spacing:-.03em;line-height:1.1}
 .kpi .u{font-size:11px;color:var(--mut);font-weight:600}
 
+/* ---- sayfalayıcı ---- */
+.pager{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid var(--line2)}
+.pager .sp{flex:1}
+.pager button{height:28px;padding:0 9px;font-size:11px}
+
+/* ---- menü simgeleri ---- */
+.nav a svg{flex-shrink:0;color:var(--mut)}
+.nav a.active svg{color:var(--ink)}
+.nav a .code{display:none}
+
 /* ---- açılır ayrıntı ---- */
 details.card>summary{cursor:pointer;font-weight:800;font-size:12.5px;list-style:none;display:flex;align-items:center;gap:8px;color:var(--ink2)}
 details.card>summary::-webkit-details-marker{display:none}

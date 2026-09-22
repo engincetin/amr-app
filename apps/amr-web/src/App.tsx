@@ -1,11 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link, NavLink, Route, Routes } from "react-router-dom";
 import { api, ageSec, currentUser, fmtG, fmtMoney, fmtTime, setCurrentUser, useLive, type AppUser, type Notification, type Overview } from "./api.ts";
-import { Icon, useSidebar, useTheme } from "./ui.tsx";
+import { Icon, NavIcon, useSidebar, useTheme } from "./ui.tsx";
 import { LogsPage } from "./pages/Logs.tsx";
 import { R1Overview } from "./pages/R1Overview.tsx";
 import { R2Prices } from "./pages/R2Prices.tsx";
-import { Placeholder } from "./pages/Placeholder.tsx";
 import { R10Settings } from "./pages/R10Settings.tsx";
 import { R3Orders } from "./pages/R3Orders.tsx";
 import { R5CurrentAccount } from "./pages/R5CurrentAccount.tsx";
@@ -15,18 +14,22 @@ import { R7Refining } from "./pages/R7Refining.tsx";
 import { R8Settlement } from "./pages/R8Settlement.tsx";
 import { R9Documents } from "./pages/R9Documents.tsx";
 
+/**
+ * Menü Kanzasset paneliyle aynı sırada ve aynı adlarla: iki ekip aynı dili konuşur.
+ * Kodlar (R1..R11) yalnız sayfa başlığında görünür; menüde simge + ad vardır.
+ */
 export const SCREENS = [
-  { code: "R1", path: "/", title: "Genel bakış", sprint: 1 },
-  { code: "R2", path: "/fiyat", title: "Fiyat yayını", sprint: 1 },
-  { code: "R3", path: "/emirler", title: "Emirler", sprint: 2, done: true },
-  { code: "R4", path: "/kasa", title: "Kasa hesabı", sprint: 3, done: true },
-  { code: "R5", path: "/cari", title: "Cari hesap", sprint: 2, done: true },
-  { code: "R6", path: "/teslimat", title: "Fiziksel teslimat", sprint: 4, done: true },
-  { code: "R7", path: "/rafinasyon", title: "Rafinasyon", sprint: 4, done: true },
-  { code: "R8", path: "/mahsuplasma", title: "Mahsuplaşma", sprint: 5, done: true },
-  { code: "R9", path: "/belgeler", title: "Belgeler", sprint: 5, done: true },
-  { code: "R10", path: "/ayarlar", title: "Ayarlar ve kullanıcılar", sprint: 1 },
-  { code: "R11", path: "/kayitlar", title: "Kayıtlar", sprint: 1 },
+  { code: "R1", path: "/", title: "Genel bakış", icon: "overview" },
+  { code: "R2", path: "/fiyat", title: "Fiyat", icon: "price" },
+  { code: "R3", path: "/emirler", title: "Emirler", icon: "orders" },
+  { code: "R4", path: "/kasa", title: "Kasa hesabı", icon: "vault" },
+  { code: "R5", path: "/cari", title: "Cari hesap", icon: "account" },
+  { code: "R6", path: "/teslimat", title: "Fiziksel teslimat", icon: "delivery" },
+  { code: "R7", path: "/rafinasyon", title: "Rafinasyon", icon: "refining" },
+  { code: "R8", path: "/mahsuplasma", title: "Mahsuplaşma", icon: "settlement" },
+  { code: "R9", path: "/belgeler", title: "Belgeler", icon: "documents" },
+  { code: "R11", path: "/kayitlar", title: "Kayıtlar", icon: "logs" },
+  { code: "R10", path: "/ayarlar", title: "Ayarlar", icon: "settings" },
 ];
 
 export function App() {
@@ -46,12 +49,11 @@ export function App() {
         <nav className="nav" onClick={() => side.isMobile && side.closeMobile()}>
         {SCREENS.map((s) => (
           <NavLink key={s.code} to={s.path} end={s.path === "/"} title={s.title}>
-            <span className="code">{s.code}</span><span className="label">{s.title}</span>
-            {s.sprint > 1 && !(s as any).done && <span className="sprint">Sprint {s.sprint}</span>}
+            {NavIcon[s.icon]}<span className="code">{s.code}</span><span className="label">{s.title}</span>
           </NavLink>
         ))}
         <a className="doc" href="/docs" target="_blank" rel="noreferrer" title="API dokümanı">
-          <span className="code">API</span><span className="label">API dokümanı</span>
+          {NavIcon.api}<span className="code">API</span><span className="label">API dokümanı</span>
         </a>
         </nav>
         <SideStatus o={o} sse={live.connected} />
@@ -107,7 +109,6 @@ function TopBar({ o, sseConnected, refresh, onMenu }: { o: Overview | null; sseC
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
   const pub = o?.publish;
-  const usd = pub?.lastPrices?.find((p) => p.ccy === "USD");
   void sseConnected;
 
   return (
@@ -119,12 +120,6 @@ function TopBar({ o, sseConnected, refresh, onMenu }: { o: Overview | null; sseC
         <span className={`dot ${pub?.tradable ? "ok" : "bad"}`} />
         {pub ? (pub.tradable ? "Yayın açık" : "Yayın durdu") : "…"}
       </span>
-      <span className="price" title={pub?.lastTickTs ? `seq ${pub.seq} · ${ageSec(pub.lastTickTs)} sn önce` : "tick yok"}>
-        <span className="k">FİYAT</span>
-        <span className="mono v">{usd ? `${usd.bid} / ${usd.ask}` : "yok"}</span>
-        <span className="k">USD/g</span>
-      </span>
-
       <div className="tspace" />
 
       <ThemeButton />
@@ -170,14 +165,14 @@ function TopBar({ o, sseConnected, refresh, onMenu }: { o: Overview | null; sseC
 
 /** Bildirimi ilgili ekrana bağlar: "okundu" demek yerine işi yapılacak yere götürür. */
 function noticeRoute(type: string): { path: string; label: string } | null {
-  if (type.startsWith("approval")) return { path: "/ayarlar", label: "Onaya git (R10)" };
+  if (type.startsWith("approval")) return { path: "/ayarlar", label: "Onaya git (R10 Ayarlar)" };
   if (type.startsWith("vault")) return { path: "/kasa", label: "Kasa hesabına git (R4)" };
   if (type.startsWith("settlement")) return { path: "/mahsuplasma", label: "Mahsuplaşmaya git (R8)" };
   if (type.startsWith("delivery")) return { path: "/teslimat", label: "Teslimata git (R6)" };
   if (type.startsWith("refining") || type.startsWith("catalog")) return { path: "/rafinasyon", label: "Rafinasyona git (R7)" };
   if (type.startsWith("order")) return { path: "/emirler", label: "Emirlere git (R3)" };
   if (type.startsWith("account")) return { path: "/cari", label: "Cari hesaba git (R5)" };
-  if (type.startsWith("source") || type.startsWith("price") || type.startsWith("publish")) return { path: "/fiyat", label: "Fiyat yayınına git (R2)" };
+  if (type.startsWith("source") || type.startsWith("price") || type.startsWith("publish")) return { path: "/fiyat", label: "Fiyata git (R2)" };
   if (type.startsWith("document")) return { path: "/belgeler", label: "Belgelere git (R9)" };
   return null;
 }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, fmtDT, fmtG, fmtTime, untilText, VAULT_MOVE_TR, VAULT_STATUS_TR, type Doc, type VaultRequest, type VaultStatement, type VaultView, type useLive } from "../api.ts";
+import { Pager, usePager } from "../components/Pager.tsx";
 
 type Live = ReturnType<typeof useLive>;
 
@@ -32,6 +33,8 @@ export function R4Vault({ live }: { live: Live }) {
   const acc = v?.account ?? live.overview?.account;
   const vaultTotal = acc ? acc.vault.in_vault_mg + acc.vault.placing_mg + acc.vault.shipping_mg : 0;
 
+  const pMov = usePager(v?.movements ?? [], 20);
+  const pReq = usePager(v?.requests ?? [], 20);
   return (
     <div>
       <span className="tag">R4</span>
@@ -129,10 +132,10 @@ export function R4Vault({ live }: { live: Live }) {
         <section className="card">
           <h2>Kasa hareketleri</h2>
           <table>
-            <thead><tr><th className="num">seq</th><th>Zaman</th><th>Tür</th><th className="num">Kasada</th><th className="num">Konuluyor</th><th className="num">Sevkiyatta</th></tr></thead>
+            <thead><tr><th className="num">Sıra</th><th>Zaman</th><th>Tür</th><th className="num">Kasada</th><th className="num">Konuluyor</th><th className="num">Sevkiyatta</th></tr></thead>
             <tbody>
               {(v?.movements.length ?? 0) === 0 && <tr><td colSpan={6} className="small">Hareket yok</td></tr>}
-              {v?.movements.map((m) => (
+              {pMov.slice.map((m) => (
                 <tr key={m.id}>
                   <td className="num">{m.seq}</td><td className="mono">{fmtTime(m.ts)}</td><td>{VAULT_MOVE_TR[m.type] ?? m.type}</td>
                   <td className="num mono">{m.in_vault_mg ? `${m.in_vault_mg > 0 ? "+" : ""}${fmtG(m.in_vault_mg)}` : ""}</td>
@@ -142,6 +145,7 @@ export function R4Vault({ live }: { live: Live }) {
               ))}
             </tbody>
           </table>
+          <Pager p={pMov} label="Hareketler" />
         </section>
 
         <section className="card">
@@ -170,7 +174,7 @@ export function R4Vault({ live }: { live: Live }) {
           <thead><tr><th>Geliş</th><th>Tür</th><th className="num">Gram</th><th>KZ referansı</th><th>Durum</th><th>Fiş</th><th>Not</th></tr></thead>
           <tbody>
             {(v?.requests.length ?? 0) === 0 && <tr><td colSpan={7} className="small">Talep yok</td></tr>}
-            {v?.requests.map((r) => (
+            {pReq.slice.map((r) => (
               <tr key={r.request_id}>
                 <td className="mono">{fmtDT(r.requested_ts)}</td>
                 <td>{r.type === "IN" ? "Giriş" : "Çıkış"}</td>
@@ -183,6 +187,7 @@ export function R4Vault({ live }: { live: Live }) {
             ))}
           </tbody>
         </table>
+        <Pager p={pReq} label="Talepler" />
       </section>
 
       {rejecting && (

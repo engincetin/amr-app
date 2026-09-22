@@ -8,14 +8,12 @@ export function R2Prices({ live }: { live: Live }) {
   const o = live.overview;
   const src = o?.source;
   const pub = o?.publish;
-  const [url, setUrl] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [haltOpen, setHaltOpen] = useState(false);
   const [reason, setReason] = useState("");
   const [, tick] = useState(0);
   useEffect(() => { const t = setInterval(() => tick((x) => x + 1), 1000); return () => clearInterval(t); }, []);
-  useEffect(() => { if (!url && o) setUrl(o.settings["source.url"] ?? src?.url ?? "ws://localhost:4100/prices"); }, [o]);
 
   const run = async (fn: () => Promise<unknown>) => {
     setBusy(true); setErr(null);
@@ -28,7 +26,7 @@ export function R2Prices({ live }: { live: Live }) {
   return (
     <div>
       <span className="tag">R2</span>
-      <h1>Fiyat yayını</h1>
+      <h1>Fiyat</h1>
       <p className="sub">Fiyat rafinerinin merkezi uygulamasından gelir. Merkez bağlantısı kurulup fiyat akmaya başlayınca Kanzasset'e soketle yayınlanır: gram başına, 999,9 ayar, USD · EUR · AED, boyuttan bağımsız. Merkez yoksa yayın yok, yayın yoksa işlem yok.</p>
 
       <div className="grid c2">
@@ -37,26 +35,19 @@ export function R2Prices({ live }: { live: Live }) {
           <div className="kv">
             <span className="k">Durum</span>
             <span className="status"><span className={`dot ${src?.status === "CONNECTED" ? "ok" : src?.status === "CONNECTING" ? "warn" : "bad"}`} />{src?.status === "CONNECTED" ? "Bağlı" : src?.status === "CONNECTING" ? `Bağlanıyor${src.reconnectAttempt ? ` (deneme ${src.reconnectAttempt})` : ""}` : "Kopuk"}</span>
-            <span className="k">Adres</span><span className="mono">{src?.url ?? "girilmedi"}</span>
             <span className="k">Son fiyat</span><span>{src?.lastPriceTs ? `${fmtTime(src.lastPriceTs)} (${ageSec(src.lastPriceTs)} sn önce)` : "gelmedi"}</span>
             <span className="k">Bağlı olduğu süre</span><span>{src?.connectedSince ? `${fmtTime(src.connectedSince)} itibarıyla` : ""}</span>
             {src?.lastError && (<><span className="k">Son hata</span><span className="small">{src.lastError}</span></>)}
           </div>
-          <div className="row" style={{ marginTop: 12 }}>
-            <input className="wide mono" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="ws://merkez:port/prices" disabled={src?.status === "CONNECTED"} />
-            {src?.status === "CONNECTED" || src?.status === "CONNECTING"
-              ? <button disabled={busy} onClick={() => run(() => api.disconnect())}>Kes</button>
-              : <button className="primary" disabled={busy || !url} onClick={() => run(() => api.connect(url))}>Bağlan</button>}
-          </div>
-          <p className="small" style={{ marginTop: 10 }}>Bağlantı beklenmedik biçimde koparsa 1, 2, 4, 8 sn bekleyip yeniden dener (en çok 30 sn). Kes dendiyse denemez. Kopukken yayın otomatik durur ve Kanzasset'e halt gider.</p>
+          <p className="small" style={{ marginTop: 10 }}>Adres, bağlan / kes ve yeniden bağlanma kuralı <Link to="/ayarlar">Ayarlar</Link> ekranındadır. Kopukken yayın kendiliğinden durur ve Kanzasset'e halt gider.</p>
         </section>
 
         <section className="card">
           <h2>Yayın (Kanzasset'e)</h2>
           <div className="kv">
             <span className="k">Durum</span>
-            <span className="status"><span className={`dot ${pub?.tradable ? "ok" : "bad"}`} />{pub?.tradable ? "Yayında (tradable)" : pub?.manualHalt ? `Durduruldu: ${pub.haltReason}` : "Yayın yok: merkez bağlı değil"}</span>
-            <span className="k">Son tick</span><span>{pub?.lastTickTs ? `seq ${pub.seq} · ${fmtTime(pub.lastTickTs)} · ${age} sn önce` : "yok"}</span>
+            <span className="status"><span className={`dot ${pub?.tradable ? "ok" : "bad"}`} />{pub?.tradable ? "Yayında (işlem yapılabilir)" : pub?.manualHalt ? `Durduruldu: ${pub.haltReason}` : "Yayın yok: merkez bağlı değil"}</span>
+            <span className="k">Son tick</span><span>{pub?.lastTickTs ? `sıra ${pub.seq} · ${fmtTime(pub.lastTickTs)} · ${age} sn önce` : "yok"}</span>
             <span className="k">Aboneler</span><span>{o?.subscribers.length ? o.subscribers.map((s) => `${s.client} (${fmtTime(s.connected_at)})`).join(", ") : "Kanzasset bağlı değil"}</span>
           </div>
           <div className="row" style={{ marginTop: 12 }}>
@@ -71,7 +62,7 @@ export function R2Prices({ live }: { live: Live }) {
       <section className="card" style={{ marginTop: 14 }}>
         <h2>Güncel fiyat (gram başına, 999,9)</h2>
         <table>
-          <thead><tr><th>Kur</th><th className="num">Bid (biz alırız)</th><th className="num">Ask (biz satarız)</th><th className="num">Fark</th></tr></thead>
+          <thead><tr><th>Kur</th><th className="num">Alış (biz alırız)</th><th className="num">Satış (biz satarız)</th><th className="num">Makas</th></tr></thead>
           <tbody>
             {lastPrices.length === 0 && <tr><td colSpan={4} className="small">Fiyat yok</td></tr>}
             {lastPrices.map((p) => (
@@ -84,10 +75,10 @@ export function R2Prices({ live }: { live: Live }) {
       <section className="card" style={{ marginTop: 14 }}>
         <div className="row" style={{ justifyContent: "space-between", alignItems: "baseline" }}>
           <h2 style={{ margin: 0 }}>Son 50 tick</h2>
-          <Link to="/kayitlar" className="small">tamamı ve geçmişi: R11 Kayıtlar →</Link>
+          <Link to="/kayitlar" className="small">tamamı ve geçmişi: Kayıtlar →</Link>
         </div>
         <table>
-          <thead><tr><th className="num">seq</th><th>Zaman</th><th className="num">USD bid</th><th className="num">USD ask</th><th className="num">EUR bid</th><th className="num">EUR ask</th><th className="num">AED bid</th><th className="num">AED ask</th><th>tradable</th></tr></thead>
+          <thead><tr><th className="num">Sıra</th><th>Zaman</th><th className="num">USD alış</th><th className="num">USD satış</th><th className="num">EUR alış</th><th className="num">EUR satış</th><th className="num">AED alış</th><th className="num">AED satış</th><th>İşlem</th></tr></thead>
           <tbody>
             {live.ticks.map((t) => {
               const g = (c: string) => t.prices.find((p) => p.ccy === c);
@@ -97,7 +88,7 @@ export function R2Prices({ live }: { live: Live }) {
                   <td className="num">{g("USD")?.bid}</td><td className="num">{g("USD")?.ask}</td>
                   <td className="num">{g("EUR")?.bid}</td><td className="num">{g("EUR")?.ask}</td>
                   <td className="num">{g("AED")?.bid}</td><td className="num">{g("AED")?.ask}</td>
-                  <td><span className={`pill ${t.tradable ? "ok" : "bad"}`}>{t.tradable ? "evet" : "hayır"}</span></td>
+                  <td><span className={`pill ${t.tradable ? "ok" : "bad"}`}>{t.tradable ? "yapılabilir" : "durdu"}</span></td>
                 </tr>
               );
             })}

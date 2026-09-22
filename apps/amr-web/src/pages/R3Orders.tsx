@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, fmtDT, fmtG, fmtMoney, fmtTime, REJECT_TR, STATUS_TR, type Doc, type Order, type useLive } from "../api.ts";
+import { Pager, usePager } from "../components/Pager.tsx";
 
 type Live = ReturnType<typeof useLive>;
 const today = () => new Date().toISOString().slice(0, 10);
@@ -20,13 +21,14 @@ export function R3Orders({ live }: { live: Live }) {
 
   const t = live.overview?.orders_today;
   const filled = orders.filter((o) => o.status === "FILLED");
+  const p = usePager(orders, 20, `${day}|${side}|${status}`);
   const sumMg = (s: "BUY" | "SELL") => filled.filter((o) => o.side === s).reduce((a, o) => a + o.qty_mg, 0);
 
   return (
     <div>
       <span className="tag">R3</span>
       <h1>Emirler</h1>
-      <p className="sub">Kanzasset'ten gelen alış / satış emirleri. Emri almak, fiyatı quote_seq ve limitle karşılaştırmak, fill ya da red, Tahsis Belgesi (alışta), cari hesabı güncellemek ve bakiye bilgisiyle cevaplamak otomatiktir. Bu ekran izler; elle aksiyon yoktur.</p>
+      <p className="sub">Kanzasset'ten gelen alış / satış emirleri. Emri almak, fiyatı fiyat sırası ve limitle karşılaştırmak, gerçekleştirmek ya da reddetmek, Tahsis Belgesi (alışta), cari hesabı güncellemek ve bakiye bilgisiyle cevaplamak kendiliğindendir. Bu ekran izler; elle aksiyon yoktur.</p>
 
       <div className="grid c3" style={{ marginBottom: 14 }}>
         <div className="card"><h2>Bugün</h2><div className="mono" style={{ fontSize: 18, fontWeight: 600 }}>{t?.total ?? 0} emir</div><div className="small">gerçekleşen alış {t?.buy.filled ?? 0} · satış {t?.sell.filled ?? 0} · red {(t?.buy.rejected ?? 0) + (t?.sell.rejected ?? 0)}</div></div>
@@ -35,6 +37,7 @@ export function R3Orders({ live }: { live: Live }) {
       </div>
 
       <section className="card">
+        <h2>Emir listesi</h2>
         <div className="row" style={{ marginBottom: 10 }}>
           <label className="small">Gün <input type="date" value={day} onChange={(e) => setDay(e.target.value)} /></label>
           <label className="small">Yön <select value={side} onChange={(e) => setSide(e.target.value)}><option value="">hepsi</option><option value="BUY">alış</option><option value="SELL">satış</option></select></label>
@@ -43,10 +46,10 @@ export function R3Orders({ live }: { live: Live }) {
           <span className="small" style={{ marginLeft: "auto" }}>{orders.length} kayıt</span>
         </div>
         <table>
-          <thead><tr><th>Zaman</th><th>client_order_id</th><th>Yön</th><th className="num">Gram</th><th>Kur</th><th className="num">quote_seq</th><th className="num">Limit</th><th>Sonuç</th><th className="num">Fill</th><th className="num">Tutar</th><th>Belge</th></tr></thead>
+          <thead><tr><th>Zaman</th><th>Müşteri emri no</th><th>Yön</th><th className="num">Gram</th><th>Kur</th><th className="num">Fiyat sırası</th><th className="num">Limit</th><th>Sonuç</th><th className="num">Gerçekleşme</th><th className="num">Tutar</th><th>Belge</th></tr></thead>
           <tbody>
             {orders.length === 0 && <tr><td colSpan={11} className="small">Kayıt yok</td></tr>}
-            {orders.map((o) => (
+            {p.slice.map((o) => (
               <tr key={o.order_id} onClick={() => setSel(o)} style={{ cursor: "pointer", background: sel?.order_id === o.order_id ? "var(--sel)" : undefined }}>
                 <td className="mono">{fmtTime(o.received_ts)}</td>
                 <td className="mono">{o.client_order_id}</td>
@@ -63,6 +66,7 @@ export function R3Orders({ live }: { live: Live }) {
             ))}
           </tbody>
         </table>
+        <Pager p={p} label="Emirler" />
       </section>
 
       {sel && (
@@ -71,21 +75,21 @@ export function R3Orders({ live }: { live: Live }) {
           <div className="grid c2" style={{ marginTop: 10 }}>
             <div>
               <div className="kv">
-                <span className="k">client_order_id</span><span className="mono">{sel.client_order_id}</span>
+                <span className="k">Müşteri emri no</span><span className="mono">{sel.client_order_id}</span>
                 <span className="k">Yön · gram · kur</span><span>{sel.side === "BUY" ? "ALIŞ" : "SATIŞ"} · {fmtG(sel.qty_mg)} g · {sel.ccy}</span>
-                <span className="k">quote_seq · limit</span><span className="mono">{sel.quote_seq} · {sel.limit_px}</span>
+                <span className="k">Fiyat sırası · limit</span><span className="mono">{sel.quote_seq} · {sel.limit_px}</span>
                 <span className="k">Sonuç</span><span><StatusPill o={sel} />{sel.reject_reason ? ` ${REJECT_TR[sel.reject_reason] ?? sel.reject_reason}` : ""}</span>
-                {sel.fill && (<><span className="k">Fill</span><span className="mono">{sel.fill.px} {sel.ccy} × {fmtG(sel.qty_mg)} g = {fmtMoney(sel.fill.amount_cents)} {sel.ccy} · {fmtTime(sel.fill.trade_ts)}</span></>)}
+                {sel.fill && (<><span className="k">Gerçekleşme</span><span className="mono">{sel.fill.px} {sel.ccy} × {fmtG(sel.qty_mg)} g = {fmtMoney(sel.fill.amount_cents)} {sel.ccy} · {fmtTime(sel.fill.trade_ts)}</span></>)}
                 <span className="k">Alındı · karar</span><span className="mono">{fmtDT(sel.received_ts)} · {fmtDT(sel.decided_ts)}</span>
               </div>
               <h2 style={{ marginTop: 12 }}>Geçmiş</h2>
               {sel.history?.map((h, i) => <div key={i} className="small"><span className="mono">{fmtTime(h.ts)}</span> · {STATUS_TR[h.status] ?? h.status}{h.note ? ` · ${h.note}` : ""}</div>)}
             </div>
             <div>
-              <h2>Cevapta giden bakiye bilgisi</h2>
+              <h2>Cevapla giden bakiye bilgisi</h2>
               {sel.account ? (
                 <div className="kv">
-                  <span className="k">seq</span><span className="mono">{sel.account.seq}</span>
+                  <span className="k">Sıra</span><span className="mono">{sel.account.seq}</span>
                   <span className="k">Kasa hesabı</span><span className="mono">kasada {fmtG(sel.account.vault.in_vault_mg)} · konuluyor {fmtG(sel.account.vault.placing_mg)} · sevkiyatta {fmtG(sel.account.vault.shipping_mg)}</span>
                   <span className="k">Cari hesap T</span><span className="mono">{sel.account.current_account.gold_mg >= 0 ? "+" : ""}{fmtG(sel.account.current_account.gold_mg)} g</span>
                   <span className="k">Cari hesap P</span><span className="mono">{sel.account.current_account.money.map((m) => `${m.ccy} ${fmtMoney(m.cents)}`).join(" · ")}</span>
@@ -99,8 +103,8 @@ export function R3Orders({ live }: { live: Live }) {
                     <span className="k">Sahip</span><span>{String(doc.content.owner)}</span>
                     <span className="k">Şart</span><span>{String(doc.content.terms)}</span>
                     <span className="k">Fiyat · tutar</span><span className="mono">{String(doc.content.px)} {String(doc.content.ccy)} · {fmtMoney(Number(doc.content.amount_cents))}</span>
-                    <span className="k">sha256 · imza</span><span className="mono small">{doc.meta.hash.slice(0, 16)}… · {doc.meta.signature.slice(0, 16)}…</span>
-                    <span className="k">KZ'ye gönderim</span><span>{doc.meta.sent_ts ? fmtDT(doc.meta.sent_ts) : "cevapla birlikte (bağlantı verildi)"}</span>
+                    <span className="k">Özet · imza</span><span className="mono small">{doc.meta.hash.slice(0, 16)}… · {doc.meta.signature.slice(0, 16)}…</span>
+                    <span className="k">Kanzasset'e gönderim</span><span>{doc.meta.sent_ts ? fmtDT(doc.meta.sent_ts) : "cevapla birlikte (bağlantı verildi)"}</span>
                   </div>
                 </>
               )}

@@ -14,7 +14,7 @@ const LABELS: Record<string, string> = {
   "limit.current_account_gold_mg": "Cari hesap limiti, altın (mg)",
   "limit.current_account_usd_cents": "Cari hesap limiti, para (USD cent karşılığı)",
   "limit.warn_pct": "Limit uyarı eşiği (%)",
-  "order.quote_max_age_ms": "quote_seq tazelik sınırı (ms)",
+  "order.quote_max_age_ms": "fiyat sırası tazelik sınırı (ms)",
   "quote.delivery_valid_hours": "Lojistik teklifi geçerlilik (saat)",
   "quote.refining_valid_hours": "Rafinasyon teklifi geçerlilik (saat)",
   "debug.order_delay_ms": "Demo: emir kararı gecikmesi (ms)",
@@ -48,10 +48,14 @@ export function R10Settings({ live }: { live: Live }) {
   return (
     <div>
       <span className="tag">R10</span>
-      <h1>Ayarlar ve kullanıcılar</h1>
+      <h1>Ayarlar</h1>
       <p className="sub">Parametreler kod değil, buradan girilir. Kritik değişiklikler (parametreler, API anahtarı, ödeme talimatı) ikinci onay ister: bir kullanıcı ister, başka bir kullanıcı onaylar. Her elle aksiyon denetim günlüğüne yazılır. Demoda aktif kullanıcı üst şeritten seçilir; ekranlardaki düğmeler rolüne göre çalışır.</p>
 
       {msg && <div className="note" style={{ marginBottom: 12 }}>{msg}</div>}
+
+      <div className="grid c2" style={{ marginBottom: 14 }}>
+        <ConnectionCard live={live} say={say} />
+      </div>
 
       <div className="grid c2" style={{ marginBottom: 14 }}>
         <section className="card">
@@ -78,7 +82,7 @@ export function R10Settings({ live }: { live: Live }) {
 
         <section className="card">
           <h2>Bekleyen onaylar</h2>
-          <p className="small">Kritik aksiyonlar iki kişi ister. İsteyen kullanıcı kendi isteğini onaylayamaz.</p>
+          <p className="small">Kritik aksiyonlar iki kişi ister. İsteyen kendi isteğini onaylayamaz; onaylandığı anda işlem uygulanır.</p>
           <div className="row" style={{ marginBottom: 8 }}>
             <span className="small">Onaylayan:</span>
             <input value={approver} onChange={(e) => setApprover(e.target.value)} />
@@ -96,7 +100,7 @@ export function R10Settings({ live }: { live: Live }) {
                   <td>
                     <div className="row">
                       <button className="primary" onClick={async () => {
-                        try { await api.approve(a.id, approver.trim()); say(`Onay ${a.id} verildi. Aksiyonu tekrar çalıştırın ya da ilgili ekrandan devam edin.`); await load(); }
+                        try { await api.approve(a.id, approver.trim()); say(`Onay ${a.id} verildi ve uygulandı.`); await load(); }
                         catch (e) { say(`Hata: ${(e as Error).message}`); }
                       }}>Onayla</button>
                       <button className="ghost" onClick={async () => { await api.rejectApproval(a.id); await load(); }}>Reddet</button>
@@ -211,5 +215,36 @@ export function R10Settings({ live }: { live: Live }) {
         </section>
       </div>
     </div>
+  );
+}
+
+/**
+ * Bağlantı ayarları: merkez fiyat soketi (adres, bağlan / kes) ve Kanzasset olay adresi.
+ * Fiyat ekranı yalnız durumu gösterir; adres ve kesme buradadır.
+ */
+function ConnectionCard({ live, say }: { live: Live; say: (t: string) => void }) {
+  const o = live.overview;
+  const src = o?.source;
+  const [url, setUrl] = useState("");
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { if (!url && o) setUrl(o.settings["source.url"] ?? src?.url ?? "ws://localhost:4100/prices"); }, [o]);
+  const run = async (fn: () => Promise<unknown>) => { setBusy(true); try { await fn(); await live.refresh(); } catch (e) { say(`Hata: ${(e as Error).message}`); } finally { setBusy(false); } };
+  return (
+    <section className="card">
+      <h2>Bağlantı</h2>
+      <div className="kv">
+        <span className="k">Merkez soketi</span><span className="status"><span className={`dot ${src?.status === "CONNECTED" ? "ok" : src?.status === "CONNECTING" ? "warn" : "bad"}`} />{src?.status === "CONNECTED" ? "Bağlı" : src?.status === "CONNECTING" ? "Bağlanıyor" : "Kopuk"}</span>
+        <span className="k">Adres</span><span className="mono small">{src?.url ?? "girilmedi"}</span>
+        <span className="k">Kanzasset olay adresi</span><span className="mono small">{o?.settings["events.kz_url"] ?? "istemci kaydında (API istemcileri)"}</span>
+        <span className="k">Yeniden bağlanma</span><span className="small">1, 2, 4, 8 sn bekleyip dener (en çok 30 sn). Kes dendiyse denemez.</span>
+      </div>
+      <div className="row" style={{ marginTop: 12 }}>
+        <input className="wide mono" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="ws://merkez:port/prices" disabled={src?.status === "CONNECTED"} />
+        {src?.status === "CONNECTED" || src?.status === "CONNECTING"
+          ? <button disabled={busy} onClick={() => run(() => api.disconnect())}>Kes</button>
+          : <button className="primary" disabled={busy || !url} onClick={() => run(() => api.connect(url))}>Bağlan</button>}
+      </div>
+      <p className="small" style={{ marginTop: 10 }}>Kopukken yayın kendiliğinden durur ve Kanzasset'e halt gider; Kanzasset 10 sn mesaj almazsa fiyatı bayat sayar.</p>
+    </section>
   );
 }

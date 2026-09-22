@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api, DLV_STATUS_TR, fmtDT, fmtG, fmtMoney, type Delivery, type Doc, type useLive } from "../api.ts";
 import { DocModal, Timeline } from "./shared.tsx";
+import { Pager, usePager } from "../components/Pager.tsx";
 
 type Live = ReturnType<typeof useLive>;
 
@@ -28,6 +29,7 @@ export function R6Delivery({ live }: { live: Live }) {
     finally { setBusy(""); }
   };
 
+  const pItems = usePager(items, 20);
   return (
     <div>
       <span className="tag">R6</span>
@@ -42,7 +44,7 @@ export function R6Delivery({ live }: { live: Live }) {
           <thead><tr><th>Geliş</th><th>Talep</th><th className="num">Gram</th><th>Adres ref</th><th>Durum</th><th>Lojistik</th><th>Takip</th><th>Belgeler</th><th>Aksiyon</th></tr></thead>
           <tbody>
             {items.length === 0 && <tr><td colSpan={9} className="small">Teslimat talebi yok</td></tr>}
-            {items.map((d) => (
+            {pItems.slice.map((d) => (
               <tr key={d.delivery_id} style={{ background: sel?.delivery_id === d.delivery_id ? "var(--sel)" : undefined }}>
                 <td className="mono">{fmtDT(d.requested_ts)}</td>
                 <td className="mono small" onClick={() => setSel(d)} style={{ cursor: "pointer" }}>{d.ref}</td>
@@ -70,6 +72,7 @@ export function R6Delivery({ live }: { live: Live }) {
             ))}
           </tbody>
         </table>
+        <Pager p={pItems} label="Talepler" />
       </section>
 
       {sel && (sel.status === "REQUESTED" || sel.status === "QUOTED") && (

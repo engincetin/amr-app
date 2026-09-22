@@ -8,17 +8,16 @@ Uygulama adresi: `http://localhost:4000` (kurulumda değişir).
 
 ## 1. Ekranı tanıyalım
 
-Solda ekran listesi (R1'den R10'a), üstte her ekranda görünen **üst şerit** vardır. Üst şerit günün durumunu özetler:
+Solda ekran listesi (simge + ad; Kanzasset paneliyle aynı sıra), üstte sade bir **üst şerit** (yayın durumu, tema, bildirim zili, kullanıcı) ve yan menünün altında bağlantı satırları vardır. Günün sayıları **Genel bakış** ekranındadır. Nereye bakılır:
 
-| Kutu | Ne anlatır | Ne zaman endişelenmeli |
+| Yer | Ne anlatır | Ne zaman endişelenmeli |
 |---|---|---|
-| Fiyat yayını | Fiyat akıyor mu, son fiyat kaç saniye önce geldi | "Durduruldu" ya da "Merkez yok" yazıyorsa Kanzasset işlem yapamaz |
-| Merkez | Fiyat kaynağına bağlı mıyız | "Kopuk" ise R2'den yeniden bağlanın |
-| Kasa hesabı | Kanzasset adına kasada duran gram | Beklenmedik düşüş varsa R4'teki hareketlere bakın |
-| Cari hesap | Karşılıklı açık hesap: gram ve para | Limit yüzdesi %80'i geçtiyse mahsuplaşma zamanı |
-| Kanzasset bağlantısı | Karşı taraf soketimize bağlı mı | "Bağlı değil" ise emir gelmez |
-| Kullanıcı | Hangi kullanıcı olarak çalışıyorsunuz | Düğmeler rolünüze göre çalışır |
-| Bildirimler | Bekleyen işler ve uyarılar | Sayı varsa açıp bakın, her bildirim ilgili ekrana götürür |
+| Üst şerit: Yayın | Fiyat Kanzasset'e akıyor mu | "Yayın durdu" yazıyorsa Kanzasset işlem yapamaz; R2 Fiyat'a bakın |
+| Yan menü altı: Merkez | Fiyat kaynağına bağlı mıyız | "Kopuk" ise R10 Ayarlar'dan yeniden bağlanın |
+| Yan menü altı: Kanzasset | Karşı taraf soketimize abone mi | "Bağlı değil" ise emir gelmez |
+| Genel bakış: Kasa hesabı | Kanzasset adına kasada duran gram | Beklenmedik düşüş varsa R4'teki hareketlere bakın |
+| Genel bakış: Cari hesap | Karşılıklı açık hesap: gram ve para | Limit yüzdesi %80'i geçtiyse mahsuplaşma zamanı |
+| Üst şerit: Kullanıcı | Hangi kullanıcı olarak çalışıyorsunuz | Düğmeler rolünüze göre çalışır |
 
 **Kullanıcı seçimi:** üst şeritteki kullanıcı kutusundan kendinizi seçin. Rolünüz yetkinizi belirler:
 
@@ -38,9 +37,9 @@ Yetkiniz olmayan bir düğmeye bastığınızda uygulama size neden yapamadığ�
 
 ### 2.1 Sabah: yayını açmak
 
-1. **R2 Fiyat yayını** ekranını açın.
-2. Merkez kutusunda **Bağlı** yazmıyorsa **Bağlan** deyin.
-3. Tick listesi akmaya başlayınca yayın açıktır; üst şeritte **Yayında** görünür.
+1. **R2 Fiyat** ekranını açın.
+2. Merkez kutusunda **Bağlı** yazmıyorsa **R10 Ayarlar → Bağlantı** bölümünden **Bağlan** deyin.
+3. Tick listesi akmaya başlayınca yayın açıktır; üst şeritte **Yayın açık** görünür.
 
 Yayını durdurmanız gerekirse (örneğin merkezde sorun varsa) **Yayını durdur** deyin ve gerekçe yazın. Gerekçe Kanzasset'e gider ve müşteri tarafı anında durur. Sorun geçince **Başlat**.
 
@@ -132,8 +131,8 @@ Adımlar:
 
 | Belirti | Ne demek | Ne yapmalı |
 |---|---|---|
-| Üst şeritte "Merkez: Kopuk" | Fiyat kaynağına bağlantı gitti | R2 → **Bağlan**. Düzelmiyorsa merkez tarafına haber verin. Yayın kendiliğinden durur, emir kabul edilmez. |
-| "Fiyat yayını: Durduruldu" | Biri elle durdurmuş | R2 → **Başlat**. Gerekçeyi bildirimlerden görebilirsiniz. |
+| Yan menü altında "Merkez kopuk" | Fiyat kaynağına bağlantı gitti | R10 Ayarlar → **Bağlan**. Düzelmiyorsa merkez tarafına haber verin. Yayın kendiliğinden durur, emir kabul edilmez. |
+| Üst şeritte "Yayın durdu" | Biri elle durdurmuş ya da merkez yok | R2 → **Yayını başlat**. Gerekçeyi bildirimlerden görebilirsiniz. |
 | Cari hesap limiti %80 üstü | Açık hesap büyüdü | R8 → **Mahsuplaşma talep et**. Limit dolarsa yeni emirler reddedilir. |
 | Kasa talebi reddedildi diyor | Kural tutmadı | Girişte Kanzasset'in cari hesabında yeterli gram yok; çıkışta kasada yeterli gram yok ("kasaya konuluyor" sayılmaz). Kanzasset ile konuşun. |
 | T+3 sayacı kırmızı | Külçe vadesinde kasaya konmadı | R4 → **Kasaya konuldu**. Kapanana kadar Kanzasset yeni token basamaz. |

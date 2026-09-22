@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, fmtDT, fmtG, fmtMoney, MOVE_TR, type CurrentAccount, type useLive } from "../api.ts";
+import { Pager, usePager } from "../components/Pager.tsx";
 
 type Live = ReturnType<typeof useLive>;
 
@@ -24,6 +25,7 @@ export function R5CurrentAccount({ live }: { live: Live }) {
     finally { setBusy(false); }
   };
 
+  const pMov = usePager(data?.movements ?? [], 20);
   return (
     <div>
       <span className="tag">R5</span>
@@ -74,10 +76,10 @@ export function R5CurrentAccount({ live }: { live: Live }) {
       <section className="card">
         <h2>Hareketler</h2>
         <table>
-          <thead><tr><th className="num">seq</th><th>Zaman</th><th>Tür</th><th className="num">Altın (g)</th><th>Kur</th><th className="num">Para</th><th>Referans</th></tr></thead>
+          <thead><tr><th className="num">Sıra</th><th>Zaman</th><th>Tür</th><th className="num">Altın (g)</th><th>Kur</th><th className="num">Para</th><th>Referans</th></tr></thead>
           <tbody>
             {(data?.movements ?? []).length === 0 && <tr><td colSpan={7} className="small">Hareket yok</td></tr>}
-            {data?.movements.map((m) => (
+            {pMov.slice.map((m) => (
               <tr key={m.id}>
                 <td className="num">{m.seq}</td><td className="mono">{fmtDT(m.ts)}</td><td>{MOVE_TR[m.type] ?? m.type}</td>
                 <td className="num">{m.gold_mg ? `${m.gold_mg > 0 ? "+" : ""}${fmtG(m.gold_mg)}` : ""}</td>
@@ -88,6 +90,7 @@ export function R5CurrentAccount({ live }: { live: Live }) {
             ))}
           </tbody>
         </table>
+        <Pager p={pMov} label="Hareketler" />
       </section>
     </div>
   );

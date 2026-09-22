@@ -28,7 +28,7 @@ cd kz-treasury && npm run demo
 
 Tek komutla Docker ile: `docker compose up --build` (kökte `docker-compose.yml`; bkz. README).
 
-Kontrol: `http://localhost:4000` açıldığında üst şeritte **Fiyat yayını: Yayında** ve **Kanzasset bağlantısı: Bağlı** yazmalı. Yazmıyorsa 1. komutun terminaline bakın.
+Kontrol: `http://localhost:4000` açıldığında üst şeritte **Yayın açık**, yan menünün altında **Merkez bağlı** ve **Kanzasset abone** yazmalı. Yazmıyorsa 1. komutun terminaline bakın.
 
 **Sunumdan önce** senaryoları bir kez koşun (3. komut, ~2 dakika): ekranlar dolu gelir ve toplantıda boş tablo görünmez. İsterseniz sunum sırasında canlı koşmak için `DEMO_GAP_MS=5000 npm run demo` kullanın, adımlar arasında 5 saniye bekler.
 
@@ -40,7 +40,7 @@ Kontrol: `http://localhost:4000` açıldığında üst şeritte **Fiyat yayını
 
 **Aç:** rafineri `http://localhost:4000`.
 
-**Göster:** üst şerit. Fiyat yayını, merkez bağlantısı, kasa hesabı, cari hesap, Kanzasset bağlantısı, bildirim zili.
+**Göster:** yan menü (Kanzasset paneliyle aynı sıra ve adlar), üst şerit (yayın durumu, bildirim zili, kullanıcı), yan menünün altındaki bağlantı satırları, Genel bakış kartları (kasa hesabı, cari hesap, bekleyen işler).
 
 > "Bu rafineride çalışan uygulama. Üstteki şerit günün durumunu tek bakışta veriyor: fiyat akıyor mu, Kanzasset bağlı mı, kasada ne kadar altın var, karşılıklı hesap nerede."
 
@@ -50,13 +50,13 @@ Kontrol: `http://localhost:4000` açıldığında üst şeritte **Fiyat yayını
 
 ---
 
-### 1. Fiyat zinciri · 2 dakika · R2 → K1
+### 1. Fiyat zinciri · 2 dakika · R2 → K11
 
-**R2 Fiyat yayını:** son tick listesi akıyor.
+**R2 Fiyat:** son tick listesi akıyor.
 
 > "Fiyat rafinerinin merkezi uygulamasından geliyor, biz onu Kanzasset'e kendi soketimizle yayınlıyoruz. Gram başına, 999,9 ayar, üç kurda çift yönlü."
 
-**K1 Bağlantı ve fiyat:** aynı fiyat, yanında müşteri fiyatı.
+**K11 Fiyat:** aynı fiyat, yanında müşteri fiyatı (fiyat zinciri).
 
 > "Kanzasset aynı fiyatı alıyor, üstüne marjını gömüyor ve müşteriye tek fiyat gösteriyor. Komisyon ayrı satır. Müşteri rafineri fiyatını görmüyor."
 
@@ -70,7 +70,7 @@ Kontrol: `http://localhost:4000` açıldığında üst şeritte **Fiyat yayını
 
 ### 2. Stoktan alış ve satış · 2 dakika · K3 → R3
 
-**K3 Emir günlüğü:** listenin başındaki alış emri.
+**K3 Emirler:** listenin başındaki alış emri (özet kartları rafineri tarafıyla aynı).
 
 > "Müşteri 70 gram aldı. Kanzasset aynı gramla rafineride bir alış emri açtı: birebir, pozisyon taşımıyoruz."
 
@@ -102,7 +102,7 @@ Kontrol: `http://localhost:4000` açıldığında üst şeritte **Fiyat yayını
 
 > "Kabul anında Kasa Giriş Fişi kesildi. Bu fiş Kanzasset tarafında mint'in tek dayanağı: fiş yoksa mint yok."
 
-**K4 Kasa talimatları:** aynı talimat, fiş numarası ve mint işlem referansı yan yana.
+**K4 Kasa hesabı:** aynı talimat, fiş numarası ve mint işlem referansı yan yana.
 
 > "Fiş geldi, mint yapıldı, müşteriye teslim tek seferde yapıldı. Kısmi teslim yok."
 
@@ -120,7 +120,7 @@ Kontrol: `http://localhost:4000` açıldığında üst şeritte **Fiyat yayını
 
 > "Külçe fiziksel olarak kasaya konunca işaretleniyor. Vade en geç üç gün; geçerse uyarı düşüyor ve yeni mint duruyor."
 
-**K2 Rafineri hesapları:** eşleşme durumu **EŞİT**, K1 ve K2 kontrolleri yeşil.
+**K2 Hesaplar:** eşleşme durumu **EŞİT**, K1 ve K2 kontrolleri yeşil.
 
 > "Her harekette Kanzasset kendi kaydını rafinerinin bakiye bilgisiyle karşılaştırıyor. Birebir eşit olmak zorunda. Eşit değilse işlem duruyor."
 

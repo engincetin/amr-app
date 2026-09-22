@@ -15,7 +15,7 @@ const SOURCES: { id: string; label: string; hint: string }[] = [
   { id: "audit", label: "Denetim günlüğü", hint: "Elle yapılan aksiyonlar: kim, ne zaman, ne yaptı; öncesi ve sonrasıyla." },
   { id: "events", label: "Olaylar", hint: "Kanzasset'e gönderilen olaylar (webhook): teslim durumu ve deneme sayısı." },
   { id: "notifications", label: "Bildirimler", hint: "Ekranlarda çıkan bildirimlerin tamamı, okunmuşlar dahil." },
-  { id: "ticks", label: "Fiyat tick'leri", hint: "Yayınlanan her fiyat: seq, üç kur ve o anda işlem yapılabilir miydi." },
+  { id: "ticks", label: "Fiyat tick'leri", hint: "Yayınlanan her fiyat: sıra, üç kur ve o anda işlem yapılabilir miydi." },
 ];
 
 export function LogsPage({ endpoint, tag, title }: { endpoint: string; tag: string; title: string }) {
@@ -39,7 +39,11 @@ export function LogsPage({ endpoint, tag, title }: { endpoint: string; tag: stri
       const res = await fetch(`${endpoint}?${p}`, { headers: { "content-type": "application/json" } });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setData(await res.json());
-    } catch (e) { setMsg(`Hata: ${(e as Error).message}`); }
+    } catch (e) {
+      const m = (e as Error).message;
+      // 404: sunucu bu ucu tanımıyor; en sık sebep git pull sonrası sunucunun yeniden başlatılmamış olmasıdır
+      setMsg(/404/.test(m) ? `Hata: ${m}. Sunucu bu ucu tanımıyor: kodu güncellediyseniz sunucuyu yeniden başlatın (npm run dev).` : `Hata: ${m}`);
+    }
     finally { setBusy(false); }
   };
   useEffect(() => { void load(); }, [source, page, size]);

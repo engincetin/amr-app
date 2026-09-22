@@ -62,14 +62,16 @@ export class UserDesk {
   constructor(private ctx: AppContext) {}
 
   seed() {
+    // eski veritabanlarında ad sonundaki "(demo)" eki kaldırılır
+    this.ctx.db.prepare("UPDATE users SET display_name = TRIM(REPLACE(display_name, '(demo)', '')) WHERE display_name LIKE '%(demo)%'").run();
     const n = this.ctx.db.prepare("SELECT COUNT(*) AS n FROM users").get() as { n: number };
     if (n.n > 0) return;
     const rows: [string, string, Role][] = [
-      ["masa", "Masa (demo)", "MASA"],
-      ["kasa", "Kasa operasyonu (demo)", "KASA"],
-      ["uretim", "Üretim (demo)", "URETIM"],
-      ["yonetici", "Yönetici (demo)", "YONETICI"],
-      ["denetci", "Denetçi (demo)", "DENETCI"],
+      ["masa", "Masa", "MASA"],
+      ["kasa", "Kasa operasyonu", "KASA"],
+      ["uretim", "Üretim", "URETIM"],
+      ["yonetici", "Yönetici", "YONETICI"],
+      ["denetci", "Denetçi", "DENETCI"],
     ];
     const ins = this.ctx.db.prepare("INSERT INTO users(username, display_name, role, active, created_ts) VALUES (?, ?, ?, 1, ?)");
     for (const [u, d, r] of rows) ins.run(u, d, r, now());
