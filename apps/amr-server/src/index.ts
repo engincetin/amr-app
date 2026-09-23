@@ -44,7 +44,8 @@ export async function buildApp(opts: { dbPath?: string; autoconnect?: boolean; d
   ensureSettlementTables(db);
   ensureUserTables(db);
   ensureRequestLogTable(db);
-  ensureApiClient(db, process.env.KZ_API_KEY ?? "kz-dev-key", "Kanzasset FZCO", process.env.KZ_API_SECRET ?? "kz-dev-secret", process.env.KZ_EVENT_URL ?? "http://localhost:5000/api/events");
+  // KZ_EVENT_URL verildiyse kayıtlı adres de güncellenir: Kanzasset başka bir portta çalışırken (ör. 5050) olaylar yerine ulaşsın
+  ensureApiClient(db, process.env.KZ_API_KEY ?? "kz-dev-key", "Kanzasset FZCO", process.env.KZ_API_SECRET ?? "kz-dev-secret", process.env.KZ_EVENT_URL ?? "http://localhost:5000/api/events", Boolean(process.env.KZ_EVENT_URL));
   // varsayılan parametreler (R11 Ayarlar)
   const defaults: Record<string, string> = {
     "source.url": SOURCE_URL,

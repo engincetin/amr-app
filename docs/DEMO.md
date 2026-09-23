@@ -28,7 +28,12 @@ cd kz-treasury && npm run demo
 
 Tek komutla Docker ile: `docker compose up --build` (kökte `docker-compose.yml`; bkz. README).
 
-Sunucular başka portta çalışıyorsa demoya adresi verin: Kanzasset 5050'deyse `KZ_URL=http://localhost:5050 npm run demo`, rafineri için `AMR_URL`. Demo ulaşamadığı tarafı adıyla söyler.
+Kanzasset 5000 dışında bir portta çalışıyorsa (macOS'ta 5000'i AirPlay tutabilir) iki yeri birden ayarlayın:
+
+- rafineriyi olay adresiyle başlatın: `KZ_EVENT_URL=http://localhost:5050/api/events VAULT_OPENING_MG=20000000 npm run dev`
+- demoyu adresle çalıştırın: `KZ_URL=http://localhost:5050 npm run demo`
+
+Olay adresi yanlışsa fiş, kabul ve mahsuplaşma olayları Kanzasset'e ulaşmaz: mint olmaz, teslimat adımı "token yetersiz" der, kapanışta eşleşme RECONCILE çıkar. Demo bunu, açılış devrinin eksikliğini ve baştan gelen RECONCILE'ı başlamadan önce yakalar ve ne yapılacağını yazar.
 
 Kontrol: `http://localhost:4000` açıldığında üst şeritte **Yayın açık**, yan menünün altında **Merkez bağlı** ve **Kanzasset abone** yazmalı. Yazmıyorsa 1. komutun terminaline bakın.
 

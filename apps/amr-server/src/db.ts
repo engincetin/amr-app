@@ -119,9 +119,15 @@ export function listAudit(db: Db, limit = 100) {
   return db.prepare("SELECT * FROM audit_log ORDER BY id DESC LIMIT ?").all(limit);
 }
 
-export function ensureApiClient(db: Db, apiKey: string, name: string, secret: string, eventUrl?: string) {
+/**
+ * Kanzasset istemcisini kaydeder. Kayıt varsa dokunulmaz: anahtar ve olay adresi panelden yönetilir.
+ * `forceEventUrl` yalnız olay adresi ortam değişkeniyle açıkça verildiğinde gelir (KZ_EVENT_URL);
+ * o zaman kayıtlı adres güncellenir, yoksa Kanzasset başka bir portta çalışırken olaylar sessizce boşluğa gider.
+ */
+export function ensureApiClient(db: Db, apiKey: string, name: string, secret: string, eventUrl?: string, forceEventUrl = false) {
   db.prepare("INSERT INTO api_clients(api_key, name, secret, event_url, created_ts) VALUES (?, ?, ?, ?, ?) ON CONFLICT(api_key) DO NOTHING")
     .run(apiKey, name, secret, eventUrl ?? null, now());
+  if (forceEventUrl && eventUrl) db.prepare("UPDATE api_clients SET event_url = ? WHERE api_key = ? AND event_url IS NOT ?").run(eventUrl, apiKey, eventUrl);
 }
 export function getApiClient(db: Db, apiKey: string) {
   return db.prepare("SELECT * FROM api_clients WHERE api_key = ? AND active = 1").get(apiKey) as
