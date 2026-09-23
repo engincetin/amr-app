@@ -84,7 +84,7 @@ export function LogsPage({ endpoint, tag, title }: { endpoint: string; tag: stri
         <div className="row" style={{ marginBottom: 8 }}>
           <b>{src.label}</b>
           <span className="pill">{data.total} kayıt</span>
-          <span className="small">{shownFrom}–{shownTo} arası gösteriliyor</span>
+          <span className="small">{shownFrom}-{shownTo} arası gösteriliyor</span>
           <span style={{ flex: 1 }} />
           <select value={size} onChange={(e) => { setSize(Number(e.target.value)); setPage(0); }}>
             {[20, 50, 100, 200].map((n) => <option key={n} value={n}>{n} satır</option>)}

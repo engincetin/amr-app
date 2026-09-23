@@ -17,7 +17,7 @@ export function Pager({ p, label }: { p: ReturnType<typeof usePager<unknown>>; l
   if (p.total === 0) return null;
   return (
     <div className="pager">
-      <span className="small">{label ? `${label} · ` : ""}{p.total} kayıt · {p.from}–{p.to}</span>
+      <span className="small">{label ? `${label} · ` : ""}{p.total} kayıt · {p.from}-{p.to}</span>
       <span className="sp" />
       <button disabled={p.page === 0} onClick={() => p.setPage(0)} title="ilk sayfa">⏮</button>
       <button disabled={p.page === 0} onClick={() => p.setPage(p.page - 1)}>← Önceki</button>
