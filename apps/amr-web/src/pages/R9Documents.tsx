@@ -28,7 +28,7 @@ export function R9Documents({ live }: { live: Live }) {
     }
     catch (e) { setMsg(`Hata: ${(e as Error).message}`); }
   };
-  useEffect(() => { load(); }, [live.overview?.account.seq, reqQ.channel, reqQ.errors]);
+  useEffect(() => { load(); }, [live.overview?.account.seq, live.version, reqQ.channel, reqQ.errors]);
 
   const types = [...new Set(rows.map((r) => r.type))];
   const shown = rows.filter((r) =>

@@ -421,7 +421,7 @@ footer{margin-top:56px;border-top:1px solid var(--line);padding-top:14px;font-si
 <li><code>T &lt; 0</code> (Kanzasset gram borçlu): Kanzasset önce <strong>burn</strong> eder, sonra kasa çıkışı talebi gönderir (06). <strong>Rafineri kendi başına kasadan gram çıkaramaz:</strong> çıkış yalnız Kanzasset'in talebiyle başlar, böylece karşılıksız token oluşmaz.</li>
 <li>Sonuç: <code>T = 0</code>, <code>S = K = hedef</code>.</li>
 </ul></li>
-<li><strong>Para bacağı:</strong> kur bazında net → borçlu öder, banka hesabından banka hesabına, Kanzasset tarafında yalnız şirket hesabı (K5) · ödeme bildirimi · karşı taraf "ödeme alındı" der. Her kur kendi başına kapanır.</li>
+<li><strong>Para bacağı:</strong> kur bazında net → borçlu öder, banka hesabından banka hesabına, Kanzasset tarafında yalnız şirket hesabı (K5) · ödeme bildirimi · karşı taraf "ödeme alındı" der. Her kur kendi başına kapanır. Ödeme hangi panelden onaylanırsa onaylansın <code>settlement.payment_received</code> olayıyla iki taraf da kaydını aynı tutarda kapatır.</li>
 <li>Kapsamdaki bütün bacaklar kapanınca pencere <code>SETTLED</code> olur ve limit sayaçları sıfırlanır.</li>
 </ol>
 <div class="diagram"><div class="cap">Örnek · gün sonu kesimi · T +7.000 g · USD net Kanzasset → AMR</div><pre class="mermaid">sequenceDiagram

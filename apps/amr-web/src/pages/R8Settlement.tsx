@@ -23,7 +23,7 @@ export function R8Settlement({ live }: { live: Live }) {
   const [bankRef, setBankRef] = useState<Record<string, string>>({});
 
   const load = () => api.settlements().then((r) => { setItems(r.items); setOpen(r.open); if (sel) setSel(r.items.find((x) => x.settlement_id === sel.settlement_id) ?? null); }).catch((e) => setMsg(`Hata: ${e.message}`));
-  useEffect(() => { load(); }, [live.overview?.account.seq]);
+  useEffect(() => { load(); }, [live.overview?.account.seq, live.version]);
 
   const act = async (key: string, fn: () => Promise<unknown>, done: string) => {
     setBusy(key); setMsg("");

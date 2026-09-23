@@ -20,7 +20,7 @@ export function R4Vault({ live }: { live: Live }) {
   const [, tick] = useState(0);
 
   const load = () => api.vault({ limit: 300 }).then(setV).catch((e) => setMsg(`Hata: ${e.message}`));
-  useEffect(() => { load(); }, [live.overview?.account.seq, live.overview?.vault_pending]);
+  useEffect(() => { load(); }, [live.overview?.account.seq, live.overview?.vault_pending, live.version]);
   useEffect(() => { const t = setInterval(() => tick((x) => x + 1), 30_000); return () => clearInterval(t); }, []); // sayaçlar
 
   const act = async (id: string, fn: () => Promise<unknown>, done: string) => {

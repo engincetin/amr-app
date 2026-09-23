@@ -20,7 +20,7 @@ export function R6Delivery({ live }: { live: Live }) {
   const [ship, setShip] = useState({ carrier: "Brinks", tracking_no: "" });
 
   const load = () => api.deliveries().then((r) => setItems(r.items)).catch((e) => setMsg(`Hata: ${e.message}`));
-  useEffect(() => { load(); }, [live.overview?.deliveries_open, live.overview?.account.seq]);
+  useEffect(() => { load(); }, [live.overview?.deliveries_open, live.overview?.account.seq, live.version]);
 
   const act = async (id: string, fn: () => Promise<unknown>, done: string) => {
     setBusy(id); setMsg("");

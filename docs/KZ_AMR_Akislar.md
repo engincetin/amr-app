@@ -464,7 +464,7 @@ Gün içinde biriken karşılıklı alacak ve borçların (gram ve para) tek sef
    - `T > 0` (rafineri gram borçlu): rafineri **"kasaya koyalım mı"** diye teklif eder → Kanzasset **onaylar** → kasa girişi talebi (05) → **Kasa Giriş Fişi** → **mint**. Fiş olmadan token basılmaz.
    - `T < 0` (Kanzasset gram borçlu): Kanzasset önce **burn** eder, sonra kasa çıkışı talebi gönderir (06). **Rafineri kendi başına kasadan gram çıkaramaz:** çıkış yalnız Kanzasset'in talebiyle başlar, böylece karşılıksız token oluşmaz.
    - Sonuç: `T = 0`, `S = K = hedef`.
-4. **Para bacağı:** kur bazında net → borçlu öder, banka hesabından banka hesabına, Kanzasset tarafında yalnız şirket hesabı (K5) · ödeme bildirimi · karşı taraf "ödeme alındı" der. Her kur kendi başına kapanır.
+4. **Para bacağı:** kur bazında net → borçlu öder, banka hesabından banka hesabına, Kanzasset tarafında yalnız şirket hesabı (K5) · ödeme bildirimi · karşı taraf "ödeme alındı" der. Her kur kendi başına kapanır. Ödeme hangi panelden onaylanırsa onaylansın `settlement.payment_received` olayıyla iki taraf da kaydını aynı tutarda kapatır.
 5. Kapsamdaki bütün bacaklar kapanınca pencere `SETTLED` olur ve limit sayaçları sıfırlanır.
 
 <!-- cap: Örnek · gün sonu kesimi · T +7.000 g · USD net Kanzasset → AMR -->

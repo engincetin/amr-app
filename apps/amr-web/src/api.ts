@@ -205,6 +205,8 @@ export type BusEvent =
 /** Canlı akış: overview'ı tutar, tick'leri biriktirir, bildirimleri sayar. */
 export function useLive() {
   const [overview, setOverview] = useState<Overview | null>(null);
+  /** Durum değişti sayacı: listeler (emirler, kasa, mahsuplaşma, belgeler) buna bakıp yenilenir. */
+  const [version, setVersion] = useState(0);
   const [ticks, setTicks] = useState<Tick[]>([]);
   const [lastEvent, setLastEvent] = useState<string>("");
   const [lastOrder, setLastOrder] = useState<Order | null>(null);
@@ -242,6 +244,7 @@ export function useLive() {
         setLastOrder(ev.order);
         scheduleRefresh();
       } else if (ev.kind === "vault" || ev.kind === "delivery" || ev.kind === "refining" || ev.kind === "catalog" || ev.kind === "settlement" || ev.kind === "subscribers" || ev.kind === "notification") {
+        setVersion((v) => v + 1);
         scheduleRefresh();
       }
     };
@@ -252,7 +255,7 @@ export function useLive() {
     return () => es.close();
   }, []);
 
-  return { overview, ticks, lastEvent, lastOrder, connected, refresh };
+  return { overview, ticks, lastEvent, lastOrder, connected, version, refresh };
 }
 
 export const fmtG = (mg: number) => (mg / 1000).toLocaleString("tr-TR", { minimumFractionDigits: 3, maximumFractionDigits: 3 });

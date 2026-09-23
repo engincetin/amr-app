@@ -294,6 +294,11 @@ export class SettlementDesk {
     this.ctx.db.prepare("UPDATE settlements SET money_leg = ?, history = ? WHERE settlement_id = ?")
       .run(JSON.stringify(legs), this.push(row, row.status as SettlementStatus, `ödeme alındı ${ccy} ${money(amount)}${Math.abs(amount) < Math.abs(leg.net_cents) ? ` (kısmi; net ${money(leg.net_cents)})` : ""}`), row.settlement_id);
     this.settleMoney(row.settlement_id, ccy, amount);
+    // Kanzasset'in kaydı da kapanmalı: ödeme hangi panelden onaylanırsa onaylansın olayla bildirilir
+    this.ctx.notify("settlement.payment_received", "Ödeme kapandı", `${ccy} ${money(Math.abs(amount))}`, row.settlement_id);
+    enqueueEvent(this.ctx, "settlement.payment_received", {
+      settlement_id: row.settlement_id, ccy, closed_cents: amount, net_cents: leg.net_cents, bank_ref: leg.bank_ref ?? null,
+    }, this.ctx.orders.account());
     return this.maybeSettle(row.settlement_id);
   }
 

@@ -11,7 +11,7 @@ export function R5CurrentAccount({ live }: { live: Live }) {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const load = () => api.currentAccount(300).then(setData).catch(console.warn);
-  useEffect(() => { load(); }, [live.overview?.account.seq]);
+  useEffect(() => { load(); }, [live.overview?.account.seq, live.version]);
 
   const acc = data?.account ?? live.overview?.account;
   const lim = data?.limit ?? live.overview?.limit;

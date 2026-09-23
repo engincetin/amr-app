@@ -26,7 +26,7 @@ export function R7Refining({ live }: { live: Live }) {
     try { const [r, c] = await Promise.all([api.refining(), api.catalog()]); setItems(r.items); setCat(c); }
     catch (e) { setMsg(`Hata: ${(e as Error).message}`); }
   };
-  useEffect(() => { load(); }, [live.overview?.refining_open, live.overview?.account.seq]);
+  useEffect(() => { load(); }, [live.overview?.refining_open, live.overview?.account.seq, live.version]);
 
   const act = async (id: string, fn: () => Promise<unknown>, done: string) => {
     setBusy(id); setMsg("");
