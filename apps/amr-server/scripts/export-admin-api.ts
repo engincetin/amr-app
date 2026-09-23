@@ -63,7 +63,8 @@ const OPS: Record<string, Op> = {
   "POST /admin/refining/:id/delivered": { summary: "R7 teslim edildi", perm: "refining.steps" },
   "POST /admin/refining/:id/cancel": { summary: "R7 rafinasyonu iptal et (yalnız üretime kadar)", body: { reason: "iptal gerekçesi" }, perm: "refining.steps" },
   "GET /admin/catalog": { summary: "R7 külçe kataloğu" },
-  "PUT /admin/catalog": { summary: "R7 katalog kalemini ekle ya da güncelle (sürüm artar, catalog.updated gider)", perm: "catalog.edit" },
+  "PUT /admin/catalog": { summary: "R7 katalog kalemini ekle ya da güncelle (sürüm artar, catalog.updated gider)", description: "yeni ürün için item_id verilir (ör. aynı gramajın 999,5 ayarlısı); gövde: name, weight_mg, fineness, unit_price_cents, ccy, lead_time_days, active.", perm: "catalog.edit" },
+  "DELETE /admin/catalog/:id": { summary: "R7 katalog kalemini sil (sürüm artar, catalog.updated gider)", description: "ürün listeden tamamen çıkar. Satıştan geçici kaldırmak için silmek yerine pasife almak yeterlidir; eski taleplerin kalemleri kendi kayıtlarında durur.", perm: "catalog.edit" },
 
   "GET /admin/settlements": { summary: "R8 mahsuplaşma pencereleri" },
   "POST /admin/settlements": { summary: "R8 mahsuplaşma penceresi aç (sihirbaz: kapsam ve tutar)", description: "trigger: CUTOFF (kesim saati, kendiliğinden de açılır), REQUEST_AMR ya da REQUEST_KZ. Açık pencere varsa o döner. scope verilmezse bütün bacaklar; amounts verilmezse her bacağın tamamı kapatılır, verilen tutar bacağın tamamını aşamaz.", body: { trigger: "tetikleyici", reason: "gerekçe", scope: ["GOLD", "USD"], amounts: { gold_mg: 4000000, money: [{ ccy: "USD", cents: 50000000 }] } }, perm: "settlement.request" },

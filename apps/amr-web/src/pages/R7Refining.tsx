@@ -21,6 +21,8 @@ export function R7Refining({ live }: { live: Live }) {
   const [q, setQ] = useState({ product: "", logistics: "", ccy: "USD", lead_time_days: 5 });
   const [ship, setShip] = useState({ carrier: "Brinks", tracking_no: "" });
   const [edit, setEdit] = useState<{ item_id: string; unit_price: string; lead: string } | null>(null);
+  /** Yeni ürün formu: ad, gramaj, ayar, tarife, üretim süresi. */
+  const [neu, setNeu] = useState({ name: "", weight: "", fineness: "999.9", price: "", lead: "3" });
 
   const load = async () => {
     try { const [r, c] = await Promise.all([api.refining(), api.catalog()]); setItems(r.items); setCat(c); }
@@ -46,7 +48,7 @@ export function R7Refining({ live }: { live: Live }) {
 
       <section className="card" style={{ marginBottom: 14 }}>
         <h2>Talepler</h2>
-        <table>
+        <table className="wide">
           <thead><tr><th>Geliş</th><th>Talep</th><th>Kalemler</th><th className="num">Saf gram</th><th>Durum</th><th>Teklif</th><th>Takip</th><th>Belgeler</th><th>Aksiyon</th></tr></thead>
           <tbody>
             {items.length === 0 && <tr><td colSpan={9} className="small">Rafinasyon talebi yok</td></tr>}
@@ -114,9 +116,9 @@ export function R7Refining({ live }: { live: Live }) {
       {sel && <Timeline title={`${sel.ref} zaman çizelgesi`} history={sel.history ?? []} onClose={() => setSel(null)} />}
 
       <section className="card">
-        <h2>Ürün kataloğu <span className="pill">sürüm {cat?.version ?? 0}</span></h2>
-        <p className="small">Katalog değişince Kanzasset'e `catalog.updated` olayı gider ve güncel liste çekilir. Pasife alınan ürün yeni taleplerde seçilemez.</p>
-        <table>
+        <h2>Ürün kataloğu <span className="pill">{cat?.items.length ?? 0} ürün</span></h2>
+        <p className="small">Ürünler burada eklenir, düzenlenir, pasife alınır ya da silinir: aynı gramajın farklı ayarı (ör. 999,9 ve 999,5) ayrı ürün olarak durabilir. Her değişiklikte katalog sürümü artar, Kanzasset'e `catalog.updated` olayı gider ve güncel liste çekilir. Pasife alınan ürün yeni taleplerde seçilemez; silinen ürün geçmiş talepleri etkilemez, talepler ürünü kendi içinde saklar.</p>
+        <table className="wide">
           <thead><tr><th>Ürün</th><th className="num">Gramaj</th><th>Ayar</th><th className="num">Tarife</th><th className="num">Üretim</th><th>Durum</th><th>Aksiyon</th></tr></thead>
           <tbody>
             {cat?.items.map((i) => (
@@ -138,6 +140,7 @@ export function R7Refining({ live }: { live: Live }) {
                       <>
                         <button className="ghost" onClick={() => setEdit({ item_id: i.item_id, unit_price: (i.unit_price_cents / 100).toFixed(2), lead: String(i.lead_time_days) })}>Düzenle</button>
                         <button className="ghost" onClick={() => act(i.item_id, () => api.catalogSave({ item_id: i.item_id, active: !i.active }), `${i.name}: ${i.active ? "pasife alındı" : "aktifleştirildi"}.`)}>{i.active ? "Pasife al" : "Aktifleştir"}</button>
+                        <button className="ghost" onClick={() => { if (window.confirm(`${i.name} katalogdan silinsin mi? Geçmiş talepler etkilenmez.`)) void act(i.item_id, () => api.catalogDelete(i.item_id), `${i.name}: silindi.`); }}>Sil</button>
                       </>
                     )}
                   </div>
@@ -146,6 +149,25 @@ export function R7Refining({ live }: { live: Live }) {
             ))}
           </tbody>
         </table>
+
+        <h2 style={{ marginTop: 14 }}>Yeni ürün</h2>
+        <div className="filters">
+          <label>Ad <input style={{ width: 150 }} placeholder="ör. 100 g külçe 999,5" value={neu.name} onChange={(e) => setNeu({ ...neu, name: e.target.value })} /></label>
+          <label>Gramaj <input style={{ width: 110 }} placeholder="100" value={neu.weight} onChange={(e) => setNeu({ ...neu, weight: e.target.value })} /> g</label>
+          <label>Ayar <input style={{ width: 80 }} value={neu.fineness} onChange={(e) => setNeu({ ...neu, fineness: e.target.value })} /></label>
+          <label>Tarife <input style={{ width: 90 }} placeholder="200,00" value={neu.price} onChange={(e) => setNeu({ ...neu, price: e.target.value })} /> USD</label>
+          <label>Üretim <input style={{ width: 60 }} value={neu.lead} onChange={(e) => setNeu({ ...neu, lead: e.target.value })} /> gün</label>
+          <button className="primary" disabled={!neu.name.trim() || !neu.weight || !neu.price} onClick={() => act("new", async () => {
+            const weightMg = Math.round(Number(neu.weight.replace(",", ".")) * 1000);
+            const priceCents = Math.round(Number(neu.price.replace(".", "").replace(",", ".")) * 100);
+            if (!Number.isFinite(weightMg) || weightMg < 1) throw new Error("gramaj geçersiz");
+            if (!Number.isFinite(priceCents) || priceCents < 0) throw new Error("tarife geçersiz");
+            const id = `bar-${weightMg}-${neu.fineness.replace(/[^0-9]/g, "")}`;
+            await api.catalogSave({ item_id: id, name: neu.name.trim(), weight_mg: weightMg, fineness: neu.fineness.trim(), unit_price_cents: priceCents, ccy: "USD", lead_time_days: Number(neu.lead) || 1, active: true });
+            setNeu({ name: "", weight: "", fineness: "999.9", price: "", lead: "3" });
+          }, "Ürün katalogda: Kanzasset'e catalog.updated gitti.")}>Ürünü ekle</button>
+        </div>
+        <p className="small" style={{ marginTop: 8 }}>Ürün numarası gramaj ve ayardan üretilir; aynı gramaj ve ayar varsa o ürün güncellenir.</p>
       </section>
 
       {doc && <DocModal doc={doc} onClose={() => setDoc(null)} />}

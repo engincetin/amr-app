@@ -157,6 +157,10 @@ button:disabled{opacity:.45;cursor:not-allowed}
 
 /* ---- tablolar ---- */
 table{border-collapse:collapse;width:100%;font-size:12.5px}
+/* çok sütunlu tablolar: hücreler sarmaz, kart içinde yatay kayar (metin sıkışıp okunmaz olmasın) */
+table.wide{width:max-content;min-width:100%}
+table.wide th,table.wide td{white-space:nowrap}
+table.wide td .small{white-space:normal}
 th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line2);vertical-align:top}
 th{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--mut);background:transparent}
 tbody tr:hover{background:var(--soft)}

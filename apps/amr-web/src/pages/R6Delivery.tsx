@@ -40,7 +40,7 @@ export function R6Delivery({ live }: { live: Live }) {
 
       <section className="card" style={{ marginBottom: 14 }}>
         <h2>Talepler</h2>
-        <table>
+        <table className="wide">
           <thead><tr><th>Geliş</th><th>Talep</th><th className="num">Gram</th><th>Adres ref</th><th>Durum</th><th>Lojistik</th><th>Takip</th><th>Belgeler</th><th>Aksiyon</th></tr></thead>
           <tbody>
             {items.length === 0 && <tr><td colSpan={9} className="small">Teslimat talebi yok</td></tr>}

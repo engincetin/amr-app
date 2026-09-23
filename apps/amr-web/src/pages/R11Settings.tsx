@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, fmtDT, type ApiClientRow, type AuditRow, type UsersView, type useLive } from "../api.ts";
+import { Pager, usePager } from "../components/Pager.tsx";
 
 type Live = ReturnType<typeof useLive>;
 
@@ -43,6 +44,7 @@ export function R11Settings({ live }: { live: Live }) {
   useEffect(() => { load(); }, [live.overview?.ts]);
 
   const editable = Object.keys(LABELS);
+  const pAudit = usePager(audit, 20);
   const say = (t: string) => { setMsg(t); setTimeout(() => setMsg(null), 6000); };
 
   return (
@@ -87,7 +89,7 @@ export function R11Settings({ live }: { live: Live }) {
             <span className="small">Onaylayan:</span>
             <input value={approver} onChange={(e) => setApprover(e.target.value)} />
           </div>
-          <table>
+          <table className="wide">
             <thead><tr><th>No</th><th>Aksiyon</th><th>İsteyen</th><th>Zaman</th><th>Aksiyon</th></tr></thead>
             <tbody>
               {(users?.pending_approvals.length ?? 0) === 0 && <tr><td colSpan={5} className="small">Bekleyen onay yok</td></tr>}
@@ -116,7 +118,7 @@ export function R11Settings({ live }: { live: Live }) {
       <div className="grid c2" style={{ marginBottom: 14 }}>
         <section className="card">
           <h2>Kullanıcılar ve roller</h2>
-          <table>
+          <table className="wide">
             <thead><tr><th>Kullanıcı</th><th>Ad</th><th>Rol</th><th>Durum</th><th>Aksiyon</th></tr></thead>
             <tbody>
               {users?.items.map((u) => (
@@ -168,7 +170,7 @@ export function R11Settings({ live }: { live: Live }) {
         <section className="card">
           <h2>API istemcileri</h2>
           <p className="small">Kanzasset'in anahtarı ve imza sırrı. Anahtar üretimi ikinci onay ister; sır yalnız üretim anında bir kez gösterilir.</p>
-          <table>
+          <table className="wide">
             <thead><tr><th>Anahtar</th><th>Ad</th><th>Olay adresi</th><th>Durum</th><th></th></tr></thead>
             <tbody>
               {clients.map((c) => (
@@ -198,11 +200,11 @@ export function R11Settings({ live }: { live: Live }) {
 
         <section className="card">
           <h2>Denetim günlüğü</h2>
-          <table>
+          <table className="wide">
             <thead><tr><th>Zaman</th><th>Kim</th><th>Ne</th><th>Önce / sonra</th></tr></thead>
             <tbody>
-              {audit.length === 0 && <tr><td colSpan={4} className="small">Kayıt yok</td></tr>}
-              {audit.slice(0, 60).map((a) => (
+              {pAudit.total === 0 && <tr><td colSpan={4} className="small">Kayıt yok</td></tr>}
+              {pAudit.slice.map((a) => (
                 <tr key={a.id}>
                   <td className="mono small">{fmtDT(a.ts)}</td>
                   <td>{a.actor}</td>
@@ -212,6 +214,7 @@ export function R11Settings({ live }: { live: Live }) {
               ))}
             </tbody>
           </table>
+          <Pager p={pAudit} label="Denetim günlüğü" />
         </section>
       </div>
     </div>

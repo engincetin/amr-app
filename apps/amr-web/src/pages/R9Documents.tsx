@@ -37,6 +37,8 @@ export function R9Documents({ live }: { live: Live }) {
 
   const sent = rows.filter((r) => r.sent_ts).length;
   const pDocs = usePager(shown, 20, `${q.type}|${q.text}`);
+  const pEvents = usePager(events, 20);
+  const pReqs = usePager(reqs, 20, `${reqQ.channel}|${reqQ.errors}`);
   return (
     <div>
       <span className="tag">R9</span>
@@ -65,7 +67,7 @@ export function R9Documents({ live }: { live: Live }) {
           <button className="ghost" onClick={load}>Yenile</button>
           <span className="small" style={{ marginLeft: "auto" }}>{shown.length} kayıt</span>
         </div>
-        <table>
+        <table className="wide">
           <thead><tr><th>Belge no</th><th>Tip</th><th>İlgili kayıt</th><th>Oluşturma</th><th>Kanzasset'e gönderim</th><th>Aksiyon</th></tr></thead>
           <tbody>
             {shown.length === 0 && <tr><td colSpan={6} className="small">Belge yok</td></tr>}
@@ -92,11 +94,11 @@ export function R9Documents({ live }: { live: Live }) {
       <section className="card">
         <h2>Olay teslimleri</h2>
         <p className="small">Her durum değişikliği Kanzasset'in olay adresine gönderilir. Teslim edilemeyen olaylar üstel bekleme ile yeniden denenir; burada son durum görünür.</p>
-        <table>
+        <table className="wide">
           <thead><tr><th>Olay</th><th>Tip</th><th>Durum</th><th className="num">Deneme</th><th>Oluşturma</th><th>Teslim</th><th>Hata</th></tr></thead>
           <tbody>
-            {events.length === 0 && <tr><td colSpan={7} className="small">Olay yok</td></tr>}
-            {events.slice(0, 50).map((e) => (
+            {pEvents.total === 0 && <tr><td colSpan={7} className="small">Olay yok</td></tr>}
+            {pEvents.slice.map((e) => (
               <tr key={e.event_id}>
                 <td className="mono small">{e.event_id.slice(0, 12)}…</td>
                 <td className="small">{e.type}</td>
@@ -109,6 +111,7 @@ export function R9Documents({ live }: { live: Live }) {
             ))}
           </tbody>
         </table>
+        <Pager p={pEvents} label="Olaylar" />
       </section>
 
       <section className="card" style={{ marginTop: 14 }}>
@@ -131,11 +134,11 @@ export function R9Documents({ live }: { live: Live }) {
           <label className="small"><input type="checkbox" checked={reqQ.errors} onChange={(e) => setReqQ({ ...reqQ, errors: e.target.checked })} /> yalnız hatalar</label>
           <button className="ghost" onClick={load}>Yenile</button>
         </div>
-        <table>
+        <table className="wide">
           <thead><tr><th>Zaman</th><th>Kanal</th><th>İstek</th><th className="num">Sonuç</th><th className="num">Süre</th><th>Kim</th><th>Gövde özeti</th></tr></thead>
           <tbody>
-            {reqs.length === 0 && <tr><td colSpan={7} className="small">Kayıt yok</td></tr>}
-            {reqs.map((r) => (
+            {pReqs.total === 0 && <tr><td colSpan={7} className="small">Kayıt yok</td></tr>}
+            {pReqs.slice.map((r) => (
               <tr key={r.id}>
                 <td className="mono small">{fmtDT(r.ts)}</td>
                 <td className="small">{r.channel === "KANZASSET" ? "Kanzasset" : "panel"}</td>
@@ -148,6 +151,7 @@ export function R9Documents({ live }: { live: Live }) {
             ))}
           </tbody>
         </table>
+        <Pager p={pReqs} label="İstek günlüğü" />
       </section>
 
       {doc && <DocModal doc={doc} onClose={() => setDoc(null)} />}

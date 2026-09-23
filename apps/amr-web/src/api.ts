@@ -67,6 +67,7 @@ export const api = {
   dlvFailed: (id: string, reason: string) => req<Delivery>(`/admin/deliveries/${id}/failed`, { method: "POST", body: JSON.stringify({ reason }) }),
   // R7 katalog ve rafinasyon
   catalog: () => req<Catalog>("/admin/catalog"),
+  catalogDelete: (id: string) => req<Catalog>(`/admin/catalog/${encodeURIComponent(id)}`, { method: "DELETE" }),
   catalogSave: (item: Partial<CatalogItem> & { item_id: string }) => req<Catalog>("/admin/catalog", { method: "PUT", body: JSON.stringify(item) }),
   refining: () => req<{ items: Refining[]; open: number }>("/admin/refining"),
   rfnQuote: (id: string, b: { product: string; logistics: string; ccy: string; lead_time_days: number }) => req<Refining>(`/admin/refining/${id}/quote`, { method: "POST", body: JSON.stringify(b) }),

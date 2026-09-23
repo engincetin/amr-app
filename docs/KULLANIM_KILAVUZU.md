@@ -85,7 +85,7 @@ Ekranda müşteri adı görünmez, yalnız adres ve sigorta lehtarı referansı 
 
 ### 2.5 Rafinasyon · R7
 
-**Katalog:** ekranın altındaki tabloda ürünler, gramajları, tarifeleri ve üretim süreleri durur. **Düzenle** ile tarife ve süreyi değiştirin, **Pasife al** ile satıştan kaldırın. Her değişiklikte katalog sürümü artar ve Kanzasset güncel listeyi çeker.
+**Katalog:** ekranın altındaki tabloda ürünler, gramajları, ayarları, tarifeleri ve üretim süreleri durur. **Düzenle** ile tarife ve süreyi değiştirin, **Pasife al** ile satıştan geçici kaldırın. **Yeni ürün** ile kataloğa ürün ekleyin: aynı gramajın başka ayarlısı da ayrı ürün olur (ör. 100 g 999,9 ve 100 g 999,5). **Sil** ürünü listeden tamamen çıkarır; eski taleplerin kalemleri kendi kayıtlarında durur. Her değişiklikte katalog sürümü artar ve Kanzasset güncel listeyi kendiliğinden çeker, K7 ekranında aynı liste görünür.
 
 **Talepler:**
 

@@ -23,7 +23,7 @@ export function LogsPage({ endpoint, tag, title }: { endpoint: string; tag: stri
   const [q, setQ] = useState("");
   const [range, setRange] = useState({ from: "", to: "" });
   const [page, setPage] = useState(0);
-  const [size, setSize] = useState(50);
+  const [size, setSize] = useState(20);
   const [data, setData] = useState<{ items: LogRow[]; total: number }>({ items: [], total: 0 });
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
@@ -87,7 +87,7 @@ export function LogsPage({ endpoint, tag, title }: { endpoint: string; tag: stri
           <span className="small">{shownFrom}–{shownTo} arası gösteriliyor</span>
           <span style={{ flex: 1 }} />
           <select value={size} onChange={(e) => { setSize(Number(e.target.value)); setPage(0); }}>
-            {[25, 50, 100, 200].map((n) => <option key={n} value={n}>{n} satır</option>)}
+            {[20, 50, 100, 200].map((n) => <option key={n} value={n}>{n} satır</option>)}
           </select>
           <button disabled={busy || page === 0} onClick={() => setPage(0)} title="en yeni">⏮</button>
           <button disabled={busy || page === 0} onClick={() => setPage((p) => p - 1)}>← Yeni</button>
@@ -95,7 +95,7 @@ export function LogsPage({ endpoint, tag, title }: { endpoint: string; tag: stri
           <button disabled={busy || page + 1 >= pages} onClick={() => setPage((p) => p + 1)}>Eski →</button>
           <button disabled={busy || page + 1 >= pages} onClick={() => setPage(pages - 1)} title="en eski">⏭</button>
         </div>
-        <table>
+        <table className="wide">
           <thead><tr><th>Zaman</th><th>Kim</th><th>Ne</th><th>Sonuç</th></tr></thead>
           <tbody>
             {data.items.length === 0 && <tr><td colSpan={4} className="small">Kayıt yok</td></tr>}

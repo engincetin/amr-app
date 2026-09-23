@@ -152,6 +152,13 @@ export async function adminRoutes(app: FastifyInstance, ctx: AppContext) {
     try { return ctx.catalog.upsert(b as Partial<CatalogItem> & { item_id: string }, actor); }
     catch (e) { return reply.code((e as FulfilmentError).code ?? 409).send({ error: (e as Error).message }); }
   });
+  /** Ürünü katalogdan sil: sürüm artar, Kanzasset'e catalog.updated gider. */
+  app.delete<{ Params: { id: string } }>("/admin/catalog/:id", async (req, reply) => {
+    const actor = allow(req, reply, "catalog.edit");
+    if (!actor) return reply;
+    try { return ctx.catalog.remove(req.params.id, actor); }
+    catch (e) { return reply.code((e as FulfilmentError).code ?? 400).send({ error: (e as Error).message }); }
+  });
   app.get("/admin/refining", async () => ({ items: ctx.refining.list(300), open: ctx.refining.open().length }));
   app.get<{ Params: { id: string } }>("/admin/refining/:id", async (req, reply) => ctx.refining.get(req.params.id) ?? reply.code(404).send({ error: "talep yok" }));
   app.post<{ Params: { id: string }; Body: RefiningQuoteBody }>("/admin/refining/:id/quote", async (req, reply) => {

@@ -72,7 +72,7 @@ export function R4Vault({ live }: { live: Live }) {
       <section className="card" style={{ marginBottom: 14 }}>
         <h2>Bekleyen talepler {v && v.pending.length > 0 && <span className="pill">{v.pending.length}</span>}</h2>
         <p className="small">Kabul edildiğinde fiş oluşur ve Kanzasset'e olayla gider; kabul, Kanzasset tarafında mint'in dayanağıdır. Red gerekçe ister; gram yerinde kalır.</p>
-        <table>
+        <table className="wide">
           <thead><tr><th>Geliş</th><th>Tür</th><th className="num">Gram</th><th>KZ referansı</th><th>Hedef cevap</th><th>Aksiyon</th></tr></thead>
           <tbody>
             {(v?.pending.length ?? 0) === 0 && <tr><td colSpan={6} className="small">Bekleyen talep yok</td></tr>}
@@ -101,7 +101,7 @@ export function R4Vault({ live }: { live: Live }) {
       <section className="card" style={{ marginBottom: 14 }}>
         <h2>Kasaya koyma kuyruğu (T+3)</h2>
         <p className="small">Kabul edilmiş girişler: külçe kasaya taşınırken "Kasaya konuluyor", yerleşince "Kasaya konuldu" işaretlenir. Vade geçerse uyarı düşer ve Kanzasset tarafında yeni mint bloke olur.</p>
-        <table>
+        <table className="wide">
           <thead><tr><th>Kabul</th><th className="num">Gram</th><th>KZ referansı</th><th>Durum</th><th>Vade (T+3)</th><th>Fiş</th><th>Aksiyon</th></tr></thead>
           <tbody>
             {(v?.placing_queue.length ?? 0) === 0 && <tr><td colSpan={7} className="small">Kuyruk boş</td></tr>}
@@ -130,7 +130,7 @@ export function R4Vault({ live }: { live: Live }) {
 
       <section className="card" style={{ marginBottom: 14 }}>
         <h2>Kasa hareketleri</h2>
-        <table>
+        <table className="wide">
           <thead><tr><th className="num">Sıra</th><th>Zaman</th><th>Tür</th><th className="num">Kasada</th><th className="num">Konuluyor</th><th className="num">Sevkiyatta</th></tr></thead>
           <tbody>
             {(v?.movements.length ?? 0) === 0 && <tr><td colSpan={6} className="small">Hareket yok</td></tr>}
@@ -149,7 +149,7 @@ export function R4Vault({ live }: { live: Live }) {
 
       <section className="card">
         <h2>İşlenen talepler</h2>
-        <table>
+        <table className="wide">
           <thead><tr><th>Geliş</th><th>Tür</th><th className="num">Gram</th><th>KZ referansı</th><th>Durum</th><th>Fiş</th><th>Not</th></tr></thead>
           <tbody>
             {(v?.requests.length ?? 0) === 0 && <tr><td colSpan={7} className="small">Talep yok</td></tr>}

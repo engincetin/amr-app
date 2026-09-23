@@ -116,6 +116,14 @@ export class CatalogDesk {
     return r ? { ...r, active: r.active === 1 } : undefined;
   }
 
+  /** Ürünü katalogdan siler; sürüm artar ve Kanzasset'e catalog.updated gider. Geçmiş talepler ürünü kendi içinde sakladığı için etkilenmez. */
+  remove(itemId: string, actor: string) {
+    const row = this.ctx.db.prepare("SELECT name FROM catalog_items WHERE item_id = ?").get(itemId) as { name: string } | undefined;
+    if (!row) throw new FulfilmentError(`katalogda yok: ${itemId}`, 404);
+    this.ctx.db.prepare("DELETE FROM catalog_items WHERE item_id = ?").run(itemId);
+    return this.bump(actor, `ürün silindi: ${row.name}`);
+  }
+
   /** Ürün ekle ya da düzenle; sürüm artar ve Kanzasset'e catalog.updated gider. */
   upsert(it: Partial<CatalogItem> & { item_id: string }, actor: string): Catalog {
     const db = this.ctx.db;

@@ -70,7 +70,7 @@ export function R3Orders({ live }: { live: Live }) {
           <button className="ghost" onClick={() => { setPeriod("bugun"); setDay(today()); setSide(""); setStatus(""); setQ(""); }}>Temizle</button>
           <span className="small" style={{ marginLeft: "auto" }}>{list.length} kayıt{list.length !== orders.length ? ` (${orders.length} içinden)` : ""}</span>
         </div>
-        <table>
+        <table className="wide">
           <thead><tr><th>Zaman</th><th>Müşteri emri no</th><th>Yön</th><th className="num">Gram</th><th>Kur</th><th className="num">Fiyat sırası</th><th className="num">Limit</th><th>Sonuç</th><th className="num">Gerçekleşme</th><th className="num">Tutar</th><th>Belge</th></tr></thead>
           <tbody>
             {list.length === 0 && <tr><td colSpan={11} className="small">Kayıt yok</td></tr>}

@@ -690,7 +690,38 @@
       },
       "put": {
         "summary": "R7 katalog kalemini ekle ya da güncelle (sürüm artar, catalog.updated gider)",
-        "description": "Yetki: catalog.edit.",
+        "description": "yeni ürün için item_id verilir (ör. aynı gramajın 999,5 ayarlısı); gövde: name, weight_mg, fineness, unit_price_cents, ccy, lead_time_days, active. Yetki: catalog.edit.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "yetki yok"
+          }
+        }
+      }
+    },
+    "/admin/catalog/{id}": {
+      "delete": {
+        "summary": "R7 katalog kalemini sil (sürüm artar, catalog.updated gider)",
+        "description": "ürün listeden tamamen çıkar. Satıştan geçici kaldırmak için silmek yerine pasife almak yeterlidir; eski taleplerin kalemleri kendi kayıtlarında durur. Yetki: catalog.edit.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
