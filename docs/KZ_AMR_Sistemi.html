@@ -154,7 +154,7 @@ footer{margin-top:56px;border-top:1px solid var(--line);padding-top:14px;font-si
 <tr class="even">
 <td><strong>R2 Fiyat</strong> (01)</td>
 <td>Yayını yönetmek</td>
-<td>merkez bağlantısı durumu (bağlı / kopuk, son fiyat zamanı; adres ve bağlan / kes R11 Ayarlar'da) · yayın durumu (<code>tradable</code>) · son 50 tick (seq, ts, üç kur bid / ask) · abone istemci (KZ bağlı mı, son heartbeat)</td>
+<td>merkez bağlantısı durumu (bağlı / kopuk, son fiyat zamanı; adres ve bağlan / kes R11 Ayarlar'da) · yayın durumu (<code>tradable</code>) · güncel fiyat en üstte · son 10 tick (sıra, zaman, üç kur alış / satış; tamamı Kayıtlar'da) · abone istemci (KZ bağlı mı, son heartbeat)</td>
 <td><strong>Bağlan / Kes</strong> (merkez) · <strong>Yayını durdur / başlat</strong> (gerekçe zorunlu; <code>price.halt</code> / <code>price.resume</code> olayı)</td>
 <td>merkez fiyatı geldikçe tick yayını · heartbeat · merkez kesintisinde <code>tradable=false</code> ve bildirim</td>
 <td>Masa, Yönetici</td>
@@ -283,7 +283,7 @@ footer{margin-top:56px;border-top:1px solid var(--line);padding-top:14px;font-si
 <tr class="even">
 <td><strong>K2 Fiyat</strong> (01)</td>
 <td>Rafineri fiyatının ve müşteri fiyatının sağlığı</td>
-<td>soket durumu (ayarlar K11'de) · fiyat zinciri (rafineri alış / satış → müşteri satar / alır, marj, komisyon) · son 50 tick · müşteri işlemlerinin durumu (açık / durdu ve sebebi)</td>
+<td>soket durumu (ayarlar K11'de) · fiyat zinciri (rafineri alış / satış → müşteri satar / alır, marj, komisyon) · son 10 tick · müşteri işlemlerinin durumu (açık / durdu ve sebebi)</td>
 <td><strong>Müşteri işlemlerini durdur / başlat</strong> (gerekçeli)</td>
 <td>bayat fiyat ya da <code>tradable=false</code> → müşteri tarafı otomatik durur · yeniden bağlanma · <code>seq</code> boşluğunda yeniden abonelik</td>
 </tr>
