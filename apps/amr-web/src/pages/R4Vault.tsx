@@ -33,8 +33,8 @@ export function R4Vault({ live }: { live: Live }) {
   const acc = v?.account ?? live.overview?.account;
   const vaultTotal = acc ? acc.vault.in_vault_mg + acc.vault.placing_mg + acc.vault.shipping_mg : 0;
 
-  const pMov = usePager(v?.movements ?? [], 20);
-  const pReq = usePager(v?.requests ?? [], 20);
+  const pMov = usePager(v?.movements ?? [], 10);
+  const pReq = usePager(v?.requests ?? [], 10);
   return (
     <div>
       <span className="tag">R4</span>
@@ -128,45 +128,24 @@ export function R4Vault({ live }: { live: Live }) {
         </table>
       </section>
 
-      <div className="grid c2" style={{ marginBottom: 14 }}>
-        <section className="card">
-          <h2>Kasa hareketleri</h2>
-          <table>
-            <thead><tr><th className="num">Sıra</th><th>Zaman</th><th>Tür</th><th className="num">Kasada</th><th className="num">Konuluyor</th><th className="num">Sevkiyatta</th></tr></thead>
-            <tbody>
-              {(v?.movements.length ?? 0) === 0 && <tr><td colSpan={6} className="small">Hareket yok</td></tr>}
-              {pMov.slice.map((m) => (
-                <tr key={m.id}>
-                  <td className="num">{m.seq}</td><td className="mono">{fmtTime(m.ts)}</td><td>{VAULT_MOVE_TR[m.type] ?? m.type}</td>
-                  <td className="num mono">{m.in_vault_mg ? `${m.in_vault_mg > 0 ? "+" : ""}${fmtG(m.in_vault_mg)}` : ""}</td>
-                  <td className="num mono">{m.placing_mg ? `${m.placing_mg > 0 ? "+" : ""}${fmtG(m.placing_mg)}` : ""}</td>
-                  <td className="num mono">{m.shipping_mg ? `${m.shipping_mg > 0 ? "+" : ""}${fmtG(m.shipping_mg)}` : ""}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <Pager p={pMov} label="Hareketler" />
-        </section>
-
-        <section className="card">
-          <h2>Günlük kasa ekstresi</h2>
-          <p className="small">Rezerv kanıtı: gün içi kasa hareketleri, açılış ve kapanış alt kalemleri, fiş referansları ve imza. Kanzasset `GET /v1/vault/statement` ile aynı ekstreyi çeker.</p>
-          <div className="row"><button className="primary" onClick={async () => setStmt(await api.vaultStatement())}>Bugünün ekstresini çıkar</button></div>
-          {stmt && (
-            <div style={{ marginTop: 10 }}>
-              <div className="kv">
-                <span className="k">Tarih</span><span className="mono">{stmt.date}</span>
-                <span className="k">Açılış</span><span className="mono">{fmtG(stmt.opening.in_vault_mg)} · {fmtG(stmt.opening.placing_mg)} · {fmtG(stmt.opening.shipping_mg)} g</span>
-                <span className="k">Kapanış</span><span className="mono">{fmtG(stmt.closing.in_vault_mg)} · {fmtG(stmt.closing.placing_mg)} · {fmtG(stmt.closing.shipping_mg)} g</span>
-                <span className="k">Toplam (V)</span><span className="mono">{fmtG(stmt.total_mg)} g</span>
-                <span className="k">Hareket</span><span>{stmt.movements.length}</span>
-                <span className="k">Fişler</span><span className="mono small">{stmt.slips.map((s) => s.doc_id).join(", ") || "yok"}</span>
-                <span className="k">İmza</span><span className="mono small" style={{ wordBreak: "break-all" }}>{stmt.signature.slice(0, 32)}…</span>
-              </div>
-            </div>
-          )}
-        </section>
-      </div>
+      <section className="card" style={{ marginBottom: 14 }}>
+        <h2>Kasa hareketleri</h2>
+        <table>
+          <thead><tr><th className="num">Sıra</th><th>Zaman</th><th>Tür</th><th className="num">Kasada</th><th className="num">Konuluyor</th><th className="num">Sevkiyatta</th></tr></thead>
+          <tbody>
+            {(v?.movements.length ?? 0) === 0 && <tr><td colSpan={6} className="small">Hareket yok</td></tr>}
+            {pMov.slice.map((m) => (
+              <tr key={m.id}>
+                <td className="num">{m.seq}</td><td className="mono">{fmtTime(m.ts)}</td><td>{VAULT_MOVE_TR[m.type] ?? m.type}</td>
+                <td className="num mono">{m.in_vault_mg ? `${m.in_vault_mg > 0 ? "+" : ""}${fmtG(m.in_vault_mg)}` : ""}</td>
+                <td className="num mono">{m.placing_mg ? `${m.placing_mg > 0 ? "+" : ""}${fmtG(m.placing_mg)}` : ""}</td>
+                <td className="num mono">{m.shipping_mg ? `${m.shipping_mg > 0 ? "+" : ""}${fmtG(m.shipping_mg)}` : ""}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <Pager p={pMov} label="Hareketler" />
+      </section>
 
       <section className="card">
         <h2>İşlenen talepler</h2>
@@ -188,6 +167,25 @@ export function R4Vault({ live }: { live: Live }) {
           </tbody>
         </table>
         <Pager p={pReq} label="Talepler" />
+      </section>
+
+      <section className="card" style={{ marginTop: 14 }}>
+        <h2>Günlük kasa ekstresi</h2>
+        <p className="small">Rezerv kanıtı: gün içi kasa hareketleri, açılış ve kapanış alt kalemleri, fiş referansları ve imza. Kanzasset `GET /v1/vault/statement` ile aynı ekstreyi çeker.</p>
+        <div className="row"><button className="primary" onClick={async () => setStmt(await api.vaultStatement())}>Bugünün ekstresini çıkar</button></div>
+        {stmt && (
+          <div style={{ marginTop: 10 }}>
+            <div className="kv">
+              <span className="k">Tarih</span><span className="mono">{stmt.date}</span>
+              <span className="k">Açılış</span><span className="mono">{fmtG(stmt.opening.in_vault_mg)} · {fmtG(stmt.opening.placing_mg)} · {fmtG(stmt.opening.shipping_mg)} g</span>
+              <span className="k">Kapanış</span><span className="mono">{fmtG(stmt.closing.in_vault_mg)} · {fmtG(stmt.closing.placing_mg)} · {fmtG(stmt.closing.shipping_mg)} g</span>
+              <span className="k">Toplam (V)</span><span className="mono">{fmtG(stmt.total_mg)} g</span>
+              <span className="k">Hareket</span><span>{stmt.movements.length}</span>
+              <span className="k">Fişler</span><span className="mono small">{stmt.slips.map((s) => s.doc_id).join(", ") || "yok"}</span>
+              <span className="k">İmza</span><span className="mono small" style={{ wordBreak: "break-all" }}>{stmt.signature.slice(0, 32)}…</span>
+            </div>
+          </div>
+        )}
       </section>
 
       {rejecting && (

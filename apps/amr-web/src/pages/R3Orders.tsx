@@ -7,21 +7,32 @@ const today = () => new Date().toISOString().slice(0, 10);
 
 /** R3 Emirler: KZ'den gelen alış / satış emirleri. Fill, red ve iptal otomatiktir; ekran izler. */
 export function R3Orders({ live }: { live: Live }) {
+  /** Dönem: bugün · son 7 gün · tümü · seçilen gün. Gün seçilince dönem "gun" olur. */
+  const [period, setPeriod] = useState<"bugun" | "7gun" | "tumu" | "gun">("bugun");
   const [day, setDay] = useState(today());
   const [side, setSide] = useState("");
   const [status, setStatus] = useState("");
+  const [q, setQ] = useState("");
   const [orders, setOrders] = useState<Order[]>([]);
   const [sel, setSel] = useState<Order | null>(null);
   const [doc, setDoc] = useState<Doc | null>(null);
 
-  const load = () => api.orders({ day: day || undefined, side: side || undefined, status: status || undefined, limit: 300 }).then(setOrders).catch(console.warn);
-  useEffect(() => { load(); }, [day, side, status]);
+  /** Tek gün sunucuda süzülür; dönem seçiliyse liste geniş çekilip ekranda süzülür. */
+  const dayParam = period === "bugun" ? today() : period === "gun" ? day : undefined;
+  const load = () => api.orders({ day: dayParam, side: side || undefined, status: status || undefined, limit: 500 }).then(setOrders).catch(console.warn);
+  useEffect(() => { load(); }, [period, day, side, status]);
   useEffect(() => { if (live.lastOrder) load(); }, [live.lastOrder]);
   useEffect(() => { setDoc(null); if (sel?.allocation_certificate) api.document(sel.allocation_certificate.doc_id).then(setDoc).catch(() => setDoc(null)); }, [sel?.order_id]);
 
   const t = live.overview?.orders_today;
-  const filled = orders.filter((o) => o.status === "FILLED");
-  const p = usePager(orders, 20, `${day}|${side}|${status}`);
+  /** Son 7 gün ve metin araması ekranda süzülür: sunucuya her tuşta istek gitmez. */
+  const since = period === "7gun" ? Date.now() - 7 * 86_400_000 : 0;
+  const text = q.trim().toLowerCase();
+  const list = orders.filter((o) =>
+    (!since || Date.parse(o.received_ts) >= since) &&
+    (!text || o.client_order_id.toLowerCase().includes(text) || o.order_id.toLowerCase().includes(text) || (o.allocation_certificate?.doc_id ?? "").toLowerCase().includes(text)));
+  const filled = list.filter((o) => o.status === "FILLED");
+  const p = usePager(list, 20, `${period}|${day}|${side}|${status}|${text}`);
   const sumMg = (s: "BUY" | "SELL") => filled.filter((o) => o.side === s).reduce((a, o) => a + o.qty_mg, 0);
 
   return (
@@ -38,17 +49,31 @@ export function R3Orders({ live }: { live: Live }) {
 
       <section className="card">
         <h2>Emir listesi</h2>
-        <div className="row" style={{ marginBottom: 10 }}>
-          <label className="small">Gün <input type="date" value={day} onChange={(e) => setDay(e.target.value)} /></label>
-          <label className="small">Yön <select value={side} onChange={(e) => setSide(e.target.value)}><option value="">hepsi</option><option value="BUY">alış</option><option value="SELL">satış</option></select></label>
-          <label className="small">Durum <select value={status} onChange={(e) => setStatus(e.target.value)}><option value="">hepsi</option><option value="FILLED">gerçekleşti</option><option value="REJECTED">reddedildi</option><option value="CANCELLED">iptal</option><option value="RECEIVED">alındı (bekliyor)</option></select></label>
-          <button className="ghost" onClick={() => { setDay(""); setSide(""); setStatus(""); }}>Temizle</button>
-          <span className="small" style={{ marginLeft: "auto" }}>{orders.length} kayıt</span>
+        <div className="filters" style={{ marginBottom: 10 }}>
+          <div className="seg">
+            <button className={period === "bugun" ? "on" : ""} onClick={() => setPeriod("bugun")}>Bugün</button>
+            <button className={period === "7gun" ? "on" : ""} onClick={() => setPeriod("7gun")}>Son 7 gün</button>
+            <button className={period === "tumu" ? "on" : ""} onClick={() => setPeriod("tumu")}>Tümü</button>
+          </div>
+          <label>Gün <input type="date" value={day} onChange={(e) => { setDay(e.target.value); setPeriod(e.target.value ? "gun" : "tumu"); }} /></label>
+          <div className="seg">
+            <button className={side === "" ? "on" : ""} onClick={() => setSide("")}>Hepsi</button>
+            <button className={side === "BUY" ? "on" : ""} onClick={() => setSide("BUY")}>Alış</button>
+            <button className={side === "SELL" ? "on" : ""} onClick={() => setSide("SELL")}>Satış</button>
+          </div>
+          <label>Durum
+            <select value={status} onChange={(e) => setStatus(e.target.value)}>
+              <option value="">hepsi</option><option value="FILLED">gerçekleşti</option><option value="REJECTED">reddedildi</option><option value="CANCELLED">iptal</option><option value="RECEIVED">alındı (bekliyor)</option>
+            </select>
+          </label>
+          <input placeholder="emir ya da belge no ara" value={q} onChange={(e) => setQ(e.target.value)} style={{ minWidth: 180 }} />
+          <button className="ghost" onClick={() => { setPeriod("bugun"); setDay(today()); setSide(""); setStatus(""); setQ(""); }}>Temizle</button>
+          <span className="small" style={{ marginLeft: "auto" }}>{list.length} kayıt{list.length !== orders.length ? ` (${orders.length} içinden)` : ""}</span>
         </div>
         <table>
           <thead><tr><th>Zaman</th><th>Müşteri emri no</th><th>Yön</th><th className="num">Gram</th><th>Kur</th><th className="num">Fiyat sırası</th><th className="num">Limit</th><th>Sonuç</th><th className="num">Gerçekleşme</th><th className="num">Tutar</th><th>Belge</th></tr></thead>
           <tbody>
-            {orders.length === 0 && <tr><td colSpan={11} className="small">Kayıt yok</td></tr>}
+            {list.length === 0 && <tr><td colSpan={11} className="small">Kayıt yok</td></tr>}
             {p.slice.map((o) => (
               <tr key={o.order_id} onClick={() => setSel(o)} style={{ cursor: "pointer", background: sel?.order_id === o.order_id ? "var(--sel)" : undefined }}>
                 <td className="mono">{fmtTime(o.received_ts)}</td>
