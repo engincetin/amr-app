@@ -17,7 +17,7 @@ import type { FastifyInstance } from "fastify";
 import { DeliveryRequestBody, OrderRequest, RefiningRequestBody, VaultRequestBody, type Catalog, type CurrentAccountStatement, type SessionStatus, type VaultStatement, type WsAuth } from "@amr/contract";
 import { Value } from "@sinclair/typebox/value";
 import type { AppContext } from "../context.ts";
-import { parseScope, type SettlementError } from "../settlement.ts";
+import { parseScope, type RequestedAmounts, type SettlementError } from "../settlement.ts";
 import { verify } from "../auth.ts";
 import { currentAccountBalance, getDocument, listCurrentAccountMovements, markDocumentSent, signContent } from "../ledger.ts";
 import { FulfilmentError } from "../fulfilment.ts";
@@ -144,9 +144,9 @@ export async function kzRoutes(app: FastifyInstance, ctx: AppContext) {
 
   // ----- mahsuplaşma (12) -----
   /** Pencere açar; açık pencere varsa onu döner. İki taraf da çağırabilir. */
-  app.post<{ Body: { trigger?: string; reason?: string; scope?: string[] } }>("/v1/settlements", async (req) => {
+  app.post<{ Body: { trigger?: string; reason?: string; scope?: string[]; amounts?: RequestedAmounts } }>("/v1/settlements", async (req) => {
     const trigger = (req.body?.trigger as any) ?? "REQUEST_KZ";
-    const s = ctx.settlement.open(trigger, req.body?.reason?.trim(), parseScope(req.body?.scope));
+    const s = ctx.settlement.open(trigger, req.body?.reason?.trim(), parseScope(req.body?.scope), req.body?.amounts);
     if (trigger === "REQUEST_KZ") ctx.notify("settlement.requested", "Kanzasset mahsuplaşma talep etti", req.body?.reason ?? "", s.settlement_id);
     return s;
   });

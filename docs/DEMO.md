@@ -182,9 +182,13 @@ Kontrol: `http://localhost:4000` açıldığında üst şeritte **Yayın açık*
 
 > "Rafineri bize gram borçlu olduğu için 'kasaya koyalım mı' diye sordu; onayladık, kasa girişi talebi gitti, fiş kesildi, token ondan sonra basıldı. Tersi durumda, biz borçlu olsaydık, önce token yakılır sonra çıkış talebi giderdi: rafineri bizim talebimiz olmadan kasadan gram çıkaramaz."
 
-**K8:** açık pencere yokken kapsam kutusundan **Yalnız USD** seçip talep edin.
+**K8:** açık pencere yokken **Mahsuplaşma başlat** deyin: sihirbaz açılır.
 
-> "Gün içinde her şeyi kapatmak zorunda değiliz. Sadece dolar bacağını netleştirebiliriz, altın ve diğer kurlar olduğu gibi kalır."
+> "Mahsuplaşmayı tek düğmeyle başlatmıyoruz. Önce ne kapatılacağı görülüyor: altın ve kurlar ayrı ayrı, kim borçlu yazıyor. İkinci adımda ne kadarının kapatılacağı giriliyor; varsayılan tamamı, isterseniz bir kısmı. Üçüncü adımda gerekçeyle onaylanıyor."
+
+**Göster:** sihirbazın 2. adımında altın bacağında tamamı yerine daha küçük bir gram yazın.
+
+> "Sadece dolar bacağını ya da altının bir kısmını netleştirebiliriz; kalan cari hesapta kalır, sonraki pencereye girer."
 
 **R8:** pencere **kapandı**, Mahsuplaşma Ekstresi belgesi.
 

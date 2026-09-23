@@ -11,7 +11,7 @@ import { enqueueEvent, listDeliveries } from "../events.ts";
 import type { VaultError } from "../vault.ts";
 import type { FulfilmentError } from "../fulfilment.ts";
 import type { CatalogItem } from "@amr/contract";
-import { parseScope, type SettlementError } from "../settlement.ts";
+import { parseScope, type RequestedAmounts, type SettlementError } from "../settlement.ts";
 import { ROLE_TR, SECOND_APPROVAL, type Permission, type Role } from "../users.ts";
 import { listRequests, requestSummary } from "../reqlog.ts";
 import { documentPdf } from "../pdf.ts";
@@ -175,11 +175,11 @@ export async function adminRoutes(app: FastifyInstance, ctx: AppContext) {
   app.get("/admin/settlements", async () => ({ items: ctx.settlement.list(), open: ctx.settlement.openWindow() ?? null }));
   app.get<{ Params: { id: string } }>("/admin/settlements/:id", async (req, reply) => ctx.settlement.get(req.params.id) ?? reply.code(404).send({ error: "pencere yok" }));
   /** Mahsuplaşma talep et (R8) ya da kesimi elle tetikle (demo). */
-  app.post<{ Body: { reason?: string; trigger?: string; scope?: string[] } }>("/admin/settlements", async (req, reply) => {
+  app.post<{ Body: { reason?: string; trigger?: string; scope?: string[]; amounts?: RequestedAmounts } }>("/admin/settlements", async (req, reply) => {
     const actor = actorOf(req);
     if (!ctx.users.can(actor, "settlement.request")) return reply.code(403).send({ error: `${actor}: bu aksiyon için yetki yok (mahsuplaşma talebi)` });
     const trigger = (req.body?.trigger as any) ?? "REQUEST_AMR";
-    const s = ctx.settlement.open(trigger, req.body?.reason?.trim(), parseScope(req.body?.scope));
+    const s = ctx.settlement.open(trigger, req.body?.reason?.trim(), parseScope(req.body?.scope), req.body?.amounts);
     ctx.audit(actor, "settlement.open", undefined, { settlement_id: s.settlement_id, trigger, scope: s.scope });
     if (trigger === "REQUEST_AMR") enqueueEvent(ctx, "settlement.requested", { settlement_id: s.settlement_id, requested_by: "AMR", trigger, reason: req.body?.reason ?? null });
     return s;

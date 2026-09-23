@@ -454,6 +454,8 @@ Gün içinde biriken karşılıklı alacak ve borçların (gram ve para) tek sef
 
 **Kapatılacak her kalem bir bacaktır:** altın ve her kur (USD, EUR, AED) ayrı bacaktır. Pencere açılırken **kapsam** seçilir: kesim saatinde açılan pencerede kapsam hep tümüdür; gün içi talepte tek bacak da seçilebilir (ör. yalnız USD). Kapsam dışındaki bacaklar dokunulmadan kalır, bir sonraki pencereye girer. Bacakların hepsi kapanınca pencere kapanır.
 
+**Tutar da seçilebilir (kısmi mahsuplaşma):** her bacak için kapatılacak miktar girilebilir, varsayılan tamamıdır. Girilen tutar bacağın tamamını aşamaz; kalan kısım cari hesapta durur ve sonraki pencereye kalır. Ekranlarda bu iş **mahsuplaşma sihirbazıyla** yapılır: 1. adım neyin kapatılacağı (bacak seçimi), 2. adım ne kadarının kapatılacağı, 3. adım gerekçe ve özet. Pencerenin üstünde, kapatılmayı bekleyen alacak verecek durumu her zaman görünür.
+
 **Adımlar:**
 
 1. Pencere kapanır; iki taraf da ekstre hazırlar: işlem listesi · `T` net gram · kur bazında para (alış satış bedelleri + lojistik ve rafinasyon bedelleri) · hizmet bedelleri.

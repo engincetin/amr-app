@@ -236,3 +236,41 @@ test("12 altın bacağı: Kanzasset borçluyken rafineri teklif edemez (çıkı�
     assert.throws(() => s.ctx.settlement.proposeGold(w.settlement_id), /kasa girişi değil/);
   } finally { await s.close(); }
 });
+
+test("12 kısmi mahsuplaşma: girilen tutar kadar kapanır, kalanı cari hesapta durur", async () => {
+  const s = await setup();
+  try {
+    trade(s.ctx, 10_000_000, -1_420_000_00);            // T +10 kg, USD borcu 1.420.000
+    const w = s.ctx.settlement.open("REQUEST_KZ", "sihirbaz: kısmi", ["GOLD", "USD"], {
+      gold_mg: 4_000_000, money: [{ ccy: "USD", cents: 500_000_00 }],
+    });
+    assert.equal(w.gold_leg?.qty_mg, 10_000_000, "bacağın tamamı");
+    assert.equal(w.gold_leg?.requested_mg, 4_000_000, "kapatılacak miktar sihirbazdan gelir");
+    assert.equal(w.money_leg[0].requested_cents, 500_000_00);
+
+    s.ctx.settlement.confirm(w.settlement_id, w.statement_hash!);
+    s.ctx.settlement.approveGold(w.settlement_id);
+    // kasa girişi kabulü: istenen 4 kg kapanır
+    s.ctx.settlement.markGoldLeg(w.settlement_id, "vr_test", 4_000_000);
+    const afterGold = s.ctx.settlement.get(w.settlement_id)!;
+    assert.equal(afterGold.gold_leg?.settled_mg, 4_000_000);
+    assert.equal(afterGold.gold_leg?.done, true, "istenen miktar kapandı, T sıfır olmasa da bacak biter");
+
+    const fin = s.ctx.settlement.paymentReceived(w.settlement_id, "USD", "TR-KISMI");
+    assert.equal(fin.status, "SETTLED");
+    const bal = currentAccountBalance(s.ctx.db);
+    assert.equal(bal.money.find((m) => m.ccy === "USD")?.cents, -920_000_00, "yalnız istenen tutar kapandı, kalanı durur");
+    assert.equal(bal.gold_mg, 10_000_000, "altın defterde kasa talimatıyla hareket eder, burada test hareketi yok");
+  } finally { await s.close(); }
+});
+
+test("12 kısmi tutar bacağın tamamını aşamaz, eksi olamaz", async () => {
+  const s = await setup();
+  try {
+    trade(s.ctx, 0, -100_00);
+    const w = s.ctx.settlement.open("REQUEST_KZ", "aşırı istek", ["USD"], { money: [{ ccy: "USD", cents: 900_00 }] });
+    assert.equal(w.money_leg[0].requested_cents, 100_00, "tamamıyla sınırlanır");
+    const w2 = s.ctx.settlement.get(w.settlement_id)!;
+    assert.equal(w2.money_leg[0].direction, "KZ_TO_AMR");
+  } finally { await s.close(); }
+});

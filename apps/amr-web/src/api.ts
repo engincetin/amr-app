@@ -75,7 +75,7 @@ export const api = {
   rfnCancel: (id: string, reason: string) => req<Refining>(`/admin/refining/${id}/cancel`, { method: "POST", body: JSON.stringify({ reason }) }),
   // R8 mahsuplaşma
   settlements: () => req<{ items: Settlement[]; open: Settlement | null }>("/admin/settlements"),
-  settlementOpen: (trigger: string, reason?: string, scope?: string[]) => req<Settlement>("/admin/settlements", { method: "POST", body: JSON.stringify({ trigger, reason, scope }) }),
+  settlementOpen: (trigger: string, reason?: string, scope?: string[], amounts?: RequestedAmounts) => req<Settlement>("/admin/settlements", { method: "POST", body: JSON.stringify({ trigger, reason, scope, amounts }) }),
   settlementProposeGold: (id: string) => req<Settlement>(`/admin/settlements/${id}/gold/propose`, { method: "POST", body: "{}" }),
   settlementDraft: (id: string) => req<Settlement>(`/admin/settlements/${id}/draft`, { method: "POST", body: "{}" }),
   settlementNotice: (id: string, b: { ccy: string; amount_cents: number; direction: string; bank_ref: string; approval_id?: number; approver?: string }) =>
@@ -146,6 +146,8 @@ export interface Refining {
 }
 export interface CatalogItem { item_id: string; name: string; weight_mg: number; fineness: string; unit_price_cents: number; ccy: string; lead_time_days: number; active: boolean }
 export interface Catalog { version: number; items: CatalogItem[]; updated_ts: string }
+/** Sihirbazda girilen tutarlar: verilmeyen bacak tamamıyla kapatılır. */
+export interface RequestedAmounts { gold_mg?: number; money?: { ccy: string; cents: number }[] }
 export type SettlementStatus = "REQUESTED" | "OPEN" | "DRAFT" | "RECONCILED" | "MISMATCH" | "PAYMENT_PENDING" | "SETTLED";
 export interface Settlement {
   settlement_id: string; trigger: string; status: SettlementStatus; window_from: string; window_to: string;
@@ -153,8 +155,8 @@ export interface Settlement {
   statement_hash?: string; kz_statement_hash?: string;
   diffs?: { field: string; amr: string; kz: string }[];
   scope?: string[];
-  gold_leg?: { t_net_mg: number; direction: string; qty_mg: number; requests: string[]; done: boolean; proposed_ts?: string; approved_ts?: string };
-  money_leg: { ccy: string; net_cents: number; direction: string; paid: boolean; bank_ref?: string; notice_ts?: string; received_ts?: string }[];
+  gold_leg?: { t_net_mg: number; direction: string; qty_mg: number; requested_mg?: number; settled_mg?: number; requests: string[]; done: boolean; proposed_ts?: string; approved_ts?: string };
+  money_leg: { ccy: string; net_cents: number; requested_cents?: number; direction: string; paid: boolean; bank_ref?: string; notice_ts?: string; received_ts?: string }[];
   doc_id?: string; opened_ts: string; settled_ts?: string; history?: { status: string; ts: string; note?: string }[];
 }
 export interface AppUser { username: string; display_name: string; role: string; role_tr?: string; active: boolean; permissions?: string[] }

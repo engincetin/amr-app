@@ -419,7 +419,11 @@ export type SettlementLeg = Static<typeof SettlementLeg>;
 export const SettlementGoldLeg = Type.Object({
   t_net_mg: Type.Integer({ description: "pencere kapanışındaki T" }),
   direction: Type.Union([Type.Literal("VAULT_IN"), Type.Literal("VAULT_OUT"), Type.Literal("NONE")]),
-  qty_mg: Type.Integer(),
+  qty_mg: Type.Integer({ description: "bacağın tamamı (|T|)" }),
+  /** Bu pencerede kapatılacak miktar: tamamı ya da sihirbazda girilen kısmı. */
+  requested_mg: Type.Integer(),
+  /** Kabul edilen kasa talimatlarıyla kapanan miktar. */
+  settled_mg: Type.Integer(),
   requests: Type.Array(Type.String({ description: "kasa talimatı referansları" })),
   done: Type.Boolean(),
   /** rafineri kasaya koymayı teklif etti (yalnız VAULT_IN) */
@@ -431,6 +435,8 @@ export const SettlementGoldLeg = Type.Object({
 export const SettlementMoneyLeg = Type.Object({
   ccy: Ccy,
   net_cents: Type.Integer(),
+  /** Bu pencerede kapatılacak tutar (mutlak değer): tamamı ya da girilen kısmı. */
+  requested_cents: Type.Integer(),
   direction: Type.Union([Type.Literal("KZ_TO_AMR"), Type.Literal("AMR_TO_KZ"), Type.Literal("NONE")]),
   paid: Type.Boolean(),
   bank_ref: Type.Optional(Type.String()),

@@ -2,16 +2,9 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, fmtDT, fmtG, fmtMoney, STL_STATUS_TR, STL_TRIGGER_TR, type Settlement, type useLive } from "../api.ts";
 import { legs, reconciliation, scopeText, summary, type Leg } from "../settlementFlow.ts";
+import { PositionBand, SettlementWizard, type Position, type WizardResult } from "../components/SettlementWizard.tsx";
 
 type Live = ReturnType<typeof useLive>;
-const LEG_CHOICES: { key: string; label: string; scope: string[] }[] = [
-  { key: "ALL", label: "Tümü (altın + üç kur)", scope: [] },
-  { key: "GOLD", label: "Yalnız altın", scope: ["GOLD"] },
-  { key: "MONEY", label: "Yalnız para (üç kur)", scope: ["USD", "EUR", "AED"] },
-  { key: "USD", label: "Yalnız USD", scope: ["USD"] },
-  { key: "EUR", label: "Yalnız EUR", scope: ["EUR"] },
-  { key: "AED", label: "Yalnız AED", scope: ["AED"] },
-];
 
 /**
  * R8 Mahsuplaşma (Akışlar 12).
@@ -26,8 +19,7 @@ export function R8Settlement({ live }: { live: Live }) {
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState("");
   const [sel, setSel] = useState<Settlement | null>(null);
-  const [reason, setReason] = useState("");
-  const [scope, setScope] = useState("ALL");
+  const [wizard, setWizard] = useState(false);
   const [bankRef, setBankRef] = useState<Record<string, string>>({});
 
   const load = () => api.settlements().then((r) => { setItems(r.items); setOpen(r.open); if (sel) setSel(r.items.find((x) => x.settlement_id === sel.settlement_id) ?? null); }).catch((e) => setMsg(`Hata: ${e.message}`));
@@ -45,6 +37,15 @@ export function R8Settlement({ live }: { live: Live }) {
   const shown = w ?? items[0] ?? null;
   const rec = reconciliation(w);
   const rows = legs(w);
+  /** Canlı cari hesap: sihirbaz ve durum şeridi bunu gösterir. */
+  const acc = live.overview?.account.current_account;
+  const positions: Position[] = [
+    { key: "GOLD", label: "Altın", net: acc?.gold_mg ?? 0, unit: "g", who: (acc?.gold_mg ?? 0) > 0 ? "rafineri borçlu (kasaya konacak)" : (acc?.gold_mg ?? 0) < 0 ? "Kanzasset borçlu (kasadan çıkacak)" : "kapalı" },
+    ...(["USD", "EUR", "AED"] as const).map((ccy) => {
+      const cents = acc?.money.find((m) => m.ccy === ccy)?.cents ?? 0;
+      return { key: ccy, label: ccy, net: cents, unit: ccy, who: cents > 0 ? "rafineri borçlu" : cents < 0 ? "Kanzasset borçlu" : "kapalı" };
+    }),
+  ];
 
   return (
     <div>
@@ -60,13 +61,7 @@ export function R8Settlement({ live }: { live: Live }) {
         </div>
         <div className="sp" />
         {!w && (
-          <div className="row">
-            <select value={scope} onChange={(e) => setScope(e.target.value)}>
-              {LEG_CHOICES.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
-            </select>
-            <input placeholder="gerekçe" value={reason} onChange={(e) => setReason(e.target.value)} style={{ minWidth: 180 }} />
-            <button className="primary" disabled={busy === "open"} onClick={() => act("open", () => api.settlementOpen("REQUEST_AMR", reason.trim() || "rafineri talebi", LEG_CHOICES.find((c) => c.key === scope)!.scope), "Pencere açıldı, ekstre çıkarılabilir.")}>Mahsuplaşma talep et</button>
-          </div>
+          <button className="primary" disabled={busy === "open"} onClick={() => setWizard(true)}>Mahsuplaşma başlat</button>
         )}
         {w && rec.canDraft && (
           <button className="primary" disabled={busy === "draft"} onClick={() => act("draft", () => api.settlementDraft(w.settlement_id), "Ekstre çıkarıldı ve Kanzasset'e gönderildi.")}>{rec.state === "fark" ? "Ekstreyi yeniden çıkar" : "Ekstreyi çıkar"}</button>
@@ -77,6 +72,17 @@ export function R8Settlement({ live }: { live: Live }) {
       </div>
 
       {msg && <div className="note" style={{ marginBottom: 12 }}>{msg}</div>}
+
+      {/* ---- alacak verecek durumu: pencere olsun olmasın görünür ---- */}
+      <PositionBand positions={positions} note="Bu rakamlar cari hesabın canlı hâlidir: mahsuplaşma bunları kapatır. Altın kasa talimatıyla, para banka ödemesiyle kapanır. Ayrıntı R5 Cari hesap ekranındadır." />
+
+      {wizard && (
+        <SettlementWizard
+          positions={positions} side="Kanzasset" busy={busy === "open"}
+          onClose={() => setWizard(false)}
+          onStart={(r: WizardResult) => { setWizard(false); void act("open", () => api.settlementOpen("REQUEST_AMR", r.reason || "rafineri talebi", r.scope, r.amounts), "Pencere açıldı, ekstre çıkarılabilir."); }}
+        />
+      )}
 
       {/* ---- mutabakat: tek satır, farklar açılır ---- */}
       {w && (

@@ -66,7 +66,7 @@ const OPS: Record<string, Op> = {
   "PUT /admin/catalog": { summary: "R7 katalog kalemini ekle ya da güncelle (sürüm artar, catalog.updated gider)", perm: "catalog.edit" },
 
   "GET /admin/settlements": { summary: "R8 mahsuplaşma pencereleri" },
-  "POST /admin/settlements": { summary: "R8 mahsuplaşma penceresi aç", description: "trigger: CUTOFF (kesim saati, kendiliğinden de açılır), REQUEST_AMR ya da REQUEST_KZ. Açık pencere varsa o döner.", body: { trigger: "tetikleyici", reason: "gerekçe" }, perm: "settlement.request" },
+  "POST /admin/settlements": { summary: "R8 mahsuplaşma penceresi aç (sihirbaz: kapsam ve tutar)", description: "trigger: CUTOFF (kesim saati, kendiliğinden de açılır), REQUEST_AMR ya da REQUEST_KZ. Açık pencere varsa o döner. scope verilmezse bütün bacaklar; amounts verilmezse her bacağın tamamı kapatılır, verilen tutar bacağın tamamını aşamaz.", body: { trigger: "tetikleyici", reason: "gerekçe", scope: ["GOLD", "USD"], amounts: { gold_mg: 4000000, money: [{ ccy: "USD", cents: 50000000 }] } }, perm: "settlement.request" },
   "GET /admin/settlements/:id": { summary: "R8 mahsuplaşma penceresi ayrıntısı ve geçmişi" },
   "POST /admin/settlements/:id/gold/propose": { summary: "R8 altın teklifi: kasaya koyalım mı", description: "rafineri Kanzasset'e gram borçluyken teklifi gönderir; Kanzasset onaylamadan kasa girişi talebi gelmez." },
   "POST /admin/settlements/:id/draft": { summary: "R8 ekstre taslağı üret (mutabakat adımı)", description: "rafineri ekstresi imzalanır ve Kanzasset'e gider; Kanzasset karşılaştırıp onaylar ya da MISMATCH der." },

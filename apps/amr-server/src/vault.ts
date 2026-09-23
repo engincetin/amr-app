@@ -156,7 +156,7 @@ export class VaultDesk {
     this.ctx.audit(actor, `vault.${row.type === "IN" ? "in" : "out"}.accept`, { status: "REQUESTED" }, { request_id: row.request_id, qty_mg: row.qty_mg, doc_id, seq });
     const resp = this.emit(row.request_id, row.type === "IN" ? "vault.in_accepted" : "vault.out_accepted", true);
     // mahsuplaşmanın altın bacağı kasa talimatıyla kapanır (12)
-    this.ctx.settlement?.onVaultAccepted(row.ref);
+    this.ctx.settlement?.onVaultAccepted(row.ref, row.qty_mg);
     return resp;
   }
 

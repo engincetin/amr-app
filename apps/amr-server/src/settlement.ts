@@ -40,12 +40,22 @@ export function ensureSettlementTables(db: AppContext["db"]) {
       opened_ts TEXT NOT NULL,
       settled_ts TEXT,
       history TEXT NOT NULL DEFAULT '[]',
-      scope TEXT NOT NULL DEFAULT ''
+      scope TEXT NOT NULL DEFAULT '',
+      amounts TEXT
     );
   `);
   // eski veritabanları: kapsam sütunu sonradan eklendi (boş = bütün bacaklar)
   const cols = (db.prepare("PRAGMA table_info(settlements)").all() as { name: string }[]).map((c) => c.name);
   if (!cols.includes("scope")) db.exec("ALTER TABLE settlements ADD COLUMN scope TEXT NOT NULL DEFAULT ''");
+  if (!cols.includes("amounts")) db.exec("ALTER TABLE settlements ADD COLUMN amounts TEXT");
+}
+
+/** Sihirbazda girilen tutarlar: verilmeyen bacak tamamıyla kapatılır. */
+export interface RequestedAmounts { gold_mg?: number; money?: { ccy: string; cents: number }[] }
+/** İstenen tutar bacağın tamamını aşamaz, eksi olamaz; verilmemişse tamamı. */
+function clamp(want: number | undefined, full: number): number {
+  if (want === undefined || want === null || !Number.isFinite(want)) return full;
+  return Math.max(0, Math.min(full, Math.round(Math.abs(want))));
 }
 
 /** Kapsam boşsa bütün bacaklar. Sıra sabittir: önce altın, sonra kurlar. */
@@ -83,7 +93,7 @@ export class SettlementDesk {
    * Pencere açar ve ekstre taslağını üretir. Açık pencere varsa onu döner (iki taraf da çağırabilir).
    * Tetik: CUTOFF (kesim saati) · REQUEST_KZ · REQUEST_AMR · LIMIT.
    */
-  open(trigger: SettlementTrigger, note?: string, scope?: SettlementLeg[]): Settlement {
+  open(trigger: SettlementTrigger, note?: string, scope?: SettlementLeg[], amounts?: RequestedAmounts): Settlement {
     const existing = this.openWindow();
     if (existing) return existing;
 
@@ -93,8 +103,8 @@ export class SettlementDesk {
     const from = getSetting(db, "settlement.last_window_to", `${to.slice(0, 10)}T00:00:00.000Z`);
     const ts = to;
     const legs = scope?.length ? scope : [...ALL_LEGS];
-    db.prepare("INSERT INTO settlements(settlement_id, trigger, status, window_from, window_to, opened_ts, history, scope) VALUES (?, ?, 'OPEN', ?, ?, ?, ?, ?)")
-      .run(id, trigger, from, to, ts, JSON.stringify([{ status: "OPEN", ts, note: note ?? `tetik: ${trigger}` }]), legs.join(","));
+    db.prepare("INSERT INTO settlements(settlement_id, trigger, status, window_from, window_to, opened_ts, history, scope, amounts) VALUES (?, ?, 'OPEN', ?, ?, ?, ?, ?, ?)")
+      .run(id, trigger, from, to, ts, JSON.stringify([{ status: "OPEN", ts, note: note ?? `tetik: ${trigger}` }]), legs.join(","), amounts ? JSON.stringify(amounts) : null);
 
     this.ctx.notify("settlement.opened", "Mahsuplaşma penceresi açıldı", `${this.triggerText(trigger)} · kapsam ${this.scopeText(legs)}${note ? ` · ${note}` : ""}`, id);
     enqueueEvent(this.ctx, "settlement.opened", { settlement_id: id, trigger, window_from: from, window_to: to, scope: legs });
@@ -115,21 +125,32 @@ export class SettlementDesk {
 
     // kapsam: yalnız seçilen bacaklar bu pencerede kapatılır, kalanı bir sonraki pencereye kalır
     const legs = parseScope(row.scope);
+    const want: RequestedAmounts = row.amounts ? JSON.parse(row.amounts) : {};
     const goldIn = legs.includes("GOLD");
+    const goldFull = goldIn ? Math.abs(bal.gold_mg) : 0;
+    // istenen tutar bacağın tamamını aşamaz; verilmemişse tamamı kapatılır
+    const goldWant = clamp(want.gold_mg, goldFull);
+    const prevGold = JSON.parse(row.gold_leg ?? "null");
     const goldLeg = {
       t_net_mg: goldIn ? bal.gold_mg : 0,
-      direction: goldIn ? (bal.gold_mg > 0 ? "VAULT_IN" : bal.gold_mg < 0 ? "VAULT_OUT" : "NONE") : "NONE",
-      qty_mg: goldIn ? Math.abs(bal.gold_mg) : 0,
-      requests: [] as string[],
-      done: !goldIn || bal.gold_mg === 0,
+      direction: goldIn && goldWant > 0 ? (bal.gold_mg > 0 ? "VAULT_IN" : "VAULT_OUT") : "NONE",
+      qty_mg: goldFull,
+      requested_mg: goldWant,
+      settled_mg: prevGold?.settled_mg ?? 0,
+      requests: (prevGold?.requests ?? []) as string[],
+      done: goldWant === 0 || (prevGold?.settled_mg ?? 0) >= goldWant,
+      ...(prevGold?.proposed_ts ? { proposed_ts: prevGold.proposed_ts } : {}),
+      ...(prevGold?.approved_ts ? { approved_ts: prevGold.approved_ts } : {}),
     };
     const moneyLeg = CCYS.filter((ccy) => legs.includes(ccy as SettlementLeg)).map((ccy) => {
       const cents = bal.money.find((m) => m.ccy === ccy)?.cents ?? 0;
+      const wanted = clamp(want.money?.find((m) => m.ccy === ccy)?.cents, Math.abs(cents));
       return {
         ccy,
         net_cents: cents,
-        direction: cents < 0 ? "KZ_TO_AMR" : cents > 0 ? "AMR_TO_KZ" : "NONE",
-        paid: cents === 0,
+        requested_cents: wanted,
+        direction: wanted === 0 ? "NONE" : cents < 0 ? "KZ_TO_AMR" : "AMR_TO_KZ",
+        paid: wanted === 0,
       };
     });
 
@@ -215,15 +236,19 @@ export class SettlementDesk {
   }
 
   /** Altın bacağı Kanzasset'in kasa talimatıyla kapanır; kasa talimatı kabul edilince buradan işaretlenir. */
-  markGoldLeg(id: string, requestRef: string): Settlement {
+  markGoldLeg(id: string, requestRef: string, qtyMg = 0): Settlement {
     const row = this.requireRow(id, "RECONCILED", "PAYMENT_PENDING");
     const leg = JSON.parse(row.gold_leg ?? "null");
     if (!leg) throw new SettlementError("altın bacağı yok");
-    if (!leg.requests.includes(requestRef)) leg.requests.push(requestRef);
+    if (!leg.requests.includes(requestRef)) {
+      leg.requests.push(requestRef);
+      leg.settled_mg = (leg.settled_mg ?? 0) + qtyMg;
+    }
     const t = currentAccountBalance(this.ctx.db).gold_mg;
-    leg.done = t === 0;
+    // kısmi mahsuplaşmada T sıfırlanmaz: ölçüt istenen miktarın kapanmasıdır
+    leg.done = leg.requested_mg === 0 || leg.settled_mg >= leg.requested_mg || t === 0;
     this.ctx.db.prepare("UPDATE settlements SET gold_leg = ?, history = ? WHERE settlement_id = ?")
-      .run(JSON.stringify(leg), this.push(row, row.status as SettlementStatus, `altın bacağı: ${requestRef} · T ${g(t)} g${leg.done ? " · kapandı" : ""}`), row.settlement_id);
+      .run(JSON.stringify(leg), this.push(row, row.status as SettlementStatus, `altın bacağı: ${requestRef} · kapanan ${g(leg.settled_mg)} / ${g(leg.requested_mg)} g · T ${g(t)} g${leg.done ? " · kapandı" : ""}`), row.settlement_id);
     return this.maybeSettle(row.settlement_id);
   }
 
@@ -231,10 +256,10 @@ export class SettlementDesk {
    * Kasa talimatı kabul edildiğinde çağrılır: açık pencere mutabakat aşamasındaysa
    * altın bacağı bu talimatla ilerler ve T sıfırlandıysa pencere kapanmaya hazır olur.
    */
-  onVaultAccepted(requestRef: string): void {
+  onVaultAccepted(requestRef: string, qtyMg = 0): void {
     const w = this.openWindow();
     if (!w || (w.status !== "RECONCILED" && w.status !== "PAYMENT_PENDING")) return;
-    try { this.markGoldLeg(w.settlement_id, requestRef); } catch { /* pencere uygun değilse atla */ }
+    try { this.markGoldLeg(w.settlement_id, requestRef, qtyMg); } catch { /* pencere uygun değilse atla */ }
   }
 
   /** Ödeme bildirimi: ödeyen taraf banka referansıyla bildirir. */
@@ -264,9 +289,11 @@ export class SettlementDesk {
     leg.paid = true;
     leg.received_ts = now();
     if (bankRef) leg.bank_ref = bankRef;
+    // kısmi mahsuplaşmada yalnız istenen tutar kapanır, kalanı cari hesapta durur
+    const amount = Math.sign(leg.net_cents) * Math.min(Math.abs(leg.net_cents), leg.requested_cents ?? Math.abs(leg.net_cents));
     this.ctx.db.prepare("UPDATE settlements SET money_leg = ?, history = ? WHERE settlement_id = ?")
-      .run(JSON.stringify(legs), this.push(row, row.status as SettlementStatus, `ödeme alındı ${ccy} ${money(leg.net_cents)}`), row.settlement_id);
-    this.settleMoney(row.settlement_id, ccy, leg.net_cents);
+      .run(JSON.stringify(legs), this.push(row, row.status as SettlementStatus, `ödeme alındı ${ccy} ${money(amount)}${Math.abs(amount) < Math.abs(leg.net_cents) ? ` (kısmi; net ${money(leg.net_cents)})` : ""}`), row.settlement_id);
+    this.settleMoney(row.settlement_id, ccy, amount);
     return this.maybeSettle(row.settlement_id);
   }
 
@@ -310,9 +337,10 @@ export class SettlementDesk {
     const row = this.requireRow(id, "RECONCILED", "PAYMENT_PENDING");
     const legs = JSON.parse(row.money_leg);
     const gold = JSON.parse(row.gold_leg ?? "null");
-    const moneyDone = legs.every((l: any) => l.paid || l.net_cents === 0);
+    const moneyDone = legs.every((l: any) => l.paid || (l.requested_cents ?? Math.abs(l.net_cents)) === 0);
     // altın bacağı Kanzasset'in kasa talimatıyla kapanır: ölçüt canlı T'nin sıfırlanmasıdır
-    const goldDone = !gold || gold.direction === "NONE" || currentAccountBalance(this.ctx.db).gold_mg === 0;
+    const goldDone = !gold || gold.direction === "NONE" || (gold.requested_mg ?? 0) === 0
+      || (gold.settled_mg ?? 0) >= gold.requested_mg || currentAccountBalance(this.ctx.db).gold_mg === 0;
     if (gold && goldDone && !gold.done) {
       gold.done = true;
       this.ctx.db.prepare("UPDATE settlements SET gold_leg = ? WHERE settlement_id = ?").run(JSON.stringify(gold), id);

@@ -1050,8 +1050,8 @@
         }
       },
       "post": {
-        "summary": "R8 mahsuplaşma penceresi aç",
-        "description": "trigger: CUTOFF (kesim saati, kendiliğinden de açılır), REQUEST_AMR ya da REQUEST_KZ. Açık pencere varsa o döner. Yetki: settlement.request.",
+        "summary": "R8 mahsuplaşma penceresi aç (sihirbaz: kapsam ve tutar)",
+        "description": "trigger: CUTOFF (kesim saati, kendiliğinden de açılır), REQUEST_AMR ya da REQUEST_KZ. Açık pencere varsa o döner. scope verilmezse bütün bacaklar; amounts verilmezse her bacağın tamamı kapatılır, verilen tutar bacağın tamamını aşamaz. Yetki: settlement.request.",
         "requestBody": {
           "content": {
             "application/json": {
@@ -1065,6 +1065,25 @@
                   "reason": {
                     "type": "string",
                     "description": "gerekçe"
+                  },
+                  "scope": {
+                    "type": "string",
+                    "description": [
+                      "GOLD",
+                      "USD"
+                    ]
+                  },
+                  "amounts": {
+                    "type": "string",
+                    "description": {
+                      "gold_mg": 4000000,
+                      "money": [
+                        {
+                          "ccy": "USD",
+                          "cents": 50000000
+                        }
+                      ]
+                    }
                   }
                 }
               }

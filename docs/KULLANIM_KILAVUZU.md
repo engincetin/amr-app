@@ -99,15 +99,18 @@ Ekranda müşteri adı görünmez, yalnız adres ve sigorta lehtarı referansı 
 
 ### 2.6 Mahsuplaşma · R8
 
-Gün içinde biriken karşılıklı alacak ve borç kapatılır. **Kapatılacak her kalem bir bacaktır:** altın, USD, EUR, AED. Ekranda her bacak bir satırdır; satırda ne kadar, kim borçlu ve o an yapılacak tek iş yazar.
+Gün içinde biriken karşılıklı alacak ve borç kapatılır. Ekranın üstünde **alacak verecek durumu** her zaman görünür: altın ve üç kur, her birinde tutar ve kimin borçlu olduğu. Kapatılacak her kalem bir **bacaktır**; ekranda her bacak bir satırdır ve satırda o an yapılacak tek iş yazar.
 
 - Pencere **kesim saatinde kendiliğinden açılır** (varsayılan 17:00 Dubai) ve kapsamı tümüdür.
-- Gün içinde siz de talep edebilirsiniz. Talep ederken **kapsam** seçilir: tümü, yalnız altın, yalnız para ya da tek kur. Kapsam dışındaki bacaklar dokunulmadan kalır.
+- Gün içinde **Mahsuplaşma başlat** ile siz de açabilirsiniz. Düğme sihirbazı açar:
+  1. **Ne kapatılacak:** bacaklar listelenir, işaretlediğiniz kapanır. İşaretlemedikleriniz dokunulmadan kalır.
+  2. **Ne kadar:** her bacak için tutar girilir, varsayılan tamamıdır. Daha azını girerseniz kalanı cari hesapta durur ve sonraki pencereye kalır.
+  3. **Gerekçe ve özet:** ne isteneceği tek ekranda özetlenir, gerekçe yazılır ve pencere açılır.
 - Cari hesap limiti dolduğunda da açılır.
 
-Adımlar:
+Pencere açıldıktan sonra:
 
-1. Pencere açılınca **Ekstreyi çıkar** deyin: gün içi işlemler, net gram ve kur bazında para imzalı ekstre olur, Kanzasset'e gider.
+1. **Ekstreyi çıkar** deyin: gün içi işlemler, net gram ve kur bazında para imzalı ekstre olur, Kanzasset'e gider.
 2. Kanzasset kendi kaydıyla karşılaştırır. **Eşit** görünürse iki kayıt birebir tutmuş demektir; bacaklar ancak bundan sonra kapanır.
    - **Fark var** görünürse tablo farkı satır satır gösterir. Ödeme yapmayın; farkı çözün, sonra **Ekstreyi yeniden çıkar** deyin.
 3. **Altın bacağı.** Rafineri gram borçluysa satırdaki **Kasaya koymayı teklif et** düğmesine basın; Kanzasset onaylayınca kasa girişi talebi gelir, R4'ten kabul edersiniz, fiş kesilir. Kanzasset gram borçluysa yapacağınız bir şey yoktur: çıkış talebini o gönderir, siz R4'ten kabul edersiniz. Rafineri kendi başına kasadan gram çıkaramaz.
