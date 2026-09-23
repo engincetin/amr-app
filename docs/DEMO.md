@@ -28,6 +28,8 @@ cd kz-treasury && npm run demo
 
 Tek komutla Docker ile: `docker compose up --build` (kökte `docker-compose.yml`; bkz. README).
 
+Sunucular başka portta çalışıyorsa demoya adresi verin: Kanzasset 5050'deyse `KZ_URL=http://localhost:5050 npm run demo`, rafineri için `AMR_URL`. Demo ulaşamadığı tarafı adıyla söyler.
+
 Kontrol: `http://localhost:4000` açıldığında üst şeritte **Yayın açık**, yan menünün altında **Merkez bağlı** ve **Kanzasset abone** yazmalı. Yazmıyorsa 1. komutun terminaline bakın.
 
 **Sunumdan önce** senaryoları bir kez koşun (3. komut, ~2 dakika): ekranlar dolu gelir ve toplantıda boş tablo görünmez. İsterseniz sunum sırasında canlı koşmak için `DEMO_GAP_MS=5000 npm run demo` kullanın, adımlar arasında 5 saniye bekler.
