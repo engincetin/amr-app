@@ -4,6 +4,7 @@ Bu repo Ahlatcı Metal Refinery (AMR) tarafındaki uygulamadır. Kanzasset taraf
 
 ## Kaynak dokümanlar (önce bunlara bak)
 
+- `docs/KZ_AMR_Rafineri_Modeli.md`: Operating Model Specification v0.8 (29 Eylül 2026) karşılığı: rafinerideki üç hesap (Rezerv, Metal Pozisyon, Mahsuplaşma), iletişim (soket, API, olaylar), rafineri ekranları, üst kaynak (Integral) sınırı, mevcut sistemle farklar ve Sprint 7 sırası. Çelişkide spesifikasyon ve bu doküman akışlardan önce gelir.
 - `docs/KZ_AMR_Akislar.md`: rafineri ile Kanzasset arasındaki akışlar (fiyat, bakiye bilgisi, stoktan alış / satış, kasa girişi / çıkışı, büyük alış / satış, hazine alım satımı, fiziksel teslimat, rafinasyon, mahsuplaşma). Rakamlı örnekler buradadır.
 - `docs/KZ_AMR_Sistemi.md`: ekranlar (R1..R11, K1..K12), API, soket protokolü, veri modeli, kontroller, sprint planı.
 - `docs/KARARLAR.md`: tasarımda karşılığı olmayan kararlar. Tasarımda olmayan bir karar verince buraya tek satır yazılır.
